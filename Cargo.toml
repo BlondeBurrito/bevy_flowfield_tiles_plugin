@@ -4,27 +4,35 @@ authors = ["BlondeBurrito"]
 edition = "2021"
 rust-version = "1.70"
 readme = "README.md"
-homepage = "https://github.com/BlondeBurrito/repo_template"
-repository = "https://github.com/BlondeBurrito/repo_template"
-keywords = ["utility"]
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
+repository = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
+keywords = ["navigation", "pathfinding", "bevy"]
+categories = ["game development", "algorithms"]
+exclude = [".github/", "crates/", "assets/"]
 
 [workspace]
 members = ["crates/*"]
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
 example_crate = { path = "crates/example_crate" }
+bevy = { git = "https://github.com/bevyengine/bevy", rev = "e9312254d8906e9f491c4f3761659df0d179687f", default-features = false, features = [ "ktx2", "zstd" ] }
+petgraph = "0.6"
 
 [package]
-name = "repo_template"
+name = "bevy_flowfield_tiles_plugin"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "A skeleton repo containing the configuration files for tools which I find useful in Rust development"
+description = "An implementation"
 readme.workspace = true
+license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
 publish = false
 
 
@@ -35,6 +43,8 @@ criterion = "0.5"
 
 [dependencies]
 example_crate = { workspace = true }
+bevy = { workspace = true }
+petgraph = { workspace = true }
 
 [profile.dev]
 opt-level = 1

@@ -1,0 +1,10 @@
+@startuml sectors
+
+title
+Sectors
+<#d0d0d0>|=<#FF8080> CxR  |=     0 |=      1 |=      2 |
+|<#d0d0d0> 0 |\n    (0, 0)   \n|\n    (1, 0)    \n|\n    (2, 0)   \n|
+|<#d0d0d0> 1 |\n    (0, 1)   \n|\n    (1, 1)   \n|\n    (2, 1)   \n|
+|<#d0d0d0> 2 |\n    (0, 2)   \n|\n    (1, 2)   \n|\n    (2, 2)   \n|
+end title
+@enduml

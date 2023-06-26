@@ -17,8 +17,6 @@ export RUST_BACKTRACE := bt
 default:
   just --list
 # lint the code aggressively
-copyassets:
-  ./copy_assets.ps1
 clippy:
   cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::cargo_common_metadata -D clippy::missing_docs_in_private_items -W clippy::todo -W clippy::unimplemented
 # run a chosen example
@@ -41,7 +39,7 @@ build: test doc
   cargo build --release --workspace
 # build and execute bin
 run: build
-  cargo run --release --package repo_template
+  cargo run --release --package bevy_flowfield_tiles_plugin
 # delete `target` directory
 clean:
   cargo clean
