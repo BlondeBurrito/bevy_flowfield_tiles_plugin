@@ -1,0 +1,23 @@
+name: Clippy
+
+on:
+  push:
+    branches: [ none ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    
+env:
+  CARGO_TERM_COLOR: always
+    
+jobs:
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nix dependencies
+        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::cargo_common_metadata -D clippy::missing_docs_in_private_items -W clippy::todo -W clippy::unimplemented
+

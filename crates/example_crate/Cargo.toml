@@ -1,0 +1,15 @@
+[package]
+name = "example_crate"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Example of a crate"
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+publish = false
+
+[dependencies]
+# clap = { workspace = true }

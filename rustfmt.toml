@@ -1,0 +1,7 @@
+hard_tabs = true
+newline_style = "Unix"
+
+# nightly, uncomment once stable
+# wrap_comments = true
+# comment_width = 100
+# normalize_comments = true

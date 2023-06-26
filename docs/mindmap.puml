@@ -1,0 +1,17 @@
+@startmindmap mindmap
++[#LightBlue] mindmap
+++ left
++++ branch1
++++ branch2
++++ branch3
++++ branch4
+++++ thing
+++++ mars
+++++ jupiter
++++++ rust
+--[#LightGreen] right
+---[#LightGreen] breakfast
+---- bacon
+---- eggs
+---- toast
+@endmindmap

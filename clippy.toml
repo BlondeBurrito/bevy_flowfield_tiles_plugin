@@ -1,0 +1,2 @@
+# cargo-common-metadata = "deny"
+# missing-docs-in-private-items = "deny"
