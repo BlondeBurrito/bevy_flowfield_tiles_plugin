@@ -1,4 +1,5 @@
-//! The IntegrationFields contains a 2D array of 32-bit values.
+//! The IntegrationFields contains a 2D array of 16-bit values and it uses a [CostFields] to
+//! produce a cumulative cost of reaching the goal/target.
 //!
 //! Every [Sector] has a [IntegrationFields] associated with it. An example cost field may look:
 //!
@@ -39,7 +40,7 @@
 
 use super::*;
 
-pub struct IntegrationFields([[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
+pub struct IntegrationFields([[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 
 impl Default for IntegrationFields {
 	fn default() -> Self {
@@ -48,17 +49,25 @@ impl Default for IntegrationFields {
 }
 
 impl IntegrationFields {
-	pub fn get_grid_value(&self, column: usize, row: usize) -> u32 {
+	pub fn get_grid_value(&self, column: usize, row: usize) -> u16 {
 		if column >= self.0.len() || row >= self.0[0].len() {
 			panic!("Cannot get a IntegrationFields grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
 		}
 		self.0[column][row]
 	}
-	pub fn set_grid_value(&mut self, value: u32, column: usize, row: usize) {
+	pub fn set_grid_value(&mut self, value: u16, column: usize, row: usize) {
 		if column >= self.0.len() || row >= self.0[0].len() {
 			panic!("Cannot set a IntegrationFields grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
 		}
 		self.0[column][row] = value;
+	}
+	/// Reset all the cells of the [IntegrationFields] to `u16::MAX`
+	pub fn reset(&mut self) {
+		for i in 0..FIELD_RESOLUTION {
+			for j in 0.. FIELD_RESOLUTION {
+				self.set_grid_value(u16::MAX, i, j);
+			}
+		}
 	}
 }
 

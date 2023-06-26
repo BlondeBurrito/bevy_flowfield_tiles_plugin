@@ -19,14 +19,15 @@ Pathfinding in games can take different forms and those forms have certain benef
 
 For larger and larger environemnts with an increasing number of pathing actors it may be beneficial to adopt a flow field based approach. Flow fields are complex, it's effectively akin to fluid mechanics, so this is an attempt to bring an agnostic implementation to the [Bevy](https://github.com/bevyengine/bevy/tree/main) game engine.
 
-### Definitions
+## Definitions
 
-* Sector - a slice of a game world composed of three 2D arrays called fields (Cost fields, Integration fields and Flow fields). A game world if effectively represented as a number of Sectors
+* Sector - a slice of a game world composed of three 2D arrays called fields (Cost fields, Integration fields and Flow fields). A game world is effectively represented by a number of Sectors
 * Cost fields - a 2D array describing how difficult it is to path through each cell of the array
 * Cost - how difficult/expensive it is to path somewhere, you could also call it <i>weight</i>
 * Portal - a navigatable point which links one Sector to another
-* Integration fields
+* Integration fields - a 2D array which uses the Cost fields to determine a cumulative cost of reaching the goal/endpoint
 * Flow fields
+* Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for neighbour discovery of Sectors/field cells
 
 # Process
 
@@ -38,7 +39,7 @@ For a 3-dimensional world the `x-z` plane defines the number of Sectors used to 
 
 <img src="docs/sectors.png" alt="sectors" width="250"/>
 
-Likewise for a `300x550` world you'll be looking at `55` columns and `30` rows. The advantage of dividing a world into Sectors (as opposed to treating the whole world as a giant Flowfield) is that the work in generating a path can be split into multiple operations and only touch certain sectors - thereby fewer field cells to number crunch.
+Likewise for a `300x550` world you'll be looking at `55` columns and `30` rows. The advantage of dividing a world into Sectors (as opposed to treating the whole world as a giant Flowfield) is that the work in generating a path can be split into multiple operations and only touch certain sectors. Say for the `300x550` world you do treat it as a single set of fields - when calculating a path you could potentially have to calculate the Flowfield values for `165,000` grid cells. Splitting it into sectors may mean that your path only takes you through 20 sectors, thereby only requiring `2,000` Flowfield grid cells to be calculated.
 
 ## Cost Fields
 
@@ -72,9 +73,42 @@ For finding a path from one Sector to another at a Portal level all Sectors and 
 2. For each sector create `edges` (pathable routes) to and from each Portal `node` - effectively create internal walkable routes of each sector
 3. Create `edges` across the Portal `node` on all sector boundaries
 
-This allows the graph to be queried with a `source` sector and a `target` sector and list of Portals are returned which can be pathed. When a `CostFields` is changed this triggers the regeneration of the sector Portals for the region that `CostFields` resides (and its neighbours to ensure homogenous boundaries) and the graph it updated with any new Portals `node`s and the old ones removed. This is a particularly dangerous and complicated area as the Sectors, Portals and fields are represented in 2D but the graph is effectively 1D - it's a bit long list of 'node's. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `node`s (like an A* result) you can find the location of each Portal.
+This allows the graph to be queried with a `source` sector and a `target` sector and list of Portals are returned which can be pathed. When a `CostFields` is changed this triggers the regeneration of the sector Portals for the region that `CostFields` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `node`s and the old ones are removed. This is a particularly dangerous and complicated area as the Sectors, Portals and fields are represented in 2D but the graph is effectively 1D - it's a bit long list of `node`s. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `node`s (like an A* result) you can find the location of each Portal.
 
 ## Integration Fields
+
+An `IntegrationFields` is an `MxN` 2D array of 16-bit values. It uses the `CostFields` to produce a cumulative cost to reach the end goal/target.
+
+When a new route needs to be processed the fields are reset to `u16::MAX` and the grid cell containing the goal is set to `0`.
+
+A series of passes are performed from the goal as an expanding wavefront calculating the fields values:
+
+1. The ordinal neighbours of the goal are determined (North, East, South, West)
+2. For each ordinal lookup their `CostFields` value
+3. Add their cost to the `IntegrationField`s cost of the current cell (atht he beginning this is the goal so `0`)
+4. Propagate to the neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their integration cost, and repeat until the entire field is done
+
+This produces a nice diamond-like pattern as the wave expands:
+
+<img src="docs/int_field_prop0.png" alt="ifp0" width="300" height="310"/>
+<img src="docs/int_field_prop1.png" alt="ifp1" width="300" height="310"/>
+<img src="docs/int_field_prop2.png" alt="ifp2" width="300" height="310"/>
+<img src="docs/int_field_prop3.png" alt="ifp3" width="300" height="310"/>
+
+Now a dimaond-like wave isn't exactly realistic so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave.
+
+When it comes to `CostFields` containing impassable markers, `255`, they are ignored so the wave sweeps around those areas:
+
+<img src="docs/int_field_prop_impassable.png" alt="ifpi" width="300" height="310"/>
+
+And when you're `CostFields` is using a range of values to indicate different areas to traverse, such as a hill:
+
+<img src="docs/cost_field_hill.png" alt="cfh" width="300" height="310"/>
+<img src="docs/int_field_prop_hill.png" alt="ifph" width="300" height="310"/>
+
+So this guides the pathing algorithm around obstacles and expensive areas in your world!
+
+This covers calculating the `IntegrationFields` for a single sector containing the goal but of course the actor could be in a sector far away, this is where `Portals` come back into play.
 
 ## Flow Fields
 
@@ -132,4 +166,4 @@ cargo flamegraph --package=bevy_flowfield_tiles_plugin --dev # dev mode
 
 ## LICENSE
 
-Dual license of MIT and Apache allowing a user to pick whichever they prefer for open source projects.
+Dual license of MIT and Apache.

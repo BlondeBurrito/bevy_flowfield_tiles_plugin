@@ -1,0 +1,12 @@
+@startuml int_field_prop_hill
+
+title
+IntegrationFields Propagation
+
+|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|<#bf9000>\n   6   \n|<#e06666>\n   7   \n|
+|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#bf9000>\n   6   \n|<#990000>\n   9   \n|<#7f6000>\n  10   \n|
+|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#e69138>\n   5   \n|<#274e13>\n  13   \n|<#274e13>\n  13   \n|
+|\n   0   \n|<#ffe599>\n   1   \n|<#d5a6bd>\n   4   \n|<#073763>\n  12   \n|<#660000>\n  15   \n|
+|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#e69138>\n   5   \n|<#274e13>\n  13   \n|<#4a2907>\n  16   \n|
+end title
+@enduml

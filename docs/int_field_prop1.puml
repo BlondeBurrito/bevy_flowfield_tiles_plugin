@@ -1,0 +1,12 @@
+@startuml int_field_prop1
+
+title
+IntegrationFields Propagation 1
+
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|<#ffe599>\n   1   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|<#ffe599>\n   1   \n|\n   0   \n|<#ffe599>\n   1   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|<#ffe599>\n   1   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+end title
+@enduml
