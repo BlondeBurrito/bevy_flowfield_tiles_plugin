@@ -1,0 +1,13 @@
+@startuml int_field_sector_to_sector_1
+
+title
+IntegrationFields
+Sector Goal - 1
+
+|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|
+|<#946cba>\n   0   \n|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|
+|<#ffe599>\n   1   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|
+|<#000000>\n   X   \n|<#000000>\n   X   \n|<#bf9000>\n   6   \n|<#e69138>\n   5   \n|<#946cba>\n   6   \n|
+|<#000000>\n   X   \n|<#cc0000>\n   8   \n|<#e06666>\n   7   \n|<#bf9000>\n   6   \n|<#e06666>\n   7   \n|
+end title
+@enduml

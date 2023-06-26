@@ -1,7 +1,7 @@
 @startuml cost_field_hill
 
 title
-Cost Field
+CostFields
 
 |\n   1   \n|\n   1   \n|\n   1   \n|\n   1   \n|\n   1   \n|
 |\n   1   \n|\n   1   \n|\n   3   \n|\n   3   \n|\n   3   \n|

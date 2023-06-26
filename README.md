@@ -73,7 +73,7 @@ For finding a path from one Sector to another at a Portal level all Sectors and 
 2. For each sector create `edges` (pathable routes) to and from each Portal `node` - effectively create internal walkable routes of each sector
 3. Create `edges` across the Portal `node` on all sector boundaries
 
-This allows the graph to be queried with a `source` sector and a `target` sector and list of Portals are returned which can be pathed. When a `CostFields` is changed this triggers the regeneration of the sector Portals for the region that `CostFields` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `node`s and the old ones are removed. This is a particularly dangerous and complicated area as the Sectors, Portals and fields are represented in 2D but the graph is effectively 1D - it's a bit long list of `node`s. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `node`s (like an A* result) you can find the location of each Portal.
+This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostFields` is changed this triggers the regeneration of the sector Portals for the region that `CostFields` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `node`s and the old ones are removed. This is a particularly dangerous and complicated area as the Sectors, Portals and fields are represented in 2D but the graph is effectively 1D - it's a bit long list of `node`s. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `node`s (like an A* result) you can find the location of each Portal.
 
 ## Integration Fields
 
@@ -85,7 +85,7 @@ A series of passes are performed from the goal as an expanding wavefront calcula
 
 1. The ordinal neighbours of the goal are determined (North, East, South, West)
 2. For each ordinal lookup their `CostFields` value
-3. Add their cost to the `IntegrationField`s cost of the current cell (atht he beginning this is the goal so `0`)
+3. Add their cost to the `IntegrationField`s cost of the current cell (at the beginning this is the goal so `0`)
 4. Propagate to the neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their integration cost, and repeat until the entire field is done
 
 This produces a nice diamond-like pattern as the wave expands:
@@ -97,18 +97,24 @@ This produces a nice diamond-like pattern as the wave expands:
 
 Now a dimaond-like wave isn't exactly realistic so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave.
 
-When it comes to `CostFields` containing impassable markers, `255`, they are ignored so the wave sweeps around those areas:
+When it comes to `CostFields` containing impassable markers, `255` as black boxes, they are ignored so the wave sweeps around those areas:
 
 <img src="docs/int_field_prop_impassable.png" alt="ifpi" width="300" height="310"/>
 
-And when you're `CostFields` is using a range of values to indicate different areas to traverse, such as a hill:
+And when you're `CostFields` is using a range of values to indicate different areas to traverse, such as a steep hill:
 
 <img src="docs/cost_field_hill.png" alt="cfh" width="300" height="310"/>
 <img src="docs/int_field_prop_hill.png" alt="ifph" width="300" height="310"/>
 
-So this guides the pathing algorithm around obstacles and expensive areas in your world!
+So this encourages the pathing algorithm around obstacles and expensive areas in your world!
 
 This covers calculating the `IntegrationFields` for a single sector containing the goal but of course the actor could be in a sector far away, this is where `Portals` come back into play.
+
+We have a path of Portals to get the actor to the desired sector, the `IntegrationFields` of the goal sector have been calcualted so next we "hop" through the boundary Portals working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade).
+
+<img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="300" height="310"/>
+<img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="300" height="310"/>
+<img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="300" height="310"/>
 
 ## Flow Fields
 
