@@ -95,11 +95,11 @@ This produces a nice diamond-like pattern as the wave expands:
 
 Now a dimaond-like wave isn't exactly realistic so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave.
 
-When it comes to `CostFields` containing impassable markers, `255` as black boxes, they are ignored so the wave sweeps around those areas:
+When it comes to `CostFields` containing impassable markers, `255` as black boxes, they are ignored so the wave flows around those areas:
 
 <img src="docs/int_field_prop_impassable.png" alt="ifpi" width="300" height="310"/>
 
-And when you're `CostFields` is using a range of values to indicate different areas to traverse, such as a steep hill:
+And when your `CostFields` is using a range of values to indicate different areas to traverse, such as a steep hill:
 
 <img src="docs/cost_field_hill.png" alt="cfh" width="300" height="310"/><img src="docs/int_field_prop_hill.png" alt="ifph" width="300" height="310"/>
 
@@ -110,6 +110,12 @@ This covers calculating the `IntegrationFields` for a single sector containing t
 We have a path of `Portals` to get the actor to the desired sector, the `IntegrationFields` of the goal sector have been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade).
 
 <img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="300" height="310"/><img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="300" height="310"/><img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="300" height="310"/>
+
+As an example for a `30x30` world and goal at `0` with an actor at `A` an `IntegrationFields` set interrogating all sector `Portals` produces a set of fields looking similar to:
+
+<img src="docs/int_field_prop_big_example.png" alt="ifpbe"/>
+
+In terms of pathfinding the actor will favour flowing "downhill". From the position of the actor and looking at its neighbours a smalller field value in the `IntegrationFields` of each sector means a more favourable point for reaching the end goal, going from smaller to smaller values, basically a gradient flowing downhill to the destination. This is the basis of a Flowfield.
 
 ## Flow Fields
 
