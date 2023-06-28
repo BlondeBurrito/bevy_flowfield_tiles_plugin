@@ -29,9 +29,9 @@ For larger and larger environemnts with an increasing number of pathing actors i
 * Flow fields
 * Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for neighbour discovery of Sectors/field cells
 
-# Process
+# Design/Process
 
-To generate a navigation Flowfield the game world is divided into Sectors indexed by `(column, row)` and each Sector has 3 layers of data. Each layer aids the next in building out a path.
+To generate a navigation Flowfield the game world is divided into Sectors indexed by `(column, row)` and each Sector has 3 layers of data: `[CostFields, IntegrationFields, Flowfields]`. Each layer aids the next in building out a path.
 
 ## Sector
 
@@ -43,23 +43,23 @@ Likewise for a `300x550` world you'll be looking at `30` columns and `55` rows. 
 
 ## Cost Fields
 
-A `CostFields` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the grid. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the grid cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells of `1` before any others.
+A `CostFields` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the grid. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the grid cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
 
 <img src="docs/cost_fields.png" alt="cf" width="370"/>
 
 This array is used to generate the `IntegrationFields` when requesting a navigatable path.
 
-At runtime the `CostFields` are generated for each Sector with the default value. See the [Useage] section below for details on updating `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to `255`).
+At runtime the `CostFields` are generated for each Sector with the default value. See the [Useage] section below for details on updating `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to to a higher cost or impassable `255`).
 
 ## Portals
 
-Each Sector has up to 4 boundaries with neighbouring Sectors. Each boundary can contain Portals which indicate a navigatable point from the current Sector to a neighbour. Portals provide responsiveness - flow fields may take time to generate so when an actor needs to move a quick A* pathing query can produce an inital path route based on moving from one Portal to another. Once the flow fields have been built the actor can switch to using them instead.
+Each Sector has up to 4 boundaries with neighbouring Sectors (2 or 3 when the sector is in a corner or along th edge of the game world). Each boundary can contain Portals which indicate a navigatable point from the current Sector to a neighbour. Portals serve a dual purpose, one of which is to provide responsiveness - flow fields may take time to generate so when an actor needs to move a quick A* pathing query can produce an inital path route based on moving from one Portal to another and they can start moving in the general direction to the goal/target/endpoint. Once the flow fields have been built the actor can switch to using them for granular navigation instead.
 
 The following sectors are located away from any edges of the world which means each boundary can have Portals (the purple cells):
 
 <img src="docs/portals.png" alt="portals" width="400" height="500"/><img src="docs/portals_adj.png" alt="portals" width="400" height="500"/>
 
-A Portal is generated at the midpoint of a boundary - in situations where the `CostFields` contains `255` costs along the edge then multiple Portals may be generated at the midpoint of each valid pathable segment along the boundary and this is propagated to neighbouring Sectors so that every Portal has a neighbour buddy (as evident in the right hand Sector above, `S(1, 1)` portal `(9, 1)` allows movement into `S(2, 1)` portal `(0, 1)`).
+A Portal is generated at the midpoint of a boundary - in situations where the `CostFields` contains `255` costs along the edge then multiple Portals may be generated at the midpoint of each valid pathable segment along the boundary and this is propagated to neighbouring Sectors so that every Portal has a neighbour buddy (as evident in the right hand Sector above, `S(1, 1)` portal `(9, 1)` allows movement into `S(2, 1)` portal `(0, 1)`, even though `S(2, 1)` has a whole boundary that appears completely pathable).
 
 On a larger scale (but still small) and for the simplist `CostFields` available, a `2x2` Sector grid produces predictable boundary Portals.
 
@@ -67,13 +67,13 @@ On a larger scale (but still small) and for the simplist `CostFields` available,
 
 ### Portal Graph
 
-For finding a path from one Sector to another at a Portal level all Sectors and Portals are recorded within a graph known as `PortalGraph`. The [petgraph](https://github.com/petgraph/petgraph) library has been used as this store and it gets built in three stages:
+For finding a path from one Sector to another at a Portal level all Sectors and Portals are recorded within a data strucutre known as `PortalGraph`. The [petgraph](https://github.com/petgraph/petgraph) library has been used within this structure to store navigational points and paths between them and it gets built in three stages:
 
 1. For all Portals and Sectors add a graph `node`
 2. For each sector create `edges` (pathable routes) to and from each Portal `node` - effectively create internal walkable routes of each sector
 3. Create `edges` across the Portal `node` on all sector boundaries (walkable route from one sector to another)
 
-This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostFields` is changed this triggers the regeneration of the sector Portals for the region that `CostFields` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `node`s and the old ones are removed. This is a particularly dangerous and complicated area as the Sectors, Portals and fields are represented in 2D but the graph is effectively 1D - it's a bit long list of `node`s. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `node`s (like an A* result) you can find the location of each Portal.
+This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostFields` is changed this triggers the regeneration of the sector Portals for the region that `CostFields` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `node`s and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D but the graph is effectively 1D - it's a bit long list of `node`s. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `node`s (like an A* result) you can find the location of each Portal.
 
 ## Integration Fields
 
@@ -83,17 +83,17 @@ When a new route needs to be processed the fields are reset to `u16::MAX` and th
 
 A series of passes are performed from the goal as an expanding wavefront calculating the fields values:
 
-1. The ordinal neighbours of the goal are determined (North, East, South, West)
-2. For each ordinal lookup their `CostFields` value
+1. The valid ordinal neighbours of the goal are determined (North, East, South, West, when not against a boundary)
+2. For each ordinal grid cell lookup their `CostFields` value
 3. Add their cost to the `IntegrationField`s cost of the current cell (at the beginning this is the goal so `0`)
 4. Propagate to the next neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their integration cost, and repeat until the entire field is done
 
-This produces a nice diamond-like pattern as the wave expands:
+This produces a nice diamond-like pattern as the wave expands (the underlying `Costfields` are set to `1` here):
 
 <img src="docs/int_field_prop0.png" alt="ifp0" width="300" height="310"/><img src="docs/int_field_prop1.png" alt="ifp1" width="300" height="310"/>
 <img src="docs/int_field_prop2.png" alt="ifp2" width="300" height="310"/><img src="docs/int_field_prop3.png" alt="ifp3" width="300" height="310"/>
 
-Now a dimaond-like wave isn't exactly realistic so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave.
+Now a dimaond-like wave isn't exactly realistic in a 3D world of dynamic movement so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave expanding over the 2D grid space.
 
 When it comes to `CostFields` containing impassable markers, `255` as black boxes, they are ignored so the wave flows around those areas:
 
@@ -107,15 +107,21 @@ So this encourages the pathing algorithm around obstacles and expensive areas in
 
 This covers calculating the `IntegrationFields` for a single sector containing the goal but of course the actor could be in a sector far away, this is where `Portals` come back into play.
 
-We have a path of `Portals` to get the actor to the desired sector, the `IntegrationFields` of the goal sector have been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade).
+We have a path of `Portals` to get the actor to the desired sector, the `IntegrationFields` of the goal sector have been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade) to produce a series of `IntegrationFields` for the chaining Sectors describing the flow movement.
 
-<img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="300" height="310"/><img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="300" height="310"/><img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="300" height="310"/>
+<img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="290" height="310"/><img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="290" height="310"/><img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="290" height="310"/>
 
 As an example for a `30x30` world and goal at `0` with an actor at `A` an `IntegrationFields` set interrogating all sector `Portals` produces a set of fields looking similar to:
 
 <img src="docs/int_field_prop_big_example.png" alt="ifpbe"/>
 
-In terms of pathfinding the actor will favour flowing "downhill". From the position of the actor and looking at its neighbours a smalller field value in the `IntegrationFields` of each sector means a more favourable point for reaching the end goal, going from smaller to smaller values, basically a gradient flowing downhill to the destination. This is the basis of a Flowfield.
+In terms of pathfinding the actor will favour flowing "downhill". From the position of the actor and looking at its neighbours a smalller field value in that sectors `IntegrationFields` means a more favourable point for reaching the end goal, going from smaller to smaller values, basically a gradient flowing downhill to the destination.
+
+This is the basis of a Flowfield.
+
+Guessing by eye the eventual path should look something like (moving towards light, cheaper, colours of each sector):
+
+<img src="docs/int_field_prop_big_example_cheapest.png" alt="ifpbe"/>
 
 ## Flow Fields
 
