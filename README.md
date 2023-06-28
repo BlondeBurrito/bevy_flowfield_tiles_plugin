@@ -9,6 +9,10 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 |------|-----------------------------|
 | 0.11 |  0.1                        |
 
+## Table of Contents
+
+1. [Intro](#intro)
+
 ## Intro
 
 Pathfinding in games can take different forms and those forms have certain benefits aligned with the type of game they are being applied to. Generally people run across:
