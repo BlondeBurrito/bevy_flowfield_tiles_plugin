@@ -109,7 +109,7 @@ This covers calculating the `IntegrationFields` for a single sector containing t
 
 We have a path of `Portals` to get the actor to the desired sector, the `IntegrationFields` of the goal sector have been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade) to produce a series of `IntegrationFields` for the chaining Sectors describing the flow movement.
 
-<img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="290" height="310"/><img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="290" height="310"/><img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="290" height="310"/>
+<img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="260" height="310"/><img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="260" height="310"/><img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="260" height="310"/>
 
 As an example for a `30x30` world and goal at `0` with an actor at `A` an `IntegrationFields` set interrogating all sector `Portals` produces a set of fields looking similar to:
 
