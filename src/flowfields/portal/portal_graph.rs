@@ -33,6 +33,7 @@ use super::portals::{PortalNode, Portals};
 /// [PortalGraph] enables a navigational route to be found between sectors using the [Portals]
 /// of sector boundaries to provide the responsiveness of "movement asked for, begin going in
 /// this direction, get a better route later"
+//TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))] https://github.com/petgraph/petgraph/pull/550
 #[derive(Component, Default)]
 pub struct PortalGraph {
 	graph: StableGraph<u32, i32, petgraph::Directed>,

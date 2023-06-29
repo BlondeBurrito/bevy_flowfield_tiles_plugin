@@ -43,6 +43,7 @@
 
 use super::*;
 
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct CostFields([[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 
 impl Default for CostFields {
@@ -63,6 +64,16 @@ impl CostFields {
 			panic!("Cannot set a CostFields grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
 		}
 		self.0[column][row] = value;
+	}
+	/// From a `ron` file generate the [CostFields]
+	#[cfg(feature = "ron")]
+	pub fn from_file(path: String) -> Self {
+		let file = std::fs::File::open(&path).expect("Failed opening CostFields file");
+		let fields: CostFields = match ron::de::from_reader(file) {
+			Ok(fields) => fields,
+			Err(e) => panic!("Failed deserializing CostFields: {}", e),
+		};
+		fields
 	}
 }
 
@@ -142,5 +153,12 @@ mod tests {
 		let result = cost_fields.get_grid_value(9, 9);
 		let actual: u8 = 255;
 		assert_eq!(actual, result);
+	}
+	#[test]
+	#[cfg(feature = "ron")]
+	fn cost_fields_file() {
+		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_fields.ron";
+		let _cost_fields = CostFields::from_file(path);
+		assert!(true)
 	}
 }

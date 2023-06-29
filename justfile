@@ -21,7 +21,7 @@ clippy:
   cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::cargo_common_metadata -D clippy::missing_docs_in_private_items -W clippy::todo -W clippy::unimplemented
 # run a chosen example
 example NAME:
-  cargo run --release --example {{NAME}}
+  cargo run --release --example {{NAME}} --all-features
 # run benchmarks
 bench:
   cargo bench -q --benches --workspace
@@ -30,13 +30,13 @@ debug:
   cargo build --workspace
 # run tests
 test: debug
-  cargo test --release --workspace
+  cargo test --release --workspace --all-features
 # generate documentation
 doc:
-  cargo doc --release --workspace
+  cargo doc --release --workspace --all-features
 # build release bin/lib
 build: test doc
-  cargo build --release --workspace
+  cargo build --release --workspace --all-features --package bevy_flowfield_tiles_plugin
 # build and execute bin
 run: build
   cargo run --release --package bevy_flowfield_tiles_plugin

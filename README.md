@@ -133,7 +133,7 @@ From the `IntegrationFields` we can now build the final set of fields - `FlowFie
 
 ## Flow Fields
 
-A `FlowFields` is an `MxN` 2D array of 8-bit values built from a Sectors `IntegrationFields`. The first 4 bits of the value correspond to one of eight ordinal movement directions an actor can take and the second 4 bits correspond to flags which should be used by a character controller/steering pipeline to follow a path.
+A `FlowFields` is an `MxN` 2D array of 8-bit values built from a Sectors `IntegrationFields`. The first 4 bits of the value correspond to one of eight ordinal movement directions an actor can take (and a zero vector when impassable) and the second 4 bits correspond to flags which should be used by a character controller/steering pipeline to follow a path.
 
 The directional bits are defined as:
 
@@ -145,12 +145,14 @@ The directional bits are defined as:
 * `0b0000_0110` - South-East
 * `0b0000_1100` - South-West
 * `0b0000_1001` - North-West
+* `0b0000_0000` - zero vector, represents impassable cells
+* `0b0000_1111` - default on `FlowFields` initialisation, is always replaced by other values
 
 The assistant flags are defined as:
 
 * `0b0001_0000` - pathable
-* `0b0000_0000` - 
-* `0b0000_0000` - 
+* `0b0010_0000` - has line-of-sight to goal, an actor no longer needs to follow the field, it can move in a straight line to the goal. This avoids calculating field values that aren't actually needed
+* `0b0100_0000` - indicates the goal
 * `0b0000_0000` - 
 * `0b0000_0000` - 
 * `0b0000_0000` - 
@@ -169,33 +171,38 @@ So a grid cell in the `FlowFields` with a value of `0b0001_0110` means the actor
 
 ## Path Request
 
-## Local Info/Tools
+# Features
 
-### justfile
+* `serde` - enables serlialisation on some data types
+* `ron` - enables reading `Costfields` from files. NB: fixed-size arrays in `.ron` are written as tuples
+
+# Local Info/Tools
+
+## justfile
 
 The [just](https://github.com/casey/just) command line runner is very useful for running a series of build steps/commands locally.
 
 In particular I like to use it to run a debug build (so the compiler can tell me about overflow errors and things), run all tests, generate documentation, compile the binary and finally run it - all from typing `just r` in a terminal.
 
-### Diagrams
+## Diagrams
 
 Under `./docs` are a series of puml (plantUML) diagrams.
 
 To generate a diagram setup puml use `just` with `just diagram [diagram_name]`, or to generate all of them `just diagrams`.
 
-### rustfmt.toml
+## rustfmt.toml
 
 Controls formatting settings. I have a prefernce for using tabs simply because in shared projects individuals have their own preference for indentation depth and so automatic tab resizing can make a code base gentler on the eyes.
 
-### clippy.toml
+## clippy.toml
 
 Currently commented out, as I use clippy more I suspect to customise what it does.
 
-### cliff.toml
+## cliff.toml
 
 [git-cliff](https://github.com/orhun/git-cliff) is a very cool changelog generator which uses the style of [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). To generate a changelog based on what the next tag will be you can run `git cliff --tag v1.0.0 --output CHANGELOG.md`
 
-### flamegraph on windows
+## flamegraph on windows
 
 ```sh
 cargo install blondie
@@ -211,6 +218,6 @@ cargo flamegraph --package=bevy_flowfield_tiles_plugin --profile=flamegraph # re
 cargo flamegraph --package=bevy_flowfield_tiles_plugin --dev # dev mode
 ```
 
-## LICENSE
+# LICENSE
 
 Dual license of MIT and Apache.

@@ -1,13 +1,13 @@
 //! The IntegrationFields contains a 2D array of 16-bit values and it uses a [CostFields] to
 //! produce a cumulative cost of reaching the goal/target. Every [Sector] has a [IntegrationFields] associated with it.
-//! 
+//!
 //! When a new route needs to be processed the fields are reset to `u16::MAX` and the grid cell containing the goal is set to `0`. A series of passes are performed from the goal as an expanding wavefront calculating the fields values:
-//! 
+//!
 //! 1. The valid ordinal neighbours of the goal are determined (North, East, South, West, when not against a boundary)
 //! 2. For each ordinal grid cell lookup their `CostFields` value
 //! 3. Add their cost to the `IntegrationField`s cost of the current cell (at the beginning this is the goal so + `0`)
 //! 4. Propagate to the next neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their integration cost, and repeat until the entire field is done
-//! 
+//!
 //! This produces a nice diamond-like pattern as the wave expands (the underlying `Costfields` are set to `1` here):
 //!
 //! ```text
@@ -45,12 +45,13 @@
 //! ```
 //!
 //! When it comes to `CostFields` containing impassable markers, `255` as black boxes, they are ignored so the wave flows around those areas and when your `CostFields` is using a range of values to indicate different areas to traverse, such as a steep hill, then you have various intermediate values similar to a terrain gradient.
-//! 
+//!
 //! So this encourages the pathing algorithm around obstacles and expensive regions.
-//! 
+//!
 
-use super::{*, cost_fields::CostFields};
+use super::{cost_fields::CostFields, *};
 
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct IntegrationFields([[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 
 impl Default for IntegrationFields {
@@ -78,7 +79,7 @@ impl IntegrationFields {
 	/// Reset all the cells of the [IntegrationFields] to `u16::MAX` apart from the `source` which is the starting point of calculating the fields which is set to `0`
 	pub fn reset(&mut self, source: (usize, usize)) {
 		for i in 0..FIELD_RESOLUTION {
-			for j in 0.. FIELD_RESOLUTION {
+			for j in 0..FIELD_RESOLUTION {
 				self.set_grid_value(u16::MAX, i, j);
 			}
 		}
@@ -102,7 +103,7 @@ impl IntegrationFields {
 				if cell_cost != 255 {
 					// don't overwrite a cell with a better cost
 					let int_cost = cell_cost as u16 + current_int_value;
-					if int_cost < self.get_grid_value(n.0, n.1){
+					if int_cost < self.get_grid_value(n.0, n.1) {
 						self.set_grid_value(int_cost, n.0, n.1);
 						queue.push(((n.0, n.1), int_cost));
 					}
@@ -111,7 +112,11 @@ impl IntegrationFields {
 		}
 		process_neighbours(self, queue, cost_fields);
 
-		fn process_neighbours(int_fields: &mut IntegrationFields, queue: Vec<((usize, usize), u16)>, cost_field: &CostFields) {
+		fn process_neighbours(
+			int_fields: &mut IntegrationFields,
+			queue: Vec<((usize, usize), u16)>,
+			cost_field: &CostFields,
+		) {
 			let mut next_neighbours = Vec::new();
 			// iterate over the queue calculating neighbour int costs
 			for (cell, prev_int_cost) in queue.iter() {

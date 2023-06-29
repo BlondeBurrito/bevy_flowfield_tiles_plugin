@@ -50,7 +50,7 @@ use bevy::prelude::*;
 
 use self::{
 	portal::portal_graph::PortalGraph,
-	sectors::{SectorCostFields, SectorPortals, SectorIntegrationFields},
+	sectors::{SectorCostFields, SectorIntegrationFields, SectorPortals},
 };
 /// Determines the number of Sectors by dividing the map length and depth by this value
 const SECTOR_RESOLUTION: usize = 10;
@@ -58,6 +58,7 @@ const SECTOR_RESOLUTION: usize = 10;
 const FIELD_RESOLUTION: usize = 10;
 
 pub mod cost_fields;
+pub mod flow_fields;
 pub mod integration_fields;
 pub mod plugin;
 pub mod portal;
@@ -65,6 +66,7 @@ pub mod sectors;
 
 /// Convenience way of accessing the 4 sides of a sector in [portal::portals::Portals], the 4 sides of a grid cell in [integration_fields::IntegrationFields] and the 8 directions
 /// of movement in [flowfield::Flowfields]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Debug, PartialEq)]
 pub enum Ordinal {
 	North,
@@ -144,7 +146,8 @@ impl Ordinal {
 }
 
 /// The length, `x` and depth, `z`, of the map
-#[derive(Component)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Component, Default)]
 pub struct MapDimensions(u32, u32);
 
 impl MapDimensions {
@@ -161,7 +164,7 @@ impl MapDimensions {
 		self.1
 	}
 }
-
+//TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Bundle)]
 pub struct FlowfieldTilesBundle {
 	sector_cost_fields: SectorCostFields,

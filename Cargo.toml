@@ -13,11 +13,14 @@ exclude = [".github/", "crates/", "assets/"]
 
 [workspace]
 members = ["crates/*"]
+
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
 example_crate = { path = "crates/example_crate" }
 bevy = { git = "https://github.com/bevyengine/bevy", rev = "e9312254d8906e9f491c4f3761659df0d179687f", default-features = false, features = [ "ktx2", "zstd" ] }
 petgraph = "0.6"
+serde = { version = "1", features = ["derive"] }
+ron = { version = "0.8" }
 
 [package]
 name = "bevy_flowfield_tiles_plugin"
@@ -40,11 +43,18 @@ publish = false
 
 [dev-dependencies]
 criterion = "0.5"
+bevy = { workspace = true, features = ["bevy_asset", "bevy_winit", "bevy_pbr", "bevy_gltf", "bevy_render", "bevy_sprite", "bevy_text", "bevy_ui"] }
 
 [dependencies]
 example_crate = { workspace = true }
 bevy = { workspace = true }
 petgraph = { workspace = true }
+serde = { workpspace = true, optional = true}
+ron = { workspace = true, optional = true}
+
+[features]
+serde = ["dep:serde"]
+ron = ["serde", "dep:ron"]
 
 [profile.dev]
 opt-level = 1
@@ -63,5 +73,5 @@ name = "fib"
 harness = false
 
 [[example]]
-name = "hello"
-path = "examples/hello.rs"
+name = "visualise_integration_fields"
+path = "examples/visualise_integration_fields.rs"

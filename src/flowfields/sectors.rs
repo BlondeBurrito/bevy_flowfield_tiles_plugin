@@ -2,13 +2,16 @@
 //!
 //!
 
-use super::{cost_fields::CostFields, portal::portals::Portals, *, integration_fields::IntegrationFields};
+use super::{
+	cost_fields::CostFields, integration_fields::IntegrationFields, portal::portals::Portals, *,
+};
 
 trait Sector {}
 
 /// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
 /// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
 /// and values are the [CostFields] associated with that sector
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component)]
 pub struct SectorCostFields(BTreeMap<(u32, u32), CostFields>);
 
@@ -33,11 +36,22 @@ impl SectorCostFields {
 	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), CostFields> {
 		&mut self.0
 	}
+	/// From a `ron` file generate the [SectorCostFields]
+	#[cfg(feature = "ron")]
+	pub fn from_file(path: String) -> Self {
+		let file = std::fs::File::open(&path).expect("Failed opening CostFields file");
+		let fields: SectorCostFields = match ron::de::from_reader(file) {
+			Ok(fields) => fields,
+			Err(e) => panic!("Failed deserializing SectorCostFields: {}", e),
+		};
+		fields
+	}
 }
 
 /// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
 /// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
 /// and values are the [Portals] associated with that sector
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component)]
 pub struct SectorPortals(BTreeMap<(u32, u32), Portals>);
 
@@ -92,6 +106,7 @@ impl SectorPortals {
 /// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
 /// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
 /// and values are the [IntegrationFields] associated with that sector
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component)]
 pub struct SectorIntegrationFields(BTreeMap<(u32, u32), IntegrationFields>);
 
@@ -125,47 +140,47 @@ pub fn get_ids_of_neighbouring_sectors(
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> Vec<(u32, u32)> {
-		//top left                     // top right 
-		// has 2 valid neighbours      // has two valid neighbours
-		// ___________                 // ___________
-		// | x       |                 // |       x |
-		// |x        |                 // |        x|
-		// |         |                 // |         |
-		// |         |                 // |         |
-		// |_________|                 // |_________|
-		// bottom right                // bottom left sector
-		// has two valid neighbours    // has two valid neighbours
-		// ___________                 // ___________
-		// |         |                 // |         |
-		// |         |                 // |         |
-		// |         |                 // |         |
-		// |        x|                 // |x        |
-		// |_______x_|                 // |_x_______|
-		// northern row minus          // eastern column minus
-		// corners have three          // corners have three
-		// valid neighbours            // valid neighbours
-		// ___________                 // ___________
-		// |x       x|                 // |        x|
-		// |  xxxxx  |                 // |       x |
-		// |         |                 // |       x |
-		// |         |                 // |       x |
-		// |_________|                 // |________x|
-		// southern row minus          // western column minus
-		// corners have three          // corners have three
-		// valid neighbours            // valid neighbours
-		// ___________                 // ___________
-		// |         |                 // |x        |
-		// |         |                 // | x       |
-		// |         |                 // | x       |
-		// | xxxxxxx |                 // | x       |
-		// |x       x|                 // |x________|
-		// all other sectors not along an edge of the map have four valid sectors for portals
-		// ___________
-		// |         |
-		// |    x    |
-		// |   x x   |
-		// |    x    |
-		// |_________|
+	//top left                     // top right
+	// has 2 valid neighbours      // has two valid neighbours
+	// ___________                 // ___________
+	// | x       |                 // |       x |
+	// |x        |                 // |        x|
+	// |         |                 // |         |
+	// |         |                 // |         |
+	// |_________|                 // |_________|
+	// bottom right                // bottom left sector
+	// has two valid neighbours    // has two valid neighbours
+	// ___________                 // ___________
+	// |         |                 // |         |
+	// |         |                 // |         |
+	// |         |                 // |         |
+	// |        x|                 // |x        |
+	// |_______x_|                 // |_x_______|
+	// northern row minus          // eastern column minus
+	// corners have three          // corners have three
+	// valid neighbours            // valid neighbours
+	// ___________                 // ___________
+	// |x       x|                 // |        x|
+	// |  xxxxx  |                 // |       x |
+	// |         |                 // |       x |
+	// |         |                 // |       x |
+	// |_________|                 // |________x|
+	// southern row minus          // western column minus
+	// corners have three          // corners have three
+	// valid neighbours            // valid neighbours
+	// ___________                 // ___________
+	// |         |                 // |x        |
+	// |         |                 // | x       |
+	// |         |                 // | x       |
+	// | xxxxxxx |                 // | x       |
+	// |x       x|                 // |x________|
+	// all other sectors not along an edge of the map have four valid sectors for portals
+	// ___________
+	// |         |
+	// |    x    |
+	// |   x x   |
+	// |    x    |
+	// |_________|
 	Ordinal::get_sector_neighbours(sector_id, map_x_dimension, map_z_dimension)
 }
 
@@ -177,47 +192,47 @@ pub fn get_ordinal_and_ids_of_neighbouring_sectors(
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> Vec<(Ordinal, (u32, u32))> {
-		//top left                     // top right 
-		// has 2 valid neighbours      // has two valid neighbours
-		// ___________                 // ___________
-		// | x       |                 // |       x |
-		// |x        |                 // |        x|
-		// |         |                 // |         |
-		// |         |                 // |         |
-		// |_________|                 // |_________|
-		// bottom right                // bottom left sector
-		// has two valid neighbours    // has two valid neighbours
-		// ___________                 // ___________
-		// |         |                 // |         |
-		// |         |                 // |         |
-		// |         |                 // |         |
-		// |        x|                 // |x        |
-		// |_______x_|                 // |_x_______|
-		// northern row minus          // eastern column minus
-		// corners have three          // corners have three
-		// valid neighbours            // valid neighbours
-		// ___________                 // ___________
-		// |x       x|                 // |        x|
-		// |  xxxxx  |                 // |       x |
-		// |         |                 // |       x |
-		// |         |                 // |       x |
-		// |_________|                 // |________x|
-		// southern row minus          // western column minus
-		// corners have three          // corners have three
-		// valid neighbours            // valid neighbours
-		// ___________                 // ___________
-		// |         |                 // |x        |
-		// |         |                 // | x       |
-		// |         |                 // | x       |
-		// | xxxxxxx |                 // | x       |
-		// |x       x|                 // |x________|
-		// all other sectors not along an edge of the map have four valid sectors for portals
-		// ___________
-		// |         |
-		// |    x    |
-		// |   x x   |
-		// |    x    |
-		// |_________|
+	//top left                     // top right
+	// has 2 valid neighbours      // has two valid neighbours
+	// ___________                 // ___________
+	// | x       |                 // |       x |
+	// |x        |                 // |        x|
+	// |         |                 // |         |
+	// |         |                 // |         |
+	// |_________|                 // |_________|
+	// bottom right                // bottom left sector
+	// has two valid neighbours    // has two valid neighbours
+	// ___________                 // ___________
+	// |         |                 // |         |
+	// |         |                 // |         |
+	// |         |                 // |         |
+	// |        x|                 // |x        |
+	// |_______x_|                 // |_x_______|
+	// northern row minus          // eastern column minus
+	// corners have three          // corners have three
+	// valid neighbours            // valid neighbours
+	// ___________                 // ___________
+	// |x       x|                 // |        x|
+	// |  xxxxx  |                 // |       x |
+	// |         |                 // |       x |
+	// |         |                 // |       x |
+	// |_________|                 // |________x|
+	// southern row minus          // western column minus
+	// corners have three          // corners have three
+	// valid neighbours            // valid neighbours
+	// ___________                 // ___________
+	// |         |                 // |x        |
+	// |         |                 // | x       |
+	// |         |                 // | x       |
+	// | xxxxxxx |                 // | x       |
+	// |x       x|                 // |x________|
+	// all other sectors not along an edge of the map have four valid sectors for portals
+	// ___________
+	// |         |
+	// |    x    |
+	// |   x x   |
+	// |    x    |
+	// |_________|
 	Ordinal::get_sector_neighbours_with_ordinal(sector_id, map_x_dimension, map_z_dimension)
 }
 /// From a position in `x, y, z` space and the dimensions of the map calcualte
@@ -254,7 +269,8 @@ pub fn get_field_cell_from_xyz(
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> (usize, usize) {
-	let origin_of_sector = get_xyz_at_sector_top_left_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
+	let origin_of_sector =
+		get_xyz_at_sector_top_left_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
 
 	let mut column = ((origin_of_sector.x - position.x).abs()).floor() as usize;
 	let mut row = ((origin_of_sector.z - position.z).abs()).floor() as usize;
@@ -614,5 +630,12 @@ mod tests {
 		);
 		let actual = Vec3::new(-27.0, 0.0, -27.0);
 		assert_eq!(actual, result)
+	}
+	#[test]
+	#[cfg(feature = "ron")]
+	fn sector_cost_fields_file() {
+		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
+		let _cost_fields = SectorCostFields::from_file(path);
+		assert!(true)
 	}
 }
