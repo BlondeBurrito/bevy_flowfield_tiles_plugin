@@ -9,9 +9,11 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 |------|-----------------------------|
 | 0.11 |  0.1                        |
 
-## Table of Contents
+# Table of Contents
 
 1. [Intro](#intro)
+1. [Definitions](#definitions)
+1. [Design/Process](#designprocess)
 
 ## Intro
 
@@ -53,7 +55,7 @@ A `CostFields` is an `MxN` 2D array of 8-bit values. The values indicate the `co
 
 This array is used to generate the `IntegrationFields` when requesting a navigatable path.
 
-At runtime the `CostFields` are generated for each Sector with the default value. See the [Useage] section below for details on updating `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to to a higher cost or impassable `255`).
+At runtime the `CostFields` are generated for each Sector with the default value. See the [Usage] section below for details on updating `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to to a higher cost or impassable `255`).
 
 ## Portals
 
@@ -77,7 +79,7 @@ For finding a path from one Sector to another at a Portal level all Sectors and 
 2. For each sector create `edges` (pathable routes) to and from each Portal `node` - effectively create internal walkable routes of each sector
 3. Create `edges` across the Portal `node` on all sector boundaries (walkable route from one sector to another)
 
-This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostFields` is changed this triggers the regeneration of the sector Portals for the region that `CostFields` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `node`s and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D but the graph is effectively 1D - it's a bit long list of `node`s. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `node`s (like an A* result) you can find the location of each Portal.
+This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostFields` is changed this triggers the regeneration of the sector Portals for the region that `CostFields` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `node`s and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D but the graph is effectively 1D - it's a big long list of `node`s. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `node`s (like an A* result) you can find the location of each Portal.
 
 ## Integration Fields
 
@@ -127,9 +129,37 @@ Guessing by eye the eventual path should look something like (moving towards lig
 
 <img src="docs/int_field_prop_big_example_cheapest.png" alt="ifpbe"/>
 
+From the `IntegrationFields` we can now build the final set of fields - `FlowFields`
+
 ## Flow Fields
 
-# Useage
+A `FlowFields` is an `MxN` 2D array of 8-bit values built from a Sectors `IntegrationFields`. The first 4 bits of the value correspond to one of eight ordinal movement directions an actor can take and the second 4 bits correspond to flags which should be used by a character controller/steering pipeline to follow a path.
+
+The directional bits are defined as:
+
+* `0b0000_0001` - North
+* `0b0000_0010` - East
+* `0b0000_0100` - South
+* `0b0000_1000` - West
+* `0b0000_0011` - North-East
+* `0b0000_0110` - South-East
+* `0b0000_1100` - South-West
+* `0b0000_1001` - North-West
+
+The assistant flags are defined as:
+
+* `0b0001_0000` - pathable
+* `0b0000_0000` - 
+* `0b0000_0000` - 
+* `0b0000_0000` - 
+* `0b0000_0000` - 
+* `0b0000_0000` - 
+* `0b0000_0000` - 
+* `0b0000_0000` - 
+
+So a grid cell in the `FlowFields` with a value of `0b0001_0110` means the actor should flow in the South-East direction.
+
+# Usage
 
 ## Default
 

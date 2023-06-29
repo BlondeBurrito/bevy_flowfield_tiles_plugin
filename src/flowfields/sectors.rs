@@ -2,7 +2,7 @@
 //!
 //!
 
-use super::{cost_fields::CostFields, portal::portals::Portals, *};
+use super::{cost_fields::CostFields, portal::portals::Portals, *, integration_fields::IntegrationFields};
 
 trait Sector {}
 
@@ -89,6 +89,35 @@ impl SectorPortals {
 	}
 }
 
+/// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
+/// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
+/// and values are the [IntegrationFields] associated with that sector
+#[derive(Component)]
+pub struct SectorIntegrationFields(BTreeMap<(u32, u32), IntegrationFields>);
+
+impl SectorIntegrationFields {
+	/// Create a new instance of [SectorIntegrationFields] based on the map dimensions containing [IntegrationFields]
+	pub fn new(map_x_dimension: u32, map_z_dimension: u32) -> Self {
+		let mut map = BTreeMap::new();
+		let column_count = map_x_dimension / SECTOR_RESOLUTION as u32;
+		let row_count = map_z_dimension / SECTOR_RESOLUTION as u32;
+		for m in 0..column_count {
+			for n in 0..row_count {
+				map.insert((m, n), IntegrationFields::default());
+			}
+		}
+		SectorIntegrationFields(map)
+	}
+	/// Get a reference to the map of sectors and [IntegrationFields]
+	pub fn get(&self) -> &BTreeMap<(u32, u32), IntegrationFields> {
+		&self.0
+	}
+	/// Get a mutable reference to the map of sectors and [IntegrationFields]
+	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), IntegrationFields> {
+		&mut self.0
+	}
+}
+
 /// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
 /// of the map retrieve the IDs neighbouring sectors
 pub fn get_ids_of_neighbouring_sectors(
@@ -96,103 +125,40 @@ pub fn get_ids_of_neighbouring_sectors(
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> Vec<(u32, u32)> {
-	let sector_x_column_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
-	let sector_z_row_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
-
-	if sector_id.0 == 0 && sector_id.1 == 0 {
-		//top left sector only has 2 valid neighbours
-		// ___________
-		// | x       |
-		// |x        |
-		// |         |
-		// |         |
-		// |_________|
-		vec![(1, 0), (0, 1)]
-	} else if sector_id.0 == sector_x_column_limit && sector_id.1 == 0 {
-		// top right sector has only two valid neighbours
-		// ___________
-		// |       x |
-		// |        x|
-		// |         |
-		// |         |
-		// |_________|
-		vec![(sector_x_column_limit, 1), (sector_x_column_limit - 1, 0)]
-	} else if sector_id.0 == sector_x_column_limit && sector_id.1 == sector_z_row_limit {
-		// bottom right sector only has two valid neighbours
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |        x|
-		// |_______x_|
-		vec![
-			(sector_x_column_limit, sector_z_row_limit - 1),
-			(sector_x_column_limit - 1, sector_z_row_limit),
-		]
-	} else if sector_id.0 == 0 && sector_id.1 == sector_z_row_limit {
-		// bottom left sector only has two valid neighbours
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |x        |
-		// |_x_______|
-		vec![(0, sector_z_row_limit - 1), (1, sector_z_row_limit)]
-	} else if sector_id.0 > 0 && sector_id.0 < sector_x_column_limit && sector_id.1 == 0 {
-		// northern row minus the corners sectors have three valid neighbours
-		// ___________
-		// | xxxxxxx |
-		// |         |
-		// |         |
-		// |         |
-		// |_________|
-		vec![(sector_id.0 + 1, 0), (sector_id.0, 1), (sector_id.0 - 1, 0)]
-	} else if sector_id.0 == sector_x_column_limit
-		&& sector_id.1 > 0
-		&& sector_id.1 < sector_z_row_limit
-	{
-		// eastern column minus the corners have three sectors of valid neighbours
-		// ___________
-		// |         |
-		// |        x|
-		// |        x|
-		// |        x|
-		// |_________|
-		vec![
-			(sector_x_column_limit, sector_id.1 - 1),
-			(sector_x_column_limit, sector_id.1 + 1),
-			(sector_x_column_limit - 1, sector_id.1),
-		]
-	} else if sector_id.0 > 0
-		&& sector_id.0 < sector_x_column_limit
-		&& sector_id.1 == sector_z_row_limit
-	{
-		// southern row minus corners have three sectors of valid neighbours
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |         |
-		// |_xxxxxxx_|
-		vec![
-			(sector_id.0, sector_z_row_limit - 1),
-			(sector_id.0 + 1, sector_z_row_limit),
-			(sector_id.0 - 1, sector_z_row_limit),
-		]
-	} else if sector_id.0 == 0 && sector_id.1 > 0 && sector_id.1 < sector_z_row_limit {
-		// western column minus corners have three sectors of valid neighbours
-		// ___________
-		// |         |
-		// |x        |
-		// |x        |
-		// |x        |
-		// |_________|
-		vec![(0, sector_id.1 - 1), (1, sector_id.1), (0, sector_id.1 + 1)]
-	} else if sector_id.0 > 0
-		&& sector_id.0 < sector_x_column_limit
-		&& sector_id.1 > 0
-		&& sector_id.1 < sector_z_row_limit
-	{
+		//top left                     // top right 
+		// has 2 valid neighbours      // has two valid neighbours
+		// ___________                 // ___________
+		// | x       |                 // |       x |
+		// |x        |                 // |        x|
+		// |         |                 // |         |
+		// |         |                 // |         |
+		// |_________|                 // |_________|
+		// bottom right                // bottom left sector
+		// has two valid neighbours    // has two valid neighbours
+		// ___________                 // ___________
+		// |         |                 // |         |
+		// |         |                 // |         |
+		// |         |                 // |         |
+		// |        x|                 // |x        |
+		// |_______x_|                 // |_x_______|
+		// northern row minus          // eastern column minus
+		// corners have three          // corners have three
+		// valid neighbours            // valid neighbours
+		// ___________                 // ___________
+		// |x       x|                 // |        x|
+		// |  xxxxx  |                 // |       x |
+		// |         |                 // |       x |
+		// |         |                 // |       x |
+		// |_________|                 // |________x|
+		// southern row minus          // western column minus
+		// corners have three          // corners have three
+		// valid neighbours            // valid neighbours
+		// ___________                 // ___________
+		// |         |                 // |x        |
+		// |         |                 // | x       |
+		// |         |                 // | x       |
+		// | xxxxxxx |                 // | x       |
+		// |x       x|                 // |x________|
 		// all other sectors not along an edge of the map have four valid sectors for portals
 		// ___________
 		// |         |
@@ -200,22 +166,7 @@ pub fn get_ids_of_neighbouring_sectors(
 		// |   x x   |
 		// |    x    |
 		// |_________|
-		vec![
-			(sector_id.0, sector_id.1 - 1),
-			(sector_id.0 + 1, sector_id.1),
-			(sector_id.0, sector_id.1 + 1),
-			(sector_id.0 - 1, sector_id.1),
-		]
-	} else {
-		// special case of no neighbours
-		warn!(
-			"Sector ID {:?} does not fit within map dimensions, there are only `{}x{}` sectors",
-			sector_id,
-			map_x_dimension / SECTOR_RESOLUTION as u32,
-			map_z_dimension / SECTOR_RESOLUTION as u32
-		);
-		vec![]
-	}
+	Ordinal::get_sector_neighbours(sector_id, map_x_dimension, map_z_dimension)
 }
 
 /// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
@@ -226,123 +177,40 @@ pub fn get_ordinal_and_ids_of_neighbouring_sectors(
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> Vec<(Ordinal, (u32, u32))> {
-	let sector_x_column_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
-	let sector_z_row_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
-
-	if sector_id.0 == 0 && sector_id.1 == 0 {
-		//top left sector only has 2 valid neighbours
-		// ___________
-		// | x       |
-		// |x        |
-		// |         |
-		// |         |
-		// |_________|
-		vec![(Ordinal::East, (1, 0)), (Ordinal::South, (0, 1))]
-	} else if sector_id.0 == sector_x_column_limit && sector_id.1 == 0 {
-		// top right sector has only two valid neighbours
-		// ___________
-		// |       x |
-		// |        x|
-		// |         |
-		// |         |
-		// |_________|
-		vec![
-			(Ordinal::South, (sector_x_column_limit, 1)),
-			(Ordinal::West, (sector_x_column_limit - 1, 0)),
-		]
-	} else if sector_id.0 == sector_x_column_limit && sector_id.1 == sector_z_row_limit {
-		// bottom right sector only has two valid neighbours
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |        x|
-		// |_______x_|
-		vec![
-			(
-				Ordinal::North,
-				(sector_x_column_limit, sector_z_row_limit - 1),
-			),
-			(
-				Ordinal::West,
-				(sector_x_column_limit - 1, sector_z_row_limit),
-			),
-		]
-	} else if sector_id.0 == 0 && sector_id.1 == sector_z_row_limit {
-		// bottom left sector only has two valid neighbours
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |x        |
-		// |_x_______|
-		vec![
-			(Ordinal::North, (0, sector_z_row_limit - 1)),
-			(Ordinal::East, (1, sector_z_row_limit)),
-		]
-	} else if sector_id.0 > 0 && sector_id.0 < sector_x_column_limit && sector_id.1 == 0 {
-		// northern row minus the corners sectors have three valid neighbours
-		// ___________
-		// | xxxxxxx |
-		// |         |
-		// |         |
-		// |         |
-		// |_________|
-		vec![
-			(Ordinal::East, (sector_id.0 + 1, 0)),
-			(Ordinal::South, (sector_id.0, 1)),
-			(Ordinal::West, (sector_id.0 - 1, 0)),
-		]
-	} else if sector_id.0 == sector_x_column_limit
-		&& sector_id.1 > 0
-		&& sector_id.1 < sector_z_row_limit
-	{
-		// eastern column minus the corners have three sectors of valid neighbours
-		// ___________
-		// |         |
-		// |        x|
-		// |        x|
-		// |        x|
-		// |_________|
-		vec![
-			(Ordinal::North, (sector_x_column_limit, sector_id.1 - 1)),
-			(Ordinal::South, (sector_x_column_limit, sector_id.1 + 1)),
-			(Ordinal::West, (sector_x_column_limit - 1, sector_id.1)),
-		]
-	} else if sector_id.0 > 0
-		&& sector_id.0 < sector_x_column_limit
-		&& sector_id.1 == sector_z_row_limit
-	{
-		// southern row minus corners have three sectors of valid neighbours
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |         |
-		// |_xxxxxxx_|
-		vec![
-			(Ordinal::North, (sector_id.0, sector_z_row_limit - 1)),
-			(Ordinal::East, (sector_id.0 + 1, sector_z_row_limit)),
-			(Ordinal::West, (sector_id.0 - 1, sector_z_row_limit)),
-		]
-	} else if sector_id.0 == 0 && sector_id.1 > 0 && sector_id.1 < sector_z_row_limit {
-		// western column minus corners have three sectors of valid neighbours
-		// ___________
-		// |         |
-		// |x        |
-		// |x        |
-		// |x        |
-		// |_________|
-		vec![
-			(Ordinal::North, (0, sector_id.1 - 1)),
-			(Ordinal::East, (1, sector_id.1)),
-			(Ordinal::South, (0, sector_id.1 + 1)),
-		]
-	} else if sector_id.0 > 0
-		&& sector_id.0 < sector_x_column_limit
-		&& sector_id.1 > 0
-		&& sector_id.1 < sector_z_row_limit
-	{
+		//top left                     // top right 
+		// has 2 valid neighbours      // has two valid neighbours
+		// ___________                 // ___________
+		// | x       |                 // |       x |
+		// |x        |                 // |        x|
+		// |         |                 // |         |
+		// |         |                 // |         |
+		// |_________|                 // |_________|
+		// bottom right                // bottom left sector
+		// has two valid neighbours    // has two valid neighbours
+		// ___________                 // ___________
+		// |         |                 // |         |
+		// |         |                 // |         |
+		// |         |                 // |         |
+		// |        x|                 // |x        |
+		// |_______x_|                 // |_x_______|
+		// northern row minus          // eastern column minus
+		// corners have three          // corners have three
+		// valid neighbours            // valid neighbours
+		// ___________                 // ___________
+		// |x       x|                 // |        x|
+		// |  xxxxx  |                 // |       x |
+		// |         |                 // |       x |
+		// |         |                 // |       x |
+		// |_________|                 // |________x|
+		// southern row minus          // western column minus
+		// corners have three          // corners have three
+		// valid neighbours            // valid neighbours
+		// ___________                 // ___________
+		// |         |                 // |x        |
+		// |         |                 // | x       |
+		// |         |                 // | x       |
+		// | xxxxxxx |                 // | x       |
+		// |x       x|                 // |x________|
 		// all other sectors not along an edge of the map have four valid sectors for portals
 		// ___________
 		// |         |
@@ -350,22 +218,7 @@ pub fn get_ordinal_and_ids_of_neighbouring_sectors(
 		// |   x x   |
 		// |    x    |
 		// |_________|
-		vec![
-			(Ordinal::North, (sector_id.0, sector_id.1 - 1)),
-			(Ordinal::East, (sector_id.0 + 1, sector_id.1)),
-			(Ordinal::South, (sector_id.0, sector_id.1 + 1)),
-			(Ordinal::West, (sector_id.0 - 1, sector_id.1)),
-		]
-	} else {
-		// special case of no neighbours
-		warn!(
-			"Sector ID {:?} does not fit within map dimensions, there are only `{}x{}` sectors",
-			sector_id,
-			map_x_dimension / SECTOR_RESOLUTION as u32,
-			map_z_dimension / SECTOR_RESOLUTION as u32
-		);
-		vec![]
-	}
+	Ordinal::get_sector_neighbours_with_ordinal(sector_id, map_x_dimension, map_z_dimension)
 }
 /// From a position in `x, y, z` space and the dimensions of the map calcualte
 /// the sector ID that point resides in

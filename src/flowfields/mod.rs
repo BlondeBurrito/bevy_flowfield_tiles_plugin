@@ -50,7 +50,7 @@ use bevy::prelude::*;
 
 use self::{
 	portal::portal_graph::PortalGraph,
-	sectors::{SectorCostFields, SectorPortals},
+	sectors::{SectorCostFields, SectorPortals, SectorIntegrationFields},
 };
 /// Determines the number of Sectors by dividing the map length and depth by this value
 const SECTOR_RESOLUTION: usize = 10;
@@ -63,7 +63,7 @@ pub mod plugin;
 pub mod portal;
 pub mod sectors;
 
-/// Concenience way of accessing the 4 sides of a sector in [portal::Portals] and the 8 directions
+/// Convenience way of accessing the 4 sides of a sector in [portal::portals::Portals], the 4 sides of a grid cell in [integration_fields::IntegrationFields] and the 8 directions
 /// of movement in [flowfield::Flowfields]
 #[derive(Debug, PartialEq)]
 pub enum Ordinal {
@@ -76,6 +76,73 @@ pub enum Ordinal {
 	SouthWest,
 	NorthWest,
 }
+
+impl Ordinal {
+	/// Based on a grid cells `(column, row)` position find its neighbours based on FIELD_RESOLUTION limits (up to 4)
+	pub fn get_cell_neighbours(cell_id: (usize, usize)) -> Vec<(usize, usize)> {
+		let mut neighbours = Vec::new();
+		if cell_id.1 > 0 {
+			neighbours.push((cell_id.0, cell_id.1 - 1)); // northern cell coords
+		}
+		if cell_id.0 < FIELD_RESOLUTION - 1 {
+			neighbours.push((cell_id.0 + 1, cell_id.1)); // eastern cell coords
+		}
+		if cell_id.1 < FIELD_RESOLUTION - 1 {
+			neighbours.push((cell_id.0, cell_id.1 + 1)); // southern cell coords
+		}
+		if cell_id.0 > 0 {
+			neighbours.push((cell_id.0 - 1, cell_id.1)); // western cell coords
+		}
+		neighbours
+	}
+	/// Based on a sectors `(column, row)` position find its neighbours based on map size limits (up to 4)
+	pub fn get_sector_neighbours(
+		sector_id: &(u32, u32),
+		map_x_dimension: u32,
+		map_z_dimension: u32,
+	) -> Vec<(u32, u32)> {
+		let mut neighbours = Vec::new();
+		let sector_x_column_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
+		let sector_z_row_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
+		if sector_id.1 > 0 {
+			neighbours.push((sector_id.0, sector_id.1 - 1)); // northern sector coords
+		}
+		if sector_id.0 < sector_x_column_limit {
+			neighbours.push((sector_id.0 + 1, sector_id.1)); // eastern sector coords
+		}
+		if sector_id.1 < sector_z_row_limit {
+			neighbours.push((sector_id.0, sector_id.1 + 1)); // southern sector coords
+		}
+		if sector_id.0 > 0 {
+			neighbours.push((sector_id.0 - 1, sector_id.1)); // western sector coords
+		}
+		neighbours
+	}
+	/// Based on a sectors `(column, row)` position find its neighbours based on map size limits (up to 4) and include the [Ordinal] direction in the result
+	pub fn get_sector_neighbours_with_ordinal(
+		sector_id: &(u32, u32),
+		map_x_dimension: u32,
+		map_z_dimension: u32,
+	) -> Vec<(Ordinal, (u32, u32))> {
+		let mut neighbours = Vec::new();
+		let sector_x_column_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
+		let sector_z_row_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
+		if sector_id.1 > 0 {
+			neighbours.push((Ordinal::North, (sector_id.0, sector_id.1 - 1))); // northern sector coords
+		}
+		if sector_id.0 < sector_x_column_limit {
+			neighbours.push((Ordinal::East, (sector_id.0 + 1, sector_id.1))); // eastern sector coords
+		}
+		if sector_id.1 < sector_z_row_limit {
+			neighbours.push((Ordinal::South, (sector_id.0, sector_id.1 + 1))); // southern sector coords
+		}
+		if sector_id.0 > 0 {
+			neighbours.push((Ordinal::West, (sector_id.0 - 1, sector_id.1))); // western sector coords
+		}
+		neighbours
+	}
+}
+
 /// The length, `x` and depth, `z`, of the map
 #[derive(Component)]
 pub struct MapDimensions(u32, u32);
@@ -100,6 +167,7 @@ pub struct FlowfieldTilesBundle {
 	sector_cost_fields: SectorCostFields,
 	sector_portals: SectorPortals,
 	portal_graph: PortalGraph,
+	sector_integration_fields: SectorIntegrationFields,
 	map_dimensions: MapDimensions,
 }
 
@@ -113,10 +181,12 @@ impl FlowfieldTilesBundle {
 			.build_graph_nodes(&portals)
 			.build_edges_within_each_sector(&portals)
 			.build_edges_between_sectors(&portals, map_length, map_depth);
+		let integration_fields = SectorIntegrationFields::new(map_length, map_depth);
 		FlowfieldTilesBundle {
 			sector_cost_fields: cost_fields,
 			sector_portals: portals,
 			portal_graph: graph,
+			sector_integration_fields: integration_fields,
 			map_dimensions,
 		}
 	}
@@ -124,4 +194,70 @@ impl FlowfieldTilesBundle {
 
 // #[rustfmt::skip]
 #[cfg(test)]
-mod tests {}
+mod tests {
+	use super::*;
+	#[test]
+	fn ordinal_grid_cell_neighbours() {
+		let cell_id = (0, 0);
+		let result = Ordinal::get_cell_neighbours(cell_id);
+		let actual = vec![(1, 0), (0, 1)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_grid_cell_neighbours2() {
+		let cell_id = (9, 9);
+		let result = Ordinal::get_cell_neighbours(cell_id);
+		let actual = vec![(9, 8), (8, 9)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_grid_cell_neighbours3() {
+		let cell_id = (4, 4);
+		let result = Ordinal::get_cell_neighbours(cell_id);
+		let actual = vec![(4, 3), (5, 4), (4, 5), (3, 4)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_grid_cell_neighbours4() {
+		let cell_id = (5, 0);
+		let result = Ordinal::get_cell_neighbours(cell_id);
+		let actual = vec![(6, 0), (5, 1), (4, 0)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_sector_neighbours() {
+		let sector_id = (0, 0);
+		let map_x_dimension = 300;
+		let map_z_dimension = 550;
+		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![(1, 0), (0, 1)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_sector_neighbours2() {
+		let sector_id = (29, 54);
+		let map_x_dimension = 300;
+		let map_z_dimension = 550;
+		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![(29, 53), (28, 54)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_sector_neighbours3() {
+		let sector_id = (14, 31);
+		let map_x_dimension = 300;
+		let map_z_dimension = 550;
+		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![(14, 30), (15, 31), (14, 32), (13, 31)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_sector_neighbours4() {
+		let sector_id = (0, 13);
+		let map_x_dimension = 300;
+		let map_z_dimension = 550;
+		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![(0, 12), (1, 13), (0, 14)];
+		assert_eq!(actual, result);
+	}
+}
