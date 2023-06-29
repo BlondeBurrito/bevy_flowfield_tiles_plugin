@@ -1,7 +1,7 @@
 @startuml int_field_sector_to_sector_2
 
 title
-IntegrationFields
+IntegrationField
 Sector Goal - 2 with Actor (A)
 
 |<#000000>\n   X   \n|<#000000>\n   X   \n|<#e69138>\n   5   \n|<#bf9000>\n   6   \n|<#e06666>\n   A   \n|

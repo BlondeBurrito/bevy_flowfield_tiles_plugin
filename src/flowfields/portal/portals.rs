@@ -1,8 +1,8 @@
 //! A Portal indicates a pathable area from one [Sector] to another. Each side of a [Sector] can
 //! have multiple portals if a side is 'split' due to an impassable value in the
-//! [crate::flowfields::cost_fields::CostFields]. A side that sits along the edge of the map
+//! [crate::flowfields::cost_field::CostField]. A side that sits along the edge of the map
 //! itself cannot have a portal. For example here is a representation of a
-//! [crate::flowfields::cost_fields::CostFields] in the top-left corner of a map with the [PortalNode]
+//! [crate::flowfields::cost_field::CostField] in the top-left corner of a map with the [PortalNode]
 //! positions labeled with a `P`:
 //!
 //! ```text
@@ -115,10 +115,10 @@ impl Portals {
 			vec.clear();
 		}
 	}
-	/// When a sectors [crate::flowfields::cost_fields::CostFields] is updated the [PortalNode]s of the sector and
+	/// When a sectors [crate::flowfields::cost_field::CostField] is updated the [PortalNode]s of the sector and
 	/// its neighbours may no longer be valid so they should be recalculated.
 	///
-	/// Special care must be taken when a neighbouring [crate::flowfields::cost_fields::CostFields] has
+	/// Special care must be taken when a neighbouring [crate::flowfields::cost_field::CostField] has
 	/// impassable values of `255` along the boundary edge as these will create multiple [Portals]
 	/// within the neighbour. When building [Portals] we inspect the sector neighbours to ensure that
 	/// the [Portals] between neighbours are positioned equally and each sector has the same number of
@@ -154,8 +154,8 @@ impl Portals {
 				map_z_dimension,
 			);
 		// moving in a clockwise fashion around the valid ordinals of the boundary sector movement
-		// we inspect the [crate::flowfields::cost_fields::CostFields] values to calculate the portals along each valid sector side
-		let cost_fields = sector_cost_fields
+		// we inspect the [crate::flowfields::cost_field::CostField] values to calculate the portals along each valid sector side
+		let cost_field = sector_cost_fields
 			.get()
 			.get(&sector_id)
 			.expect("Invalid sector id");
@@ -165,14 +165,14 @@ impl Portals {
 					let portal_nodes = self.get_portals_for_side_mut(ord);
 					let column_range = 0..FIELD_RESOLUTION;
 					let fixed_row = 0;
-					let adjoining_cost_fields =
+					let adjoining_cost_field =
 						sector_cost_fields.get().get(&adjoining_sector_id).unwrap();
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for i in column_range {
-						let field_cost = cost_fields.get_grid_value(i, fixed_row);
+						let field_cost = cost_field.get_grid_value(i, fixed_row);
 						let adjacent_field_cost =
-							adjoining_cost_fields.get_grid_value(i, FIELD_RESOLUTION - 1);
+							adjoining_cost_field.get_grid_value(i, FIELD_RESOLUTION - 1);
 						if field_cost != 255 && adjacent_field_cost != 255 {
 							// a pathable point along the edge so we record it to be
 							// published later as a PortalNode
@@ -217,13 +217,13 @@ impl Portals {
 					let portal_nodes = self.get_portals_for_side_mut(ord);
 					let fixed_column = FIELD_RESOLUTION - 1;
 					let row_range = 0..FIELD_RESOLUTION;
-					let adjoining_cost_fields =
+					let adjoining_cost_field =
 						sector_cost_fields.get().get(&adjoining_sector_id).unwrap();
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for j in row_range {
-						let field_cost = cost_fields.get_grid_value(fixed_column, j);
-						let adjacent_field_cost = adjoining_cost_fields.get_grid_value(0, j);
+						let field_cost = cost_field.get_grid_value(fixed_column, j);
+						let adjacent_field_cost = adjoining_cost_field.get_grid_value(0, j);
 						if field_cost != 255 && adjacent_field_cost != 255 {
 							// a pathable point along the edge so we record it to be
 							// published later as a PortalNode
@@ -268,13 +268,13 @@ impl Portals {
 					let portal_nodes = self.get_portals_for_side_mut(ord);
 					let column_range = 0..FIELD_RESOLUTION;
 					let fixed_row = FIELD_RESOLUTION - 1;
-					let adjoining_cost_fields =
+					let adjoining_cost_field =
 						sector_cost_fields.get().get(&adjoining_sector_id).unwrap();
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for i in column_range {
-						let field_cost = cost_fields.get_grid_value(i, fixed_row);
-						let adjacent_field_cost = adjoining_cost_fields.get_grid_value(i, 0);
+						let field_cost = cost_field.get_grid_value(i, fixed_row);
+						let adjacent_field_cost = adjoining_cost_field.get_grid_value(i, 0);
 						if field_cost != 255 && adjacent_field_cost != 255 {
 							// a pathable point along the edge so we record it to be
 							// published later as a PortalNode
@@ -319,14 +319,14 @@ impl Portals {
 					let portal_nodes = self.get_portals_for_side_mut(ord);
 					let fixed_column = 0;
 					let row_range = 0..FIELD_RESOLUTION;
-					let adjoining_cost_fields =
+					let adjoining_cost_field =
 						sector_cost_fields.get().get(&adjoining_sector_id).unwrap();
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for j in row_range {
-						let field_cost = cost_fields.get_grid_value(fixed_column, j);
+						let field_cost = cost_field.get_grid_value(fixed_column, j);
 						let adjacent_field_cost =
-							adjoining_cost_fields.get_grid_value(FIELD_RESOLUTION - 1, j);
+							adjoining_cost_field.get_grid_value(FIELD_RESOLUTION - 1, j);
 						if field_cost != 255 && adjacent_field_cost != 255 {
 							// a pathable point along the edge so we record it to be
 							// published later as a PortalNode
@@ -537,10 +537,10 @@ use super::*;
 	#[test]
 	fn portals_top_left_sector() {
 		let mut sector_cost_fields = SectorCostFields::new(30, 30);
-		let cost_fields = sector_cost_fields.get_mut().get_mut(&(0, 0)).unwrap();
+		let cost_field = sector_cost_fields.get_mut().get_mut(&(0, 0)).unwrap();
 		// switch some fields to impassable
-		cost_fields.set_grid_value(255, 9, 5);
-		cost_fields.set_grid_value(255, 0, 9);
+		cost_field.set_grid_value(255, 9, 5);
+		cost_field.set_grid_value(255, 0, 9);
 		let mut portals = Portals::default();
 		portals.recalculate_portals(&sector_cost_fields, &(0, 0), 30, 30);
 		let northern_side_portal_count = 0;
@@ -555,10 +555,10 @@ use super::*;
 	#[test]
 	fn portals_top_middle_sector() {
 		let mut sector_cost_fields = SectorCostFields::new(30, 30);
-		let cost_fields = sector_cost_fields.get_mut().get_mut(&(1, 0)).unwrap();
+		let cost_field = sector_cost_fields.get_mut().get_mut(&(1, 0)).unwrap();
 		// switch some fields to impassable
-		cost_fields.set_grid_value(255, 9, 5);
-		cost_fields.set_grid_value(255, 0, 9);
+		cost_field.set_grid_value(255, 9, 5);
+		cost_field.set_grid_value(255, 0, 9);
 		let mut portals = Portals::default();
 		portals.recalculate_portals(&sector_cost_fields, &(1, 0), 30, 30);
 		let northern_side_portal_count = 0;
@@ -573,10 +573,10 @@ use super::*;
 	#[test]
 	fn portals_centre_sector() {
 		let mut sector_cost_fields = SectorCostFields::new(30, 30);
-		let cost_fields = sector_cost_fields.get_mut().get_mut(&(1, 1)).unwrap();
+		let cost_field = sector_cost_fields.get_mut().get_mut(&(1, 1)).unwrap();
 		// switch some fields to impassable
-		cost_fields.set_grid_value(255, 9, 5);
-		cost_fields.set_grid_value(255, 0, 9);
+		cost_field.set_grid_value(255, 9, 5);
+		cost_field.set_grid_value(255, 0, 9);
 		let mut portals = Portals::default();
 		portals.recalculate_portals(&sector_cost_fields, &(1, 1), 30, 30);
 		let northern_side_portal_count = 1;
@@ -591,12 +591,12 @@ use super::*;
 	#[test]
 	fn portals_bottom_middle_sector() {
 		let mut sector_cost_fields = SectorCostFields::new(30, 30);
-		let cost_fields = sector_cost_fields.get_mut().get_mut(&(1, 2)).unwrap();
+		let cost_field = sector_cost_fields.get_mut().get_mut(&(1, 2)).unwrap();
 		// switch some fields to impassable
-		cost_fields.set_grid_value(255, 4, 0);
-		cost_fields.set_grid_value(255, 6, 0);
-		cost_fields.set_grid_value(255, 9, 5);
-		cost_fields.set_grid_value(255, 0, 9);
+		cost_field.set_grid_value(255, 4, 0);
+		cost_field.set_grid_value(255, 6, 0);
+		cost_field.set_grid_value(255, 9, 5);
+		cost_field.set_grid_value(255, 0, 9);
 		let mut portals = Portals::default();
 		portals.recalculate_portals(&sector_cost_fields, &(1, 2), 30, 30);
 		let northern_side_portal_count = 3;

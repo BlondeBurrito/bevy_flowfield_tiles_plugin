@@ -1,7 +1,7 @@
 @startuml int_field_sector_to_sector_1
 
 title
-IntegrationFields
+IntegrationField
 Sector Goal - 1
 
 |<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|

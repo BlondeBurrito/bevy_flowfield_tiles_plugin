@@ -1,7 +1,7 @@
 @startuml int_field_prop3
 
 title
-IntegrationFields Propagation 3
+IntegrationField Propagation 3
 
 |\n   ?   \n|<#a2c4c9>\n   3   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|\n   ?   \n|
 |<#a2c4c9>\n   3   \n|<#b6d7a8>\n   2   \n|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|

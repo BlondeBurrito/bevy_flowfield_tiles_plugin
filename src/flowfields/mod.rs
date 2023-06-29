@@ -57,15 +57,15 @@ const SECTOR_RESOLUTION: usize = 10;
 /// Defines the dimenions of all field arrays
 const FIELD_RESOLUTION: usize = 10;
 
-pub mod cost_fields;
-pub mod flow_fields;
-pub mod integration_fields;
+pub mod cost_field;
+pub mod flow_field;
+pub mod integration_field;
 pub mod plugin;
 pub mod portal;
 pub mod sectors;
 
-/// Convenience way of accessing the 4 sides of a sector in [portal::portals::Portals], the 4 sides of a grid cell in [integration_fields::IntegrationFields] and the 8 directions
-/// of movement in [flowfield::Flowfields]
+/// Convenience way of accessing the 4 sides of a sector in [portal::portals::Portals], the 4 sides of a grid cell in [integration_field::IntegrationField] and the 8 directions
+/// of movement in [flow_field::FlowField]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Debug, PartialEq)]
 pub enum Ordinal {

@@ -1,7 +1,7 @@
 @startuml int_field_prop_impassable
 
 title
-IntegrationFields Propagation
+IntegrationField Propagation
 Impassable
 |<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|<#bf9000>\n   6   \n|
 |<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|

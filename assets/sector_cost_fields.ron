@@ -1,6 +1,6 @@
 SectorCostFields(
 	{
-		(0, 0): CostFields(
+		(0, 0): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 255, 255, 255, 255), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 255, 255, 255), // column 1
@@ -14,7 +14,7 @@ SectorCostFields(
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)  // column 9
 			)
 		),
-		(1, 0): CostFields(
+		(1, 0): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 1, 1, 255, 255), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 1, 255, 255), // column 1
@@ -28,7 +28,7 @@ SectorCostFields(
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)  // column 9
 			)
 		),
-		(2, 0): CostFields(
+		(2, 0): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 1
@@ -42,7 +42,7 @@ SectorCostFields(
 				(1, 1, 1, 1, 1, 1, 255, 255, 255, 255)  // column 9
 			)
 		),
-		(0, 1): CostFields(
+		(0, 1): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 1
@@ -56,7 +56,7 @@ SectorCostFields(
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)  // column 9
 			)
 		),
-		(1, 1): CostFields(
+		(1, 1): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 1
@@ -70,7 +70,7 @@ SectorCostFields(
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)  // column 9
 			)
 		),
-		(2, 1): CostFields(
+		(2, 1): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 1
@@ -84,7 +84,7 @@ SectorCostFields(
 				(255, 255, 1, 1, 1, 1, 1, 1, 1, 1)  // column 9
 			)
 		),
-		(0, 2): CostFields(
+		(0, 2): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 1
@@ -98,7 +98,7 @@ SectorCostFields(
 				(1, 1, 1, 1, 1, 1, 1, 255, 255, 255)  // column 9
 			)
 		),
-		(1, 2): CostFields(
+		(1, 2): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 1
@@ -112,7 +112,7 @@ SectorCostFields(
 				(255, 255, 255, 1, 1, 1, 1, 1, 1, 1)  // column 9
 			)
 		),
-		(2, 2): CostFields(
+		(2, 2): CostField(
 			(	// row 0..9
 				(255, 255, 1, 1, 1, 1, 1, 1, 1, 1), // column 0
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 1

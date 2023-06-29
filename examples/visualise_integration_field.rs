@@ -1,9 +1,9 @@
-//! Calculates an [IntegrationFields] from a [CostFields] and displays the cell values in a UI grid
+//! Calculates an [IntegrationField] from a [CostField] and displays the cell values in a UI grid
 //!
 
 use bevy::prelude::*;
 use bevy_flowfield_tiles_plugin::flowfields::{
-	cost_fields::CostFields, integration_fields::IntegrationFields,
+	cost_field::CostField, integration_field::IntegrationField,
 };
 
 fn main() {
@@ -15,12 +15,12 @@ fn main() {
 
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// calculate the field
-	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_fields_impassable.ron";
-	let cost_fields = CostFields::from_file(path);
-	let mut int_field = IntegrationFields::default();
+	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
+	let cost_field = CostField::from_file(path);
+	let mut int_field = IntegrationField::default();
 	let source = (4, 4);
 	int_field.reset(source);
-	int_field.calculate_fields(source, &cost_fields);
+	int_field.calculate_field(source, &cost_field);
 	// create a UI grid
 	cmds.spawn(Camera2dBundle::default());
 	cmds.spawn(NodeBundle {
@@ -50,7 +50,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		})
 		.with_children(|p| {
 			// create each column from the field
-			for array in int_field.get_fields().iter() {
+			for array in int_field.get_field().iter() {
 				p.spawn(NodeBundle {
 					style: Style {
 						size: Size::new(Val::Percent(10.0), Val::Percent(100.0)),

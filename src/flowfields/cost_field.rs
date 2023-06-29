@@ -1,4 +1,4 @@
-//! The CostsFields contains a 2D array of 8-bit values. The values correspond to the cost of that
+//! The CostField contains a 2D array of 8-bit values. The values correspond to the cost of that
 //! grid in the array. A value of 1 is the default, a value of 255 is a special case that idicates
 //! that the grid cell is strictly forbidden from being used in a pathing calculation (effectively
 //! saying there is a wall or cliff/impassable terrain there). Any other value indicates a harder
@@ -44,40 +44,40 @@
 use super::*;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct CostFields([[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
+pub struct CostField([[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 
-impl Default for CostFields {
+impl Default for CostField {
 	fn default() -> Self {
-		CostFields([[1; FIELD_RESOLUTION]; FIELD_RESOLUTION])
+		CostField([[1; FIELD_RESOLUTION]; FIELD_RESOLUTION])
 	}
 }
 
-impl CostFields {
+impl CostField {
 	pub fn get_grid_value(&self, column: usize, row: usize) -> u8 {
 		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot get a CostFields grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+			panic!("Cannot get a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
 		}
 		self.0[column][row]
 	}
 	pub fn set_grid_value(&mut self, value: u8, column: usize, row: usize) {
 		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot set a CostFields grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+			panic!("Cannot set a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
 		}
 		self.0[column][row] = value;
 	}
-	/// From a `ron` file generate the [CostFields]
+	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]
 	pub fn from_file(path: String) -> Self {
-		let file = std::fs::File::open(&path).expect("Failed opening CostFields file");
-		let fields: CostFields = match ron::de::from_reader(file) {
-			Ok(fields) => fields,
-			Err(e) => panic!("Failed deserializing CostFields: {}", e),
+		let file = std::fs::File::open(&path).expect("Failed opening CostField file");
+		let field: CostField = match ron::de::from_reader(file) {
+			Ok(field) => field,
+			Err(e) => panic!("Failed deserializing CostField: {}", e),
 		};
-		fields
+		field
 	}
 }
 
-// /// A [CostFields] grid is made up of a ([SECTOR_RESOLUTION]x[SECTOR_RESOLUTION]) array
+// /// A [CostField] grid is made up of a ([SECTOR_RESOLUTION]x[SECTOR_RESOLUTION]) array
 // fn get_inidices_of_neighbouring_grid_cells(
 // 	grid_cell: (u32, u32),
 // 	map_x_dimension: u32,
@@ -147,18 +147,18 @@ impl CostFields {
 mod tests {
 	use super::*;
 	#[test]
-	fn get_cost_fields_value() {
-		let mut cost_fields = CostFields::default();
-		cost_fields.set_grid_value(255, 9, 9);
-		let result = cost_fields.get_grid_value(9, 9);
+	fn get_cost_field_value() {
+		let mut cost_field = CostField::default();
+		cost_field.set_grid_value(255, 9, 9);
+		let result = cost_field.get_grid_value(9, 9);
 		let actual: u8 = 255;
 		assert_eq!(actual, result);
 	}
 	#[test]
 	#[cfg(feature = "ron")]
-	fn cost_fields_file() {
-		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_fields.ron";
-		let _cost_fields = CostFields::from_file(path);
+	fn cost_field_file() {
+		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field.ron";
+		let _cost_field = CostField::from_file(path);
 		assert!(true)
 	}
 }

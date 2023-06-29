@@ -1,6 +1,6 @@
-@startuml cost_fields
+@startuml cost_field
 title
-Cost Fields
+Cost Field
 |=<#FF8080> MxN  |=<#d0d0d0>    0 |= <#d0d0d0>   1 |= <#d0d0d0>   2 |= <#d0d0d0>   3 |= <#d0d0d0>   4 |= <#d0d0d0>   5 |= <#d0d0d0>   6 |= <#d0d0d0>   7 |= <#d0d0d0>   8 |= <#d0d0d0>   9 |
 |<#d0d0d0> 0 |\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|
 |<#d0d0d0> 1 |\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|\n    1   \n|

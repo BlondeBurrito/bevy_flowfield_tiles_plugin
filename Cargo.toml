@@ -73,5 +73,5 @@ name = "fib"
 harness = false
 
 [[example]]
-name = "visualise_integration_fields"
-path = "examples/visualise_integration_fields.rs"
+name = "visualise_integration_field"
+path = "examples/visualise_integration_field.rs"

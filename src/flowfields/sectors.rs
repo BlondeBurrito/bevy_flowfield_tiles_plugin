@@ -3,43 +3,43 @@
 //!
 
 use super::{
-	cost_fields::CostFields, integration_fields::IntegrationFields, portal::portals::Portals, *,
+	cost_field::CostField, integration_field::IntegrationField, portal::portals::Portals, *,
 };
 
 trait Sector {}
 
 /// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
 /// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
-/// and values are the [CostFields] associated with that sector
+/// and values are the [CostField] associated with that sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component)]
-pub struct SectorCostFields(BTreeMap<(u32, u32), CostFields>);
+pub struct SectorCostFields(BTreeMap<(u32, u32), CostField>);
 
 impl SectorCostFields {
-	/// Create a new instance of [SectorCostFields] based on the map dimensions containing [CostFields]
+	/// Create a new instance of [SectorCostFields] based on the map dimensions containing [CostField]
 	pub fn new(map_x_dimension: u32, map_z_dimension: u32) -> Self {
 		let mut map = BTreeMap::new();
 		let column_count = map_x_dimension / SECTOR_RESOLUTION as u32;
 		let row_count = map_z_dimension / SECTOR_RESOLUTION as u32;
 		for m in 0..column_count {
 			for n in 0..row_count {
-				map.insert((m, n), CostFields::default());
+				map.insert((m, n), CostField::default());
 			}
 		}
 		SectorCostFields(map)
 	}
-	/// Get a reference to the map of sectors and [CostFields]
-	pub fn get(&self) -> &BTreeMap<(u32, u32), CostFields> {
+	/// Get a reference to the map of sectors and [CostField]
+	pub fn get(&self) -> &BTreeMap<(u32, u32), CostField> {
 		&self.0
 	}
-	/// Get a mutable reference to the map of sectors and [CostFields]
-	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), CostFields> {
+	/// Get a mutable reference to the map of sectors and [CostField]
+	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), CostField> {
 		&mut self.0
 	}
 	/// From a `ron` file generate the [SectorCostFields]
 	#[cfg(feature = "ron")]
 	pub fn from_file(path: String) -> Self {
-		let file = std::fs::File::open(&path).expect("Failed opening CostFields file");
+		let file = std::fs::File::open(&path).expect("Failed opening CostField file");
 		let fields: SectorCostFields = match ron::de::from_reader(file) {
 			Ok(fields) => fields,
 			Err(e) => panic!("Failed deserializing SectorCostFields: {}", e),
@@ -76,21 +76,21 @@ impl SectorPortals {
 	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), Portals> {
 		&mut self.0
 	}
-	/// Whenever a [CostFields] is updated the [Portals] for that sector and neighbouring sectors
+	/// Whenever a [CostField] is updated the [Portals] for that sector and neighbouring sectors
 	/// need to be recalculated
 	pub fn update_portals(
 		&mut self,
-		changed_cost_fields_id: (u32, u32),
+		changed_cost_field_id: (u32, u32),
 		sector_cost_fields: &SectorCostFields,
 		map_x_dimension: u32,
 		map_z_dimension: u32,
 	) -> &mut Self {
 		let mut changed = get_ids_of_neighbouring_sectors(
-			&changed_cost_fields_id,
+			&changed_cost_field_id,
 			map_x_dimension,
 			map_z_dimension,
 		);
-		changed.push(changed_cost_fields_id);
+		changed.push(changed_cost_field_id);
 		for id in changed.iter() {
 			self.get_mut().get_mut(id).unwrap().recalculate_portals(
 				sector_cost_fields,
@@ -105,30 +105,30 @@ impl SectorPortals {
 
 /// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
 /// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
-/// and values are the [IntegrationFields] associated with that sector
+/// and values are the [IntegrationField] associated with that sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component)]
-pub struct SectorIntegrationFields(BTreeMap<(u32, u32), IntegrationFields>);
+pub struct SectorIntegrationFields(BTreeMap<(u32, u32), IntegrationField>);
 
 impl SectorIntegrationFields {
-	/// Create a new instance of [SectorIntegrationFields] based on the map dimensions containing [IntegrationFields]
+	/// Create a new instance of [SectorIntegrationFields] based on the map dimensions containing [IntegrationField]
 	pub fn new(map_x_dimension: u32, map_z_dimension: u32) -> Self {
 		let mut map = BTreeMap::new();
 		let column_count = map_x_dimension / SECTOR_RESOLUTION as u32;
 		let row_count = map_z_dimension / SECTOR_RESOLUTION as u32;
 		for m in 0..column_count {
 			for n in 0..row_count {
-				map.insert((m, n), IntegrationFields::default());
+				map.insert((m, n), IntegrationField::default());
 			}
 		}
 		SectorIntegrationFields(map)
 	}
-	/// Get a reference to the map of sectors and [IntegrationFields]
-	pub fn get(&self) -> &BTreeMap<(u32, u32), IntegrationFields> {
+	/// Get a reference to the map of sectors and [IntegrationField]
+	pub fn get(&self) -> &BTreeMap<(u32, u32), IntegrationField> {
 		&self.0
 	}
-	/// Get a mutable reference to the map of sectors and [IntegrationFields]
-	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), IntegrationFields> {
+	/// Get a mutable reference to the map of sectors and [IntegrationField]
+	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), IntegrationField> {
 		&mut self.0
 	}
 }
