@@ -195,11 +195,7 @@ impl FlowfieldTilesBundle {
 		for (sector_id, _v) in cost_fields.get() {
 			portals.update_portals(*sector_id, &cost_fields, map_dimensions.get_column(), map_dimensions.get_row());
 		}
-		let mut graph = PortalGraph::default();
-		graph
-			.build_graph_nodes(&portals)
-			.build_edges_within_each_sector(&portals)
-			.build_edges_between_sectors(&portals, map_length, map_depth);
+		let graph = PortalGraph::new(&portals, &cost_fields, map_dimensions.get_column(), map_dimensions.get_row());
 		FlowfieldTilesBundle {
 			sector_cost_fields: cost_fields,
 			sector_portals: portals,

@@ -122,14 +122,15 @@ impl EventUpdatePortalGraph {
 /// the navigation graph
 pub fn update_portal_graph(
 	mut event_graph: EventReader<EventRebuildSectorPortals>,
-	mut portal_q: Query<(&mut PortalGraph, &SectorPortals, &MapDimensions)>,
+	mut portal_q: Query<(&mut PortalGraph, &SectorPortals, &SectorCostFields, &MapDimensions)>,
 ) {
 	for event in event_graph.iter() {
 		let sector_id = event.get_sector_id();
-		for (mut portal_graph, sector_portals, dimensions) in portal_q.iter_mut() {
+		for (mut portal_graph, sector_portals, sector_cost_fields, dimensions) in portal_q.iter_mut() {
 			portal_graph.update_graph(
 				sector_id,
 				sector_portals,
+				sector_cost_fields,
 				dimensions.get_column(),
 				dimensions.get_row(),
 			);

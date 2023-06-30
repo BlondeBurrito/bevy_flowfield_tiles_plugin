@@ -54,7 +54,7 @@ use crate::flowfields::{
 /// A PortalNode indicates the `(column, row)`position in its local sector that acts as a window
 /// into a neighbouring sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PortalNode((usize, usize));
 
 impl PortalNode {
