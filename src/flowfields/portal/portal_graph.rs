@@ -49,6 +49,15 @@ pub struct PortalGraph {
 }
 //TODO need a means of chekcing graph capacity, if it's near usize, usize then rebuild it from scrtach to reset size
 impl PortalGraph {
+	/// Create a new instance of [PortalGraph] with inital nodes and edges built
+	pub fn new(sector_portals: &SectorPortals, map_x_dimension: u32,
+		map_z_dimension: u32,) -> Self {
+		let mut portal_graph = PortalGraph::default();
+		portal_graph.build_graph_nodes(&sector_portals);
+		portal_graph.build_edges_within_each_sector(&sector_portals);
+		portal_graph.build_edges_between_sectors(&sector_portals, map_x_dimension, map_z_dimension);
+	portal_graph
+	}
 	/// Builds the [StableGraph] nodes for each sector and the nodes for each portal within a sector
 	pub fn build_graph_nodes(&mut self, sector_portals: &SectorPortals) -> &mut Self {
 		for (sector_id, portals) in sector_portals.get().iter() {
@@ -318,7 +327,7 @@ impl PortalGraph {
 		source_sector: (u32, u32),
 		target_sector: (u32, u32),
 		sector_portals: &SectorPortals,
-	) -> Option<BTreeMap<(u32, u32), Vec<(u32, u32)>>> {
+	) -> Option<BTreeMap<(u32, u32), Vec<(usize, usize)>>> {
 		let source_index = match self.node_index_translation.get(&source_sector) {
 			Some(v) => v.0,
 			None => panic!("Translator doesn't contain sector {:?}", source_sector),
@@ -340,7 +349,7 @@ impl PortalGraph {
 		);
 		if let Some((_, nodes)) = path {
 			let translator = &self.node_index_translation;
-			let mut portal_node_list: BTreeMap<(u32, u32), Vec<(u32, u32)>> = BTreeMap::new();
+			let mut portal_node_list: BTreeMap<(u32, u32), Vec<(usize, usize)>> = BTreeMap::new();
 			let mut working_path = nodes.clone();
 			// init the sector IDs making up the path
 			for node_index in nodes.iter() {
@@ -354,7 +363,7 @@ impl PortalGraph {
 			// the first element of the working path is the exiting portal of the source sector
 			let value = self.find_portal_node_cell_indices_from_node_index(
 				sector_portals,
-				&working_path[0],
+				&working_path.first().unwrap(),
 				source_sector,
 			);
 			portal_node_list
@@ -434,14 +443,14 @@ impl PortalGraph {
 		}
 	}
 	/// Search the "translator" (`self.node_index_translation`) based on a `sector` and a graph
-	/// [NodeIndex] representation of a [PortalNode] to handle a backwards translation to prduce
+	/// [NodeIndex] representation of a [PortalNode] to handle a backwards translation to produce
 	/// the `(column, row)` of the [PortalNode]
 	fn find_portal_node_cell_indices_from_node_index(
 		&self,
 		sector_portals: &SectorPortals,
 		search_index: &NodeIndex,
 		sector: (u32, u32),
-	) -> Option<(u32, u32)> {
+	) -> Option<(usize, usize)> {
 		let translator = &self.node_index_translation;
 		for (i, node_ordinal) in translator.get(&sector).unwrap().1.iter().enumerate() {
 			for (j, node_index) in node_ordinal.iter().enumerate() {

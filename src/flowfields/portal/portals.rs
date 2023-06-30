@@ -55,14 +55,14 @@ use crate::flowfields::{
 /// into a neighbouring sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq)]
-pub struct PortalNode((u32, u32));
+pub struct PortalNode((usize, usize));
 
 impl PortalNode {
-	pub fn new(column: u32, row: u32) -> Self {
+	pub fn new(column: usize, row: usize) -> Self {
 		PortalNode((column, row))
 	}
 	/// Get the local `(column, row)` position of a portal in the associated sector
-	pub fn get_column_row(&self) -> (u32, u32) {
+	pub fn get_column_row(&self) -> (usize, usize) {
 		self.0
 	}
 }
@@ -189,8 +189,8 @@ impl Portals {
 								let portal_midpoint_column =
 									column_index_sum / neighbouring_pathable.len();
 								portal_nodes.push(PortalNode::new(
-									portal_midpoint_column as u32,
-									fixed_row as u32,
+									portal_midpoint_column,
+									fixed_row,
 								));
 								// clear the recording list so any other portals along the side can be built
 								neighbouring_pathable.clear();
@@ -206,8 +206,8 @@ impl Portals {
 						}
 						let portal_midpoint_column = column_index_sum / neighbouring_pathable.len();
 						portal_nodes.push(PortalNode::new(
-							portal_midpoint_column as u32,
-							fixed_row as u32,
+							portal_midpoint_column,
+							fixed_row,
 						));
 						// clear the recording list so any other portals along the side can be built
 						neighbouring_pathable.clear();
@@ -240,8 +240,8 @@ impl Portals {
 								let portal_midpoint_row =
 									row_index_sum / neighbouring_pathable.len();
 								portal_nodes.push(PortalNode::new(
-									fixed_column as u32,
-									portal_midpoint_row as u32,
+									fixed_column,
+									portal_midpoint_row,
 								));
 								// clear the recording list so any other portals along the side can be built
 								neighbouring_pathable.clear();
@@ -257,8 +257,8 @@ impl Portals {
 						}
 						let portal_midpoint_row = row_index_sum / neighbouring_pathable.len();
 						portal_nodes.push(PortalNode::new(
-							fixed_column as u32,
-							portal_midpoint_row as u32,
+							fixed_column,
+							portal_midpoint_row,
 						));
 						// clear the recording list so any other portals along the side can be built
 						neighbouring_pathable.clear();
@@ -291,8 +291,8 @@ impl Portals {
 								let portal_midpoint_column =
 									column_index_sum / neighbouring_pathable.len();
 								portal_nodes.push(PortalNode::new(
-									portal_midpoint_column as u32,
-									fixed_row as u32,
+									portal_midpoint_column,
+									fixed_row,
 								));
 								// clear the recording list so any other portals along the side can be built
 								neighbouring_pathable.clear();
@@ -308,8 +308,8 @@ impl Portals {
 						}
 						let portal_midpoint_column = column_index_sum / neighbouring_pathable.len();
 						portal_nodes.push(PortalNode::new(
-							portal_midpoint_column as u32,
-							fixed_row as u32,
+							portal_midpoint_column,
+							fixed_row,
 						));
 						// clear the recording list so any other portals along the side can be built
 						neighbouring_pathable.clear();
@@ -343,8 +343,8 @@ impl Portals {
 								let portal_midpoint_row =
 									row_index_sum / neighbouring_pathable.len();
 								portal_nodes.push(PortalNode::new(
-									fixed_column as u32,
-									portal_midpoint_row as u32,
+									fixed_column,
+									portal_midpoint_row,
 								));
 								// clear the recording list so any other portals along the side can be built
 								neighbouring_pathable.clear();
@@ -360,8 +360,8 @@ impl Portals {
 						}
 						let portal_midpoint_row = row_index_sum / neighbouring_pathable.len();
 						portal_nodes.push(PortalNode::new(
-							fixed_column as u32,
-							portal_midpoint_row as u32,
+							fixed_column,
+							portal_midpoint_row,
 						));
 						// clear the recording list so any other portals along the side can be built
 						neighbouring_pathable.clear();

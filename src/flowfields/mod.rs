@@ -50,7 +50,7 @@ use bevy::prelude::*;
 
 use self::{
 	portal::portal_graph::PortalGraph,
-	sectors::{SectorCostFields, SectorIntegrationFields, SectorPortals},
+	sectors::{SectorCostFields, SectorPortals},
 };
 /// Determines the number of Sectors by dividing the map length and depth by this value
 const SECTOR_RESOLUTION: usize = 10;
@@ -143,9 +143,22 @@ impl Ordinal {
 		}
 		neighbours
 	}
+	/// Returns the opposite [Ordinal] of the current
+	pub fn inverse(&self) -> Ordinal {
+		match self {
+			Ordinal::North => Ordinal::South,
+			Ordinal::East => Ordinal::West,
+			Ordinal::South => Ordinal::North,
+			Ordinal::West => Ordinal::East,
+			Ordinal::NorthEast => Ordinal::SouthWest,
+			Ordinal::SouthEast => Ordinal::NorthWest,
+			Ordinal::SouthWest => Ordinal::NorthEast,
+			Ordinal::NorthWest => Ordinal::SouthEast,
+		}
+	}
 }
 
-/// The length, `x` and depth, `z`, of the map
+/// The length `x` and depth `z` of the map
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component, Default)]
 pub struct MapDimensions(u32, u32);
@@ -153,8 +166,8 @@ pub struct MapDimensions(u32, u32);
 impl MapDimensions {
 	pub fn new(x_length: u32, z_depth: u32) -> Self {
 		//TODO some kind of check to ensure map isn;t too small, must be 3x3 sectors at least
-		let x_sector_count = x_length / SECTOR_RESOLUTION as u32 - 1;
-		let z_sector_count = z_depth / SECTOR_RESOLUTION as u32 - 1;
+		let x_sector_count = (x_length / SECTOR_RESOLUTION as u32).checked_sub(1);
+		let z_sector_count = (z_depth / SECTOR_RESOLUTION as u32).checked_sub(1);
 		MapDimensions(x_length, z_depth)
 	}
 	pub fn get_column(&self) -> u32 {
@@ -170,7 +183,6 @@ pub struct FlowfieldTilesBundle {
 	sector_cost_fields: SectorCostFields,
 	sector_portals: SectorPortals,
 	portal_graph: PortalGraph,
-	sector_integration_fields: SectorIntegrationFields,
 	map_dimensions: MapDimensions,
 }
 
@@ -178,18 +190,20 @@ impl FlowfieldTilesBundle {
 	pub fn new(map_length: u32, map_depth: u32) -> Self {
 		let map_dimensions = MapDimensions::new(map_length, map_depth);
 		let cost_fields = SectorCostFields::new(map_length, map_depth);
-		let portals = SectorPortals::new(map_length, map_depth);
+		let mut portals = SectorPortals::new(map_length, map_depth);
+		// update default portals for cost fields
+		for (sector_id, _v) in cost_fields.get() {
+			portals.update_portals(*sector_id, &cost_fields, map_dimensions.get_column(), map_dimensions.get_row());
+		}
 		let mut graph = PortalGraph::default();
 		graph
 			.build_graph_nodes(&portals)
 			.build_edges_within_each_sector(&portals)
 			.build_edges_between_sectors(&portals, map_length, map_depth);
-		let integration_fields = SectorIntegrationFields::new(map_length, map_depth);
 		FlowfieldTilesBundle {
 			sector_cost_fields: cost_fields,
 			sector_portals: portals,
 			portal_graph: graph,
-			sector_integration_fields: integration_fields,
 			map_dimensions,
 		}
 	}

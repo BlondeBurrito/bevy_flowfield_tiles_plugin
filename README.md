@@ -28,10 +28,10 @@ For larger and larger environemnts with an increasing number of pathing actors i
 ## Definitions
 
 * Sector - a slice of a game world composed of three 2D arrays called fields (`CostField`, `IntegrationField` and `FlowField`). A game world is effectively represented by a number of Sectors
-* CostField - a 2D array describing how difficult it is to path through each cell of the array
+* CostField - a 2D array describing how difficult it is to path through each cell of the array. It is always present in system memory
 * Cost - how difficult/expensive it is to path somewhere, you could also call it <i>weight</i>
 * Portal - a navigatable point which links one Sector to another
-* IntegrationField - a 2D array which uses the CostField to determine a cumulative cost of reaching the goal/endpoint
+* IntegrationField - a 2D array which uses the CostField to determine a cumulative cost of reaching the goal/endpoint. This is an ephemeral field - it exists when required to calculate a `FlowField`
 * FlowField
 * Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for neighbour discovery of Sectors/field cells
 
@@ -49,7 +49,7 @@ Likewise for a `300x550` world you'll be looking at `30` columns and `55` rows. 
 
 ## CostField
 
-A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the grid. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the grid cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
+A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the grid. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the grid cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others. The `CostField` for every sector exists in memory at all times.
 
 <img src="docs/cost_field.png" alt="cf" width="370"/>
 
@@ -83,7 +83,7 @@ This allows the graph to be queried with a `source` sector and a `target` sector
 
 ## IntegrationField
 
-An `IntegrationField` is an `MxN` 2D array of 16-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target.
+An `IntegrationField` is an `MxN` 2D array of 16-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target. It's an ephemeral field, as in it gets built for a required sector and then consumed by the `FlowField` calculation.
 
 When a new route needs to be processed the field is reset to `u16::MAX` and the grid cell containing the goal is set to `0`.
 
@@ -160,6 +160,8 @@ The assistant flags are defined as:
 * `0b0000_0000` - 
 
 So a grid cell in the `FlowField` with a value of `0b0001_0110` means the actor should flow in the South-East direction.
+
+## FlowField Cache
 
 # Usage
 

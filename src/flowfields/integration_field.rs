@@ -61,6 +61,12 @@ impl Default for IntegrationField {
 }
 
 impl IntegrationField {
+	/// Creates a new [IntegrationField] where all cells are set to `u16::MAX` apart from the `source` which is set to `0`
+	pub fn new(source: (usize, usize)) -> Self {
+		let mut field = IntegrationField([[u16::MAX; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
+		field.set_grid_value(0, source.0, source.1);
+		field
+	}
 	pub fn get_field(&self) -> &[[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}

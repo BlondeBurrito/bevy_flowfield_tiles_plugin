@@ -103,35 +103,35 @@ impl SectorPortals {
 	}
 }
 
-/// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
-/// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
-/// and values are the [IntegrationField] associated with that sector
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component)]
-pub struct SectorIntegrationFields(BTreeMap<(u32, u32), IntegrationField>);
+// /// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
+// /// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
+// /// and values are the [IntegrationField] associated with that sector
+// #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+// #[derive(Component)]
+// pub struct SectorIntegrationFields(BTreeMap<(u32, u32), IntegrationField>);
 
-impl SectorIntegrationFields {
-	/// Create a new instance of [SectorIntegrationFields] based on the map dimensions containing [IntegrationField]
-	pub fn new(map_x_dimension: u32, map_z_dimension: u32) -> Self {
-		let mut map = BTreeMap::new();
-		let column_count = map_x_dimension / SECTOR_RESOLUTION as u32;
-		let row_count = map_z_dimension / SECTOR_RESOLUTION as u32;
-		for m in 0..column_count {
-			for n in 0..row_count {
-				map.insert((m, n), IntegrationField::default());
-			}
-		}
-		SectorIntegrationFields(map)
-	}
-	/// Get a reference to the map of sectors and [IntegrationField]
-	pub fn get(&self) -> &BTreeMap<(u32, u32), IntegrationField> {
-		&self.0
-	}
-	/// Get a mutable reference to the map of sectors and [IntegrationField]
-	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), IntegrationField> {
-		&mut self.0
-	}
-}
+// impl SectorIntegrationFields {
+// 	/// Create a new instance of [SectorIntegrationFields] based on the map dimensions containing [IntegrationField]
+// 	pub fn new(map_x_dimension: u32, map_z_dimension: u32) -> Self {
+// 		let mut map = BTreeMap::new();
+// 		let column_count = map_x_dimension / SECTOR_RESOLUTION as u32;
+// 		let row_count = map_z_dimension / SECTOR_RESOLUTION as u32;
+// 		for m in 0..column_count {
+// 			for n in 0..row_count {
+// 				map.insert((m, n), IntegrationField::default());
+// 			}
+// 		}
+// 		SectorIntegrationFields(map)
+// 	}
+// 	/// Get a reference to the map of sectors and [IntegrationField]
+// 	pub fn get(&self) -> &BTreeMap<(u32, u32), IntegrationField> {
+// 		&self.0
+// 	}
+// 	/// Get a mutable reference to the map of sectors and [IntegrationField]
+// 	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), IntegrationField> {
+// 		&mut self.0
+// 	}
+// }
 
 /// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
 /// of the map retrieve the IDs neighbouring sectors
@@ -318,7 +318,7 @@ pub fn get_xyz_sector_centre_from_sector_id(
 /// Calculate the real world `x, y, z` coordinates at the cetnre of a field cell within a sector based on map dimensions
 pub fn get_xyz_from_field_cell_within_sector(
 	sector_id: (u32, u32),
-	field_id: (u32, u32),
+	field_id: (usize, usize),
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> Vec3 {

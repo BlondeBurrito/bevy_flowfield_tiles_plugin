@@ -41,8 +41,6 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			style: Style {
 				size: Size::new(Val::Px(500.0), Val::Px(500.0)),
 				flex_direction: FlexDirection::Row,
-				justify_content: JustifyContent::Center,
-				align_items: AlignItems::Center,
 				..Default::default()
 			},
 			background_color: BackgroundColor(Color::WHITE),
@@ -55,8 +53,6 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					style: Style {
 						size: Size::new(Val::Percent(10.0), Val::Percent(100.0)),
 						flex_direction: FlexDirection::Column,
-						justify_content: JustifyContent::Center,
-						align_items: AlignItems::Center,
 						..Default::default()
 					},
 					..Default::default()
@@ -67,7 +63,6 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 						p.spawn(NodeBundle {
 							style: Style {
 								size: Size::new(Val::Percent(100.0), Val::Percent(10.0)),
-								flex_direction: FlexDirection::Column,
 								justify_content: JustifyContent::Center,
 								align_items: AlignItems::Center,
 								..Default::default()

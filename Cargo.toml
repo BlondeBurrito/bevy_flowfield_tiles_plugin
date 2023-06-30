@@ -65,7 +65,8 @@ debug = true
 strip = false
 
 [profile.release]
-codegen-units = 1
+codegen-units = 2
+# lto = true # currently breaks examples
 strip = true # strip symbols to reduce binary size on linux and mac
 
 [[bench]]
@@ -75,3 +76,9 @@ harness = false
 [[example]]
 name = "visualise_integration_field"
 path = "examples/visualise_integration_field.rs"
+required-features = ["ron"]
+
+[[example]]
+name = "visualise_integration_fields"
+path = "examples/visualise_integration_fields.rs"
+required-features = ["ron"]
