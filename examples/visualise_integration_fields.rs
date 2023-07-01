@@ -91,7 +91,6 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					map_dimensions.get_column(),
 					map_dimensions.get_row(),
 				);
-			println!("Sector {:?} portal values {:?}", sector_id, g);
 			sector_goals.push((*sector_id, g));
 		}
 	}

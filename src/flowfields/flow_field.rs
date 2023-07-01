@@ -45,15 +45,6 @@ impl Default for FlowField {
 }
 
 impl FlowField {
-	// pub fn new(&mut self, goals: &Vec<(usize, usize)>, previous_sector_ordinal: Option<Ordinal>) -> Self {
-	// 	if previous_sector_ordinal.is_none() {
-	// 		self.set_grid_value(BITS_GOAL, goals[0].0, goals[0].1);
-	// 	} else {
-	// 		for goal in goals.iter() {
-
-	// 		}
-	// 	}
-	// }
 	pub fn get_field(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
@@ -72,23 +63,36 @@ impl FlowField {
 	pub fn calculate(
 		&mut self,
 		goals: &Vec<(usize, usize)>,
-		previous_sector_ordinal: Option<Ordinal>,
+		previous_sector_ord_int: Option<(Ordinal, &IntegrationField)>,
 		integration_field: &IntegrationField
 	) {
 		// set goal cells
-		if previous_sector_ordinal.is_none() {
+		if previous_sector_ord_int.is_none() {
 			self.set_grid_value(BITS_GOAL, goals[0].0, goals[0].1);
 		} else {
+			// peek into the previous sector to create better flows over the portal goals
+			let (ord, prev_field) = previous_sector_ord_int.unwrap();
 			for goal in goals.iter() {
-				let ord = previous_sector_ordinal.unwrap();
-				let ordinal_bits = convert_ordinal_to_bits_dir(ord);
-				let mut value = 0;
-				value |= BITS_PORTAL_GOAL;
-				value |= ordinal_bits;
-				self.set_grid_value(value, goal.0, goal.1);
+				// based on the ordinal get up to 3 neighbour int costs
+				let possible_neighbours = lookup_portal_goal_neighbour_costs_in_previous_sector(goal, prev_field, ord);
+				let mut cheapest_value = u16::MAX;
+				let mut cheapest_ord = None;
+				for n in possible_neighbours.iter() {
+					if n.1 < cheapest_value {
+						cheapest_value = n.1;
+						cheapest_ord = Some(n.0);
+					}
+				}
+				if let Some(ord) = cheapest_ord {
+					// point the portal goal towards the best one
+					let ordinal_bits = convert_ordinal_to_bits_dir(ord);
+					let mut value = 0;
+					value |= BITS_PORTAL_GOAL;
+					value |= ordinal_bits;
+					self.set_grid_value(value, goal.0, goal.1);
+				}//TODO this sould never ever be none...
 			}
 		}
-		// let mut queue: Vec<((usize, usize), u16)> = Vec::new();
 
 		for (i, column) in integration_field.get_field().iter().enumerate() {
 			for (j, _row) in column.iter().enumerate() {
@@ -116,7 +120,7 @@ impl FlowField {
 							value |= bit_ord;
 							value |= BITS_PATHABLE;
 							self.set_grid_value(value, i, j);
-						}
+						} //TODO this should never ever be none...
 					}
 				}
 			}
@@ -126,6 +130,86 @@ impl FlowField {
 		// 	let mut next_neighbours = Vec::new();
 		// }
 	}
+}
+/// Used by a [FlowField] calculation that needs to peek into the previous sectors [IntegrationField] to align portal goal directional bits to the most optimal integration costs
+fn lookup_portal_goal_neighbour_costs_in_previous_sector(portal_goal: &(usize, usize), previous_integration_field: &IntegrationField, sector_ordinal: Ordinal) -> Vec<(Ordinal, u16)> {
+	let mut adjacent_neighbours = Vec::new();
+	match sector_ordinal {
+		Ordinal::North => {
+			// orthogonal adjacent cost
+			let adj_pos = (portal_goal.0, 9);
+			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+			adjacent_neighbours.push((Ordinal::South, adj_cost));
+			// try and get a cost left
+			if portal_goal.0 > 0 {
+				let adj_pos = (portal_goal.0 - 1, 9);
+				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
+			}
+			// try and get a cost right
+			if portal_goal.0 < FIELD_RESOLUTION - 1 {
+				let adj_pos = (portal_goal.0 + 1, 9);
+				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
+			}
+		},
+		Ordinal::East => {
+			// orthogonal adjacent cost
+			let adj_pos = (0, portal_goal.1);
+			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+			adjacent_neighbours.push((Ordinal::West, adj_cost));
+			// try and get a cost above
+			if portal_goal.1 > 0 {
+				let adj_pos = (0, portal_goal.1 - 1);
+				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
+			}
+			// try and get a cost below
+			if portal_goal.1 < FIELD_RESOLUTION - 1 {
+				let adj_pos = (0, portal_goal.1 + 1);
+				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
+			}
+		},
+		Ordinal::South => {
+			// orthogonal adjacent cost
+			let adj_pos = (portal_goal.0, 0);
+			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+			adjacent_neighbours.push((Ordinal::South, adj_cost));
+			// try and get a cost left
+			if portal_goal.0 > 0 {
+				let adj_pos = (portal_goal.0 - 1, 0);
+				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
+			}
+			// try and get a cost right
+			if portal_goal.0 < FIELD_RESOLUTION - 1 {
+				let adj_pos = (portal_goal.0 + 1, 0);
+				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
+			}
+		},
+		Ordinal::West => {
+			// orthogonal adjacent cost
+			let adj_pos = (9, portal_goal.1);
+			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+			adjacent_neighbours.push((Ordinal::West, adj_cost));
+			// try and get a cost above
+			if portal_goal.1 > 0 {
+				let adj_pos = (9, portal_goal.1 - 1);
+				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
+			}
+			// try and get a cost below
+			if portal_goal.1 < FIELD_RESOLUTION - 1 {
+				let adj_pos = (9, portal_goal.1 + 1);
+				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
+			}
+		},
+		_ => panic!("Invalid sector ordinal")
+	}
+	adjacent_neighbours
 }
 
 pub fn abc(cell_value: u8) {

@@ -226,10 +226,10 @@ impl Ordinal {
 			(-1, 1) => Ordinal::SouthWest,
 			(-1, 0) => Ordinal::West,
 			(-1, -1) => Ordinal::NorthWest,
-			_ => panic!("Cell {:?} is not orthognally or diagonally adjacent to {:?}", target, source),
+			_ => panic!("Cell {:?} is not orthogonally or diagonally adjacent to {:?}", target, source),
 		}
 	}
-	/// For two sectors next to each other it can be useful to find the [Ordinal] point from the `source` to the `target`
+	/// For two sectors next to each other it can be useful to find the [Ordinal] from the `source` to the `target`. This will panic if the two sectors are not orthogonally adjacent
 	pub fn sector_to_sector_direction(target: (u32, u32), source: (u32, u32)) -> Self {
 		let i32_target = (target.0 as i32, target.1 as i32);
 		let i32_source = (source.0 as i32, source.1 as i32);
@@ -240,7 +240,7 @@ impl Ordinal {
 			(1, 0) => Ordinal::East,
 			(0, 1) => Ordinal::South,
 			(-1, 0) => Ordinal::West,
-			_ => panic!("Cell {:?} is not orthognally adjacent to {:?}", target, source),
+			_ => panic!("Cell {:?} is not orthogonally adjacent to {:?}", target, source),
 		}
 	}
 }

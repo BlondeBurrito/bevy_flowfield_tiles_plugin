@@ -111,7 +111,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			sector_flow_fields.insert(*sector_id, flow_field);
 		} else {
 			let dir_prev_sector = Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id);
-			flow_field.calculate(goals, Some(dir_prev_sector), int_field);
+			let prev_int_field = &sector_int_fields[i - 1].2;
+			flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
 			sector_flow_fields.insert(*sector_id, flow_field);
 		}
 	}
