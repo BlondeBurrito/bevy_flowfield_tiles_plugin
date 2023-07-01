@@ -44,11 +44,12 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use bevy::prelude::*;
-
 use crate::flowfields::{
-	sectors::{get_ordinal_and_ids_of_neighbouring_sectors, SectorCostFields},
-	Ordinal, FIELD_RESOLUTION, SECTOR_RESOLUTION,
+	sectors::{
+		get_boundary_ordinal_from_grid_cell, get_ordinal_and_ids_of_neighbouring_sectors,
+		SectorCostFields,
+	},
+	Ordinal, FIELD_RESOLUTION,
 };
 
 /// A PortalNode indicates the `(column, row)`position in its local sector that acts as a window
@@ -188,10 +189,8 @@ impl Portals {
 								}
 								let portal_midpoint_column =
 									column_index_sum / neighbouring_pathable.len();
-								portal_nodes.push(PortalNode::new(
-									portal_midpoint_column,
-									fixed_row,
-								));
+								portal_nodes
+									.push(PortalNode::new(portal_midpoint_column, fixed_row));
 								// clear the recording list so any other portals along the side can be built
 								neighbouring_pathable.clear();
 							}
@@ -205,10 +204,7 @@ impl Portals {
 							column_index_sum += i;
 						}
 						let portal_midpoint_column = column_index_sum / neighbouring_pathable.len();
-						portal_nodes.push(PortalNode::new(
-							portal_midpoint_column,
-							fixed_row,
-						));
+						portal_nodes.push(PortalNode::new(portal_midpoint_column, fixed_row));
 						// clear the recording list so any other portals along the side can be built
 						neighbouring_pathable.clear();
 					}
@@ -239,10 +235,8 @@ impl Portals {
 								}
 								let portal_midpoint_row =
 									row_index_sum / neighbouring_pathable.len();
-								portal_nodes.push(PortalNode::new(
-									fixed_column,
-									portal_midpoint_row,
-								));
+								portal_nodes
+									.push(PortalNode::new(fixed_column, portal_midpoint_row));
 								// clear the recording list so any other portals along the side can be built
 								neighbouring_pathable.clear();
 							}
@@ -256,10 +250,7 @@ impl Portals {
 							row_index_sum += n;
 						}
 						let portal_midpoint_row = row_index_sum / neighbouring_pathable.len();
-						portal_nodes.push(PortalNode::new(
-							fixed_column,
-							portal_midpoint_row,
-						));
+						portal_nodes.push(PortalNode::new(fixed_column, portal_midpoint_row));
 						// clear the recording list so any other portals along the side can be built
 						neighbouring_pathable.clear();
 					}
@@ -290,10 +281,8 @@ impl Portals {
 								}
 								let portal_midpoint_column =
 									column_index_sum / neighbouring_pathable.len();
-								portal_nodes.push(PortalNode::new(
-									portal_midpoint_column,
-									fixed_row,
-								));
+								portal_nodes
+									.push(PortalNode::new(portal_midpoint_column, fixed_row));
 								// clear the recording list so any other portals along the side can be built
 								neighbouring_pathable.clear();
 							}
@@ -307,10 +296,7 @@ impl Portals {
 							column_index_sum += i;
 						}
 						let portal_midpoint_column = column_index_sum / neighbouring_pathable.len();
-						portal_nodes.push(PortalNode::new(
-							portal_midpoint_column,
-							fixed_row,
-						));
+						portal_nodes.push(PortalNode::new(portal_midpoint_column, fixed_row));
 						// clear the recording list so any other portals along the side can be built
 						neighbouring_pathable.clear();
 					}
@@ -342,10 +328,8 @@ impl Portals {
 								}
 								let portal_midpoint_row =
 									row_index_sum / neighbouring_pathable.len();
-								portal_nodes.push(PortalNode::new(
-									fixed_column,
-									portal_midpoint_row,
-								));
+								portal_nodes
+									.push(PortalNode::new(fixed_column, portal_midpoint_row));
 								// clear the recording list so any other portals along the side can be built
 								neighbouring_pathable.clear();
 							}
@@ -359,10 +343,7 @@ impl Portals {
 							row_index_sum += n;
 						}
 						let portal_midpoint_row = row_index_sum / neighbouring_pathable.len();
-						portal_nodes.push(PortalNode::new(
-							fixed_column,
-							portal_midpoint_row,
-						));
+						portal_nodes.push(PortalNode::new(fixed_column, portal_midpoint_row));
 						// clear the recording list so any other portals along the side can be built
 						neighbouring_pathable.clear();
 					}
@@ -374,166 +355,192 @@ impl Portals {
 			};
 		}
 	}
-}
-/// A sector has up to four sides which can have portals, sectors around the boundary of the map
-/// have less than 4. Based on the ID of the sector and the dimensions of the map retrieve the
-/// ordinals of the sector which can support portals
-fn get_sector_portal_ordinals(
-	sector_id: (u32, u32),
-	map_x_dimension: u32,
-	map_z_dimension: u32,
-) -> Vec<Ordinal> {
-	let sector_x_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
-	let sector_z_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
-
-	if sector_id.0 == 0 && sector_id.1 == 0 {
-		//top left sector only has 2 valid sides for portals
-		// ___________
-		// | x       |
-		// |x        |
-		// |         |
-		// |         |
-		// |_________|
-		vec![Ordinal::East, Ordinal::South]
-	} else if sector_id.0 == sector_x_limit && sector_id.1 == 0 {
-		// top right sector has only two valid sides for portals
-		// ___________
-		// |       x |
-		// |        x|
-		// |         |
-		// |         |
-		// |_________|
-		vec![Ordinal::South, Ordinal::West]
-	} else if sector_id.0 == sector_x_limit && sector_id.1 == sector_z_limit {
-		// bottom right sector only has two valid sides for portals
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |        x|
-		// |_______x_|
-		vec![Ordinal::North, Ordinal::West]
-	} else if sector_id.0 == 0 && sector_id.1 == sector_z_limit {
-		// bottom left sector only has two valid sides for portals
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |x        |
-		// |_x_______|
-		vec![Ordinal::North, Ordinal::East]
-	} else if sector_id.0 > 0 && sector_id.0 < sector_x_limit && sector_id.1 == 0 {
-		// northern row minus the corners sectors have three valid sides for portals
-		// ___________
-		// | xxxxxxx |
-		// |         |
-		// |         |
-		// |         |
-		// |_________|
-		vec![Ordinal::East, Ordinal::South, Ordinal::West]
-	} else if sector_id.0 == sector_x_limit && sector_id.1 > 0 && sector_id.1 < sector_z_limit {
-		// eastern column minus the corners have three sectors of valid sides for portals
-		// ___________
-		// |         |
-		// |        x|
-		// |        x|
-		// |        x|
-		// |_________|
-		vec![Ordinal::North, Ordinal::South, Ordinal::West]
-	} else if sector_id.0 > 0 && sector_id.0 < sector_x_limit && sector_id.1 == sector_z_limit {
-		// southern row minus corners have three sectors of valid sides for portals
-		// ___________
-		// |         |
-		// |         |
-		// |         |
-		// |         |
-		// |_xxxxxxx_|
-		vec![Ordinal::North, Ordinal::East, Ordinal::West]
-	} else if sector_id.0 == 0 && sector_id.1 > 0 && sector_id.1 < sector_z_limit {
-		// western column minus corners have three sectors of valid sides for portals
-		// ___________
-		// |         |
-		// |x        |
-		// |x        |
-		// |x        |
-		// |_________|
-		vec![Ordinal::North, Ordinal::East, Ordinal::South]
-	} else if sector_id.0 > 0
-		&& sector_id.0 < sector_x_limit
-		&& sector_id.1 > 0
-		&& sector_id.1 < sector_z_limit
-	{
-		// all other sectors not along an edge of the map have four valid sectors for portals
-		// ___________
-		// |         |
-		// |    x    |
-		// |   x x   |
-		// |    x    |
-		// |_________|
-		vec![Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West]
-	} else {
-		// // special case that occurs when the map is so small that there's only
-		error!(
-			"Sector ID {:?} does not fit within map dimensions, there are only `{}x{}` sectors",
-			sector_id,
-			map_x_dimension / SECTOR_RESOLUTION as u32,
-			map_z_dimension / SECTOR_RESOLUTION as u32
-		);
-		vec![]
+	/// A [PortalNode] represents the midpoint of a segment along a boundary, for smooth pathfinding any grid cell along the segemnt should be a viable goal node when calculating an [IntegrationField]. This takes inspects the `portal_id` within the given `sector_id` and build a list of field gridc cells which comprise the true dimension of the portal
+	pub fn expand_portal_into_goals(
+		&self,
+		sector_cost_fields: &SectorCostFields,
+		sector_id: &(u32, u32),
+		portal_id: &(usize, usize),
+		neighbour_sector_id: &(u32, u32),
+		map_x_dimension: u32,
+		map_z_dimension: u32,
+	) -> Vec<(usize, usize)> {
+		// find the bounudary the portal sit along
+		let mut boundary_ordinals = get_boundary_ordinal_from_grid_cell(portal_id);
+		// if it's in a corner then it could apply to two boundaries, narrow it down so we know which boundary to walk
+		if boundary_ordinals.len() > 1 {
+			let valid_ordinals_for_this_sector: Vec<(Ordinal, (u32, u32))> =
+				get_ordinal_and_ids_of_neighbouring_sectors(
+					&sector_id,
+					map_x_dimension,
+					map_z_dimension,
+				);
+			'outer: for (ordinal, id) in valid_ordinals_for_this_sector.iter() {
+				if id == neighbour_sector_id {
+					boundary_ordinals.retain(|o| o == ordinal);
+					break 'outer;
+				}
+			}
+			if boundary_ordinals.len() > 1 {
+				panic!("Sector {:?} does not have a neighbour at {:?} while inspecting portal {:?}. This suggest that a portal exists on a sector boundary where it shouldn't, i.e this sector is along an edge of the world and the portal is on a boundary leading to nowhere", sector_id, neighbour_sector_id, portal_id);
+			}
+		}
+		let boundary_ordinal = boundary_ordinals.first().unwrap();
+		let mut goals: Vec<(usize, usize)> = Vec::new();
+		// the portal itself is a goal
+		goals.push(*portal_id);
+		// from the portal walk either left/right or up/down depending on the ordinal
+		// until an impassable cost field value is found
+		let this_cost_field = sector_cost_fields.get().get(&sector_id).unwrap();
+		let adjoining_cost_field = sector_cost_fields.get().get(&neighbour_sector_id).unwrap();
+		match boundary_ordinal {
+			Ordinal::North => {
+				// walk left from the portal
+				let mut step = 1;
+				'left: while portal_id.0.checked_sub(step).is_some() {
+					let left = (portal_id.0 - step, portal_id.1);
+					// check whether cell or adjoining cell is impassable
+					let left_cost = this_cost_field.get_grid_value(left.0, left.1);
+					let neighbour_cost =
+						adjoining_cost_field.get_grid_value(left.0, FIELD_RESOLUTION - 1);
+					if left_cost != 255 && neighbour_cost != 255 {
+						goals.push(left);
+						step += 1;
+					} else {
+						// portal length cannot go any further
+						break 'left;
+					}
+				}
+				// walk right from the portal
+				let mut step = 1;
+				'right: while portal_id.0 + step < FIELD_RESOLUTION {
+					let right = (portal_id.0 + step, portal_id.1);
+					// check whether cell or adjoining cell is impassable
+					let right_cost = this_cost_field.get_grid_value(right.0, right.1);
+					let neighbour_cost =
+						adjoining_cost_field.get_grid_value(right.0, FIELD_RESOLUTION - 1);
+					if right_cost != 255 && neighbour_cost != 255 {
+						goals.push(right);
+						step += 1;
+					} else {
+						// portal length cannot go any further
+						break 'right;
+					}
+				}
+			}
+			Ordinal::East => {
+				// walk up from the portal
+				let mut step = 1;
+				'up: while portal_id.1.checked_sub(step).is_some() {
+					let up = (portal_id.0, portal_id.1 - step);
+					// check whether cell or adjoining cell is impassable
+					let up_cost = this_cost_field.get_grid_value(up.0, up.1);
+					let neighbour_cost = adjoining_cost_field.get_grid_value(0, up.1);
+					if up_cost != 255 && neighbour_cost != 255 {
+						goals.push(up);
+						step += 1;
+					} else {
+						// portal length cannot go any further
+						break 'up;
+					}
+				}
+				// walk down from the portal
+				let mut step = 1;
+				'down: while portal_id.1 + step < FIELD_RESOLUTION {
+					let down = (portal_id.0, portal_id.1 + step);
+					// check whether cell or adjoining cell is impassable
+					let right_cost = this_cost_field.get_grid_value(down.0, down.1);
+					let neighbour_cost = adjoining_cost_field.get_grid_value(0, down.1);
+					if right_cost != 255 && neighbour_cost != 255 {
+						goals.push(down);
+						step += 1;
+					} else {
+						// portal length cannot go any further
+						break 'down;
+					}
+				}
+			}
+			Ordinal::South => {
+				// walk left from the portal
+				let mut step = 1;
+				'left: while portal_id.0.checked_sub(step).is_some() {
+					let left = (portal_id.0 - step, portal_id.1);
+					// check whether cell or adjoining cell is impassable
+					let left_cost = this_cost_field.get_grid_value(left.0, left.1);
+					let neighbour_cost = adjoining_cost_field.get_grid_value(left.0, 0);
+					if left_cost != 255 && neighbour_cost != 255 {
+						goals.push(left);
+						step += 1;
+					} else {
+						// portal length cannot go any further
+						break 'left;
+					}
+				}
+				// walk right from the portal
+				let mut step = 1;
+				'right: while portal_id.0 + step < FIELD_RESOLUTION {
+					let right = (portal_id.0 + step, portal_id.1);
+					// check whether cell or adjoining cell is impassable
+					let right_cost = this_cost_field.get_grid_value(right.0, right.1);
+					let neighbour_cost = adjoining_cost_field.get_grid_value(right.0, 0);
+					if right_cost != 255 && neighbour_cost != 255 {
+						goals.push(right);
+						step += 1;
+					} else {
+						// portal length cannot go any further
+						break 'right;
+					}
+				}
+			}
+			Ordinal::West => {
+				// walk up from the portal
+				let mut step = 1;
+				'up: while portal_id.1.checked_sub(step).is_some() {
+					let up = (portal_id.0, portal_id.1 - step);
+					// check whether cell or adjoining cell is impassable
+					let up_cost = this_cost_field.get_grid_value(up.0, up.1);
+					let neighbour_cost =
+						adjoining_cost_field.get_grid_value(FIELD_RESOLUTION - 1, up.1);
+					if up_cost != 255 && neighbour_cost != 255 {
+						goals.push(up);
+						step += 1;
+					} else {
+						// portal length cannot go any further
+						break 'up;
+					}
+				}
+				// walk down from the portal
+				let mut step = 1;
+				'down: while portal_id.1 + step < FIELD_RESOLUTION {
+					let down = (portal_id.0, portal_id.1 + step);
+					// check whether cell or adjoining cell is impassable
+					let right_cost = this_cost_field.get_grid_value(down.0, down.1);
+					let neighbour_cost =
+						adjoining_cost_field.get_grid_value(FIELD_RESOLUTION - 1, down.1);
+					if right_cost != 255 && neighbour_cost != 255 {
+						goals.push(down);
+						step += 1;
+					} else {
+						// portal length cannot go any further
+						break 'down;
+					}
+				}
+			}
+			_ => panic!(
+				"Invalid Ordinal {:?} for boundary walking",
+				boundary_ordinal
+			),
+		}
+		goals
 	}
 }
 
 #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-	use crate::flowfields::sectors::SectorPortals;
+	use crate::flowfields::{sectors::SectorPortals, cost_field::CostField};
 
 use super::*;
-	#[test]
-	fn get_northern_oridnals() {
-		let sector_id = (3, 0);
-		let map_x_dimension = 200;
-		let map_z_dimension = 200;
-		let result = get_sector_portal_ordinals(sector_id, map_x_dimension, map_z_dimension);
-		let actual =  vec![Ordinal::East, Ordinal::South, Ordinal::West];
-		assert_eq!(actual,result);
-	}
-	#[test]
-	fn get_eastern_oridnals() {
-		let sector_id = (19, 5);
-		let map_x_dimension = 200;
-		let map_z_dimension = 200;
-		let result = get_sector_portal_ordinals(sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![Ordinal::North, Ordinal::South, Ordinal::West];
-		assert_eq!(actual,result);
-	}
-	#[test]
-	fn get_southern_oridnals() {
-		let sector_id = (4, 19);
-		let map_x_dimension = 200;
-		let map_z_dimension = 200;
-		let result = get_sector_portal_ordinals(sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::West];
-		assert_eq!(actual,result);
-	}
-	#[test]
-	fn get_western_oridnals() {
-		let sector_id = (0, 5);
-		let map_x_dimension = 200;
-		let map_z_dimension = 200;
-		let result = get_sector_portal_ordinals(sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South];
-		assert_eq!(actual,result);
-	}
-	#[test]
-	fn get_centre_oridnals() {
-		let sector_id = (4, 5);
-		let map_x_dimension = 200;
-		let map_z_dimension = 200;
-		let result = get_sector_portal_ordinals(sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
-		assert_eq!(actual,result);
-	}
 	#[test]
 	fn portals_top_left_sector() {
 		let mut sector_cost_fields = SectorCostFields::new(30, 30);
@@ -684,5 +691,131 @@ use super::*;
 			];
 		assert_eq!(actual_first[2], post_first.get()[2]);
 		assert_eq!(actual_second[0], post_second.get()[0]);
+	}
+	#[test]
+	fn expand_portal_goals_north() {
+		let map_x_dimension = 30;
+		let map_z_dimension = 30;
+		let sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
+		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id, map_x_dimension, map_z_dimension)
+		}
+		let sector_id = (1, 1);
+		let portal_id = (4, 0);
+		let neighbour_sector_id = (1, 0);
+		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, map_x_dimension, map_z_dimension);
+
+		let actual = vec![
+			(4, 0), (3, 0), (2, 0), (1, 0), (0, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0)
+			];
+		assert_eq!(actual, goals);
+	}
+	#[test]
+	fn expand_portal_goals_east() {
+		let map_x_dimension = 30;
+		let map_z_dimension = 30;
+		let sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
+		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id, map_x_dimension, map_z_dimension)
+		}
+		let sector_id = (1, 1);
+		let portal_id = (9, 4);
+		let neighbour_sector_id = (2, 1);
+		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, map_x_dimension, map_z_dimension);
+
+		let actual = vec![
+			(9, 4), (9, 3), (9, 2), (9, 1), (9, 0), (9, 5), (9, 6), (9, 7), (9, 8), (9, 9)
+			];
+		assert_eq!(actual, goals);
+	}
+	#[test]
+	fn expand_portal_goals_south() {
+		let map_x_dimension = 30;
+		let map_z_dimension = 30;
+		let sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
+		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id, map_x_dimension, map_z_dimension)
+		}
+		let sector_id = (1, 1);
+		let portal_id = (4, 9);
+		let neighbour_sector_id = (1, 2);
+		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, map_x_dimension, map_z_dimension);
+
+		let actual = vec![
+			(4, 9), (3, 9), (2, 9), (1, 9), (0, 9), (5, 9), (6, 9), (7, 9), (8, 9), (9, 9)
+			];
+		assert_eq!(actual, goals);
+	}
+	#[test]
+	fn expand_portal_goals_west() {
+		let map_x_dimension = 30;
+		let map_z_dimension = 30;
+		let sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
+		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id, map_x_dimension, map_z_dimension)
+		}
+		let sector_id = (1, 1);
+		let portal_id = (0, 4);
+		let neighbour_sector_id = (0, 1);
+		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, map_x_dimension, map_z_dimension);
+
+		let actual = vec![
+			(0, 4), (0, 3), (0, 2), (0, 1), (0, 0), (0, 5), (0, 6), (0, 7), (0, 8), (0, 9)
+			];
+		assert_eq!(actual, goals);
+	}
+	#[test]
+	fn expand_portal_goals_short_local() {
+		let sector_id = (1, 1);
+		let neighbour_sector_id = (1, 0);
+		let map_x_dimension = 30;
+		let map_z_dimension = 30;
+		let mut sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
+		sector_cost_fields.get_mut().get_mut(&sector_id).unwrap().set_grid_value(255, 3, 0);
+
+		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id, map_x_dimension, map_z_dimension)
+		}
+		
+		let portal_id = (1, 0);
+		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, map_x_dimension, map_z_dimension);
+
+		let actual = vec![
+			(1, 0), (0, 0), (2, 0)
+			];
+		assert_eq!(actual, goals);
+	}
+	#[test]
+	fn expand_portal_goals_short_adjacent() {
+		let sector_id = (1, 1);
+		let neighbour_sector_id = (1, 0);
+		let map_x_dimension = 30;
+		let map_z_dimension = 30;
+		let mut sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
+		sector_cost_fields.get_mut().get_mut(&neighbour_sector_id).unwrap().set_grid_value(255, 3, 9);
+
+		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id, map_x_dimension, map_z_dimension)
+		}
+		
+		let portal_id = (1, 0);
+		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, map_x_dimension, map_z_dimension);
+
+		let actual = vec![
+			(1, 0), (0, 0), (2, 0)
+			];
+		assert_eq!(actual, goals);
 	}
 }

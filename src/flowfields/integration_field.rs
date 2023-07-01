@@ -61,10 +61,12 @@ impl Default for IntegrationField {
 }
 
 impl IntegrationField {
-	/// Creates a new [IntegrationField] where all cells are set to `u16::MAX` apart from the `source` which is set to `0`
-	pub fn new(source: (usize, usize)) -> Self {
+	/// Creates a new [IntegrationField] where all cells are set to `u16::MAX` apart from the `goals` which is set to `0`
+	pub fn new(goals: &Vec<(usize, usize)>) -> Self {
 		let mut field = IntegrationField([[u16::MAX; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
-		field.set_grid_value(0, source.0, source.1);
+		for goal in goals {
+			field.set_grid_value(0, goal.0, goal.1);
+		}
 		field
 	}
 	pub fn get_field(&self) -> &[[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
@@ -82,39 +84,24 @@ impl IntegrationField {
 		}
 		self.0[column][row] = value;
 	}
-	/// Reset all the cells of the [IntegrationField] to `u16::MAX` apart from the `source` which is the starting point of calculating the field which is set to `0`
-	pub fn reset(&mut self, source: (usize, usize)) {
+	/// Reset all the cells of the [IntegrationField] to `u16::MAX` apart from the `goals` which are the starting points of calculating the field which is set to `0`
+	pub fn reset(&mut self, goals: &Vec<(usize, usize)>) {
 		for i in 0..FIELD_RESOLUTION {
 			for j in 0..FIELD_RESOLUTION {
 				self.set_grid_value(u16::MAX, i, j);
 			}
 		}
-		self.set_grid_value(0, source.0, source.1);
+		for goal in goals {
+			self.set_grid_value(0, goal.0, goal.1);
+		}
 	}
-	/// From a `source` grid cell iterate over successive neighbouring cells
+	/// From a list of `goals` grid cells iterate over successive neighbouring cells
 	/// and calculate the field values from the `cost_field`
-	pub fn calculate_field(&mut self, source: (usize, usize), cost_field: &CostField) {
+	pub fn calculate_field(&mut self, goals: &Vec<(usize, usize)>, cost_field: &CostField) {
 		// further positions to process, tuple element 0 is the position, element 1 is the integration cost from the previous cell needed to help calculate element 0s cost
 		let mut queue: Vec<((usize, usize), u16)> = Vec::new();
-		// identify the neighbours of the source
-		let neighbours = Ordinal::get_cell_neighbours(source);
-		let current_int_value = self.get_grid_value(source.0, source.1);
-		let current_cell_cost_field = cost_field.get_grid_value(source.0, source.1);
-		// ensure the request source isn't on an impassable cell
-		if current_cell_cost_field != 255 {
-			// iterate over the neighbours calculating int costs
-			for n in neighbours.iter() {
-				let cell_cost = cost_field.get_grid_value(n.0, n.1);
-				// ignore impassable cells
-				if cell_cost != 255 {
-					// don't overwrite a cell with a better cost
-					let int_cost = cell_cost as u16 + current_int_value;
-					if int_cost < self.get_grid_value(n.0, n.1) {
-						self.set_grid_value(int_cost, n.0, n.1);
-						queue.push(((n.0, n.1), int_cost));
-					}
-				}
-			}
+		for goal in goals.iter() {
+			queue.push(((*goal), self.get_grid_value(goal.0, goal.1)));
 		}
 		process_neighbours(self, queue, cost_field);
 
@@ -157,9 +144,9 @@ mod tests {
 	fn basic_field() {
 		let cost_field = CostField::default();
 		let mut integration_field = IntegrationField::default();
-		let source = (4, 4);
-		integration_field.reset(source);
-		integration_field.calculate_field(source, &cost_field);
+		let source = vec![(4, 4)];
+		integration_field.reset(&source);
+		integration_field.calculate_field(&source, &cost_field);
 		let result = integration_field.get_field();
 
 		let actual: [[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
@@ -188,9 +175,9 @@ mod tests {
 		cost_field.set_grid_value(255, 2, 1);
 		cost_field.set_grid_value(255, 2, 2);
 		let mut integration_field = IntegrationField::default();
-		let source = (4, 4);
-		integration_field.reset(source);
-		integration_field.calculate_field(source, &cost_field);
+		let source = vec![(4, 4)];
+		integration_field.reset(&source);
+		integration_field.calculate_field(&source, &cost_field);
 		let result = integration_field.get_field();
 
 		let actual: [[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [

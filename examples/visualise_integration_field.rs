@@ -18,9 +18,9 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
 	let cost_field = CostField::from_file(path);
 	let mut int_field = IntegrationField::default();
-	let source = (4, 4);
-	int_field.reset(source);
-	int_field.calculate_field(source, &cost_field);
+	let source = vec![(4, 4)];
+	int_field.reset(&source);
+	int_field.calculate_field(&source, &cost_field);
 	// create a UI grid
 	cmds.spawn(Camera2dBundle::default());
 	cmds.spawn(NodeBundle {

@@ -68,10 +68,14 @@ impl CostField {
 		self.0[column][row] = value;
 	}
 	/// Tests whether two portals can see each other within a sector (one might be boxed in by impassable cost field values), additionally returns the number of steps taken to find a route between the two - this can be used as an edge weight
-	pub fn can_internal_portal_pair_see_each_other(&self, source: (usize, usize), target: (usize, usize)) -> (bool, i32) {
+	pub fn can_internal_portal_pair_see_each_other(
+		&self,
+		source: (usize, usize),
+		target: (usize, usize),
+	) -> (bool, i32) {
 		// instance of corner portals overlapping from cramped world
 		if source == target {
-			return (true, 0)
+			return (true, 0);
 		}
 		let queue = vec![source];
 		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
@@ -94,7 +98,7 @@ impl CostField {
 				// iterate over the neighbours to try and find the target
 				for n in neighbours.iter() {
 					if *n == target {
-						return (true, steps_taken)
+						return (true, steps_taken);
 					}
 					let cell_cost = cost_field.get_grid_value(n.0, n.1);
 					// ignore impassable cells

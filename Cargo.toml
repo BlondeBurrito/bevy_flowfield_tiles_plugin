@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
 repository = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
 keywords = ["navigation", "pathfinding", "bevy"]
-categories = ["game development", "algorithms"]
+categories = ["game-development", "algorithms"]
 exclude = [".github/", "crates/", "assets/"]
 
 [workspace]

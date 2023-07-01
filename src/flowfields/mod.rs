@@ -120,6 +120,29 @@ impl Ordinal {
 		}
 		neighbours
 	}
+	/// Based on a sectors `(column, row)` position find the [Ordinal] directions for its boundaries that can support [portal::portals::Portals]
+	pub fn get_sector_portal_ordinals(
+		sector_id: &(u32, u32),
+		map_x_dimension: u32,
+		map_z_dimension: u32,
+	) -> Vec<Ordinal> {
+		let mut neighbours = Vec::new();
+		let sector_x_column_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
+		let sector_z_row_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
+		if sector_id.1 > 0 {
+			neighbours.push(Ordinal::North); // northern sector coords
+		}
+		if sector_id.0 < sector_x_column_limit {
+			neighbours.push(Ordinal::East); // eastern sector coords
+		}
+		if sector_id.1 < sector_z_row_limit {
+			neighbours.push(Ordinal::South); // southern sector coords
+		}
+		if sector_id.0 > 0 {
+			neighbours.push(Ordinal::West); // western sector coords
+		}
+		neighbours
+	}
 	/// Based on a sectors `(column, row)` position find its neighbours based on map size limits (up to 4) and include the [Ordinal] direction in the result
 	pub fn get_sector_neighbours_with_ordinal(
 		sector_id: &(u32, u32),
@@ -165,9 +188,15 @@ pub struct MapDimensions(u32, u32);
 
 impl MapDimensions {
 	pub fn new(x_length: u32, z_depth: u32) -> Self {
-		//TODO some kind of check to ensure map isn;t too small, must be 3x3 sectors at least
+		//TODO some kind of check to ensure map isn;t too small, must be 3x3? sectors at least
 		let x_sector_count = (x_length / SECTOR_RESOLUTION as u32).checked_sub(1);
 		let z_sector_count = (z_depth / SECTOR_RESOLUTION as u32).checked_sub(1);
+		if x_sector_count.is_none() || z_sector_count.is_none() {
+			panic!(
+				"Map dimensions `({}, {})` cannot support sectors, try larger values",
+				x_length, z_depth
+			);
+		}
 		MapDimensions(x_length, z_depth)
 	}
 	pub fn get_column(&self) -> u32 {
@@ -193,9 +222,19 @@ impl FlowfieldTilesBundle {
 		let mut portals = SectorPortals::new(map_length, map_depth);
 		// update default portals for cost fields
 		for (sector_id, _v) in cost_fields.get() {
-			portals.update_portals(*sector_id, &cost_fields, map_dimensions.get_column(), map_dimensions.get_row());
+			portals.update_portals(
+				*sector_id,
+				&cost_fields,
+				map_dimensions.get_column(),
+				map_dimensions.get_row(),
+			);
 		}
-		let graph = PortalGraph::new(&portals, &cost_fields, map_dimensions.get_column(), map_dimensions.get_row());
+		let graph = PortalGraph::new(
+			&portals,
+			&cost_fields,
+			map_dimensions.get_column(),
+			map_dimensions.get_row(),
+		);
 		FlowfieldTilesBundle {
 			sector_cost_fields: cost_fields,
 			sector_portals: portals,
@@ -271,6 +310,56 @@ mod tests {
 		let map_z_dimension = 550;
 		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
 		let actual = vec![(0, 12), (1, 13), (0, 14)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_northern_oridnals() {
+		let sector_id = (3, 0);
+		let map_x_dimension = 200;
+		let map_z_dimension = 200;
+		let result =
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![Ordinal::East, Ordinal::South, Ordinal::West];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_eastern_oridnals() {
+		let sector_id = (19, 5);
+		let map_x_dimension = 200;
+		let map_z_dimension = 200;
+		let result =
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![Ordinal::North, Ordinal::South, Ordinal::West];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_southern_oridnals() {
+		let sector_id = (4, 19);
+		let map_x_dimension = 200;
+		let map_z_dimension = 200;
+		let result =
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::West];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_western_oridnals() {
+		let sector_id = (0, 5);
+		let map_x_dimension = 200;
+		let map_z_dimension = 200;
+		let result =
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_centre_oridnals() {
+		let sector_id = (4, 5);
+		let map_x_dimension = 200;
+		let map_z_dimension = 200;
+		let result =
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
 		assert_eq!(actual, result);
 	}
 }
