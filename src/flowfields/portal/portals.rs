@@ -538,7 +538,7 @@ impl Portals {
 #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-	use crate::flowfields::{sectors::SectorPortals, cost_field::CostField};
+	use crate::flowfields::{sectors::SectorPortals};
 
 use super::*;
 	#[test]

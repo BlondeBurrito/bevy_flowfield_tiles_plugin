@@ -43,7 +43,7 @@ publish = false
 
 [dev-dependencies]
 criterion = "0.5"
-bevy = { workspace = true, features = ["bevy_asset", "bevy_winit", "bevy_pbr", "bevy_gltf", "bevy_render", "bevy_sprite", "bevy_text", "bevy_ui"] }
+bevy = { workspace = true, features = ["bevy_asset", "bevy_winit", "bevy_pbr", "bevy_gltf", "bevy_render", "bevy_sprite", "bevy_text", "bevy_ui", "png", "x11"] }
 
 [dependencies]
 example_crate = { workspace = true }
@@ -81,4 +81,9 @@ required-features = ["ron"]
 [[example]]
 name = "visualise_integration_fields"
 path = "examples/visualise_integration_fields.rs"
+required-features = ["ron"]
+
+[[example]]
+name = "visualise_flow_field_tiles"
+path = "examples/visualise_flow_field_tiles.rs"
 required-features = ["ron"]

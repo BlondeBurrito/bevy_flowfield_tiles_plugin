@@ -117,7 +117,7 @@ We have a path of `Portals` to get the actor to the desired sector, the `Integra
 
 <img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="260" height="310"/><img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="260" height="310"/><img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="260" height="310"/>
 
-As an example for a `30x30` world and goal at `0` with an actor at `A` an `IntegrationField` set interrogating all sector `Portals` produces a set of fields looking similar to:
+As an example for a `30x30` world and goal at `0` with an actor at `A` an `IntegrationField` set interrogating all sector `Portals` may produce a set of fields looking similar to:
 
 <img src="docs/int_field_prop_big_example.png" alt="ifpbe"/>
 
@@ -125,9 +125,11 @@ In terms of pathfinding the actor will favour flowing "downhill". From the posit
 
 This is the basis of a Flowfield.
 
-Guessing by eye the eventual path should look something like (moving towards light, cheaper, colours of each sector):
+Generating the fields for this path programmatically leads to:
 
-<img src="docs/int_field_prop_big_example_cheapest.png" alt="ifpbe"/>
+<img src="docs/generated_int_fields.png" alt="ifpbe"/>
+
+Notice that we don't bother generating the fields for sectors the actor doesn't need to path thorugh. Also a Portal represents the midpoint of a traversable sector boundary, when generating the field we expand the portal to cover its entire segment - this increases efficiency so that an actor can more directly approach its goal rather than zig-zagging to points.
 
 From the `IntegrationField`s we can now build the final set of fields - `FlowField`s
 
@@ -153,7 +155,7 @@ The assistant flags are defined as:
 * `0b0001_0000` - pathable
 * `0b0010_0000` - has line-of-sight to goal, an actor no longer needs to follow the field, it can move in a straight line to the goal. This avoids calculating field values that aren't actually needed
 * `0b0100_0000` - indicates the goal
-* `0b0000_0000` - 
+* `0b1000_0000` - indicates a portal goal leading to the next sector
 * `0b0000_0000` - 
 * `0b0000_0000` - 
 * `0b0000_0000` - 

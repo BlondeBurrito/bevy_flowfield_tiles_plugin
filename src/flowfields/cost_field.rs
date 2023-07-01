@@ -94,7 +94,7 @@ impl CostField {
 			steps_taken += 1;
 			for cell in queue.iter() {
 				visited.insert(*cell);
-				let neighbours = Ordinal::get_cell_neighbours(*cell);
+				let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
 				// iterate over the neighbours to try and find the target
 				for n in neighbours.iter() {
 					if *n == target {

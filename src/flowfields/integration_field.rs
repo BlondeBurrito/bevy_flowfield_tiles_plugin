@@ -113,7 +113,7 @@ impl IntegrationField {
 			let mut next_neighbours = Vec::new();
 			// iterate over the queue calculating neighbour int costs
 			for (cell, prev_int_cost) in queue.iter() {
-				let neighbours = Ordinal::get_cell_neighbours(*cell);
+				let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
 				// iterate over the neighbours calculating int costs
 				for n in neighbours.iter() {
 					let cell_cost = cost_field.get_grid_value(n.0, n.1);

@@ -77,21 +77,6 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		let (sector_id, portal_id) = map.get_key_value(sector).unwrap();
 		if *sector == target_sector {
 			sector_goals.push((*sector_id, vec![*portal_id]));
-		} else if *sector == source_sector {
-			let neighbour_sector_id = sector_order[i - 1];
-			let g = sector_portals
-				.get()
-				.get(&sector_id)
-				.unwrap()
-				.expand_portal_into_goals(
-					&sector_cost_fields,
-					&sector_id,
-					portal_id,
-					&neighbour_sector_id,
-					map_dimensions.get_column(),
-					map_dimensions.get_row(),
-				);
-			sector_goals.push((*sector_id, g));
 		} else {
 			let neighbour_sector_id = sector_order[i - 1];
 			let g = sector_portals
