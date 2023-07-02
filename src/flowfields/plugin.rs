@@ -3,11 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::{
-	portal::portal_graph::PortalGraph,
-	sectors::{SectorCostFields, SectorPortals},
-	MapDimensions,
-};
+use crate::prelude::*;
 
 pub struct FlowFieldTilesPlugin;
 
@@ -20,7 +16,7 @@ impl Plugin for FlowFieldTilesPlugin {
 			.add_systems(Update, (rebuild_portals, update_portal_graph).chain());
 	}
 }
-/// Used to update a sectors [super::cost_fields::CostFields]
+/// Used to update a sectors [CostField]
 pub struct EventUpdateCostfieldsCell {
 	cell: (usize, usize),
 	sector: (u32, u32),
@@ -45,7 +41,7 @@ impl EventUpdateCostfieldsCell {
 		self.cell_value
 	}
 }
-/// Read [EventUpdateCostfieldsCell] and update the values within [super::cost_fields::CostFields]
+/// Read [EventUpdateCostfieldsCell] and update the values within [CostField]
 pub fn process_costfields_updates(
 	mut events: EventReader<EventUpdateCostfieldsCell>,
 	mut costfields_q: Query<&mut SectorCostFields>,
@@ -65,7 +61,7 @@ pub fn process_costfields_updates(
 		}
 	}
 }
-/// Emitted when a [super::cost_fields::CostFields] has been updated so the [super::portal::portals::Portals] of the sector
+/// Emitted when a [CostField] has been updated so the [Portals] of the sector
 /// and its neighbours can be rebuilt
 pub struct EventRebuildSectorPortals {
 	sector_id: (u32, u32),
@@ -79,8 +75,8 @@ impl EventRebuildSectorPortals {
 		self.sector_id
 	}
 }
-/// Process events indicating that a [super::cost_fields::CostFields] has changed and as such update
-/// the [super::portal::portals::Portals] associated with the sector of the [super::cost_fields::CostFields] and its
+/// Process events indicating that a [CostField] has changed and as such update
+/// the [super::portal::portals::Portals] associated with the sector of the [CostField] and its
 /// neighbours need to be regenerated
 pub fn rebuild_portals(
 	mut event_portal_rebuild: EventReader<EventRebuildSectorPortals>,
@@ -103,8 +99,8 @@ pub fn rebuild_portals(
 	}
 }
 
-/// Emitted when [super::portal::portals::Portals] has been updated so the
-/// [super::portal::portal_graph::PortalGraph] of the sector and its neighbours can be rebuilt
+/// Emitted when [Portals] has been updated so the
+/// [PortalGraph] of the sector and its neighbours can be rebuilt
 pub struct EventUpdatePortalGraph {
 	sector_id: (u32, u32),
 }
@@ -118,7 +114,7 @@ impl EventUpdatePortalGraph {
 	}
 }
 
-/// Process events indicating that a [super::portal::portals::Portals] has been changed and as such update
+/// Process events indicating that a [Portals] has been changed and as such update
 /// the navigation graph
 pub fn update_portal_graph(
 	mut event_graph: EventReader<EventRebuildSectorPortals>,

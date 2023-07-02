@@ -44,15 +44,9 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use crate::flowfields::{
-	sectors::{
-		get_boundary_ordinal_from_grid_cell, get_ordinal_and_ids_of_neighbouring_sectors,
-		SectorCostFields,
-	},
-	Ordinal, FIELD_RESOLUTION,
-};
+use crate::prelude::*;
 
-/// A PortalNode indicates the `(column, row)`position in its local sector that acts as a window
+/// A [PortalNode] indicates the `(column, row)`position in its local sector that acts as a window
 /// into a neighbouring sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -116,10 +110,10 @@ impl Portals {
 			vec.clear();
 		}
 	}
-	/// When a sectors [crate::flowfields::cost_field::CostField] is updated the [PortalNode]s of the sector and
+	/// When a sectors [CostField] is updated the [PortalNode]s of the sector and
 	/// its neighbours may no longer be valid so they should be recalculated.
 	///
-	/// Special care must be taken when a neighbouring [crate::flowfields::cost_field::CostField] has
+	/// Special care must be taken when a neighbouring [CostField] has
 	/// impassable values of `255` along the boundary edge as these will create multiple [Portals]
 	/// within the neighbour. When building [Portals] we inspect the sector neighbours to ensure that
 	/// the [Portals] between neighbours are positioned equally and each sector has the same number of
@@ -155,7 +149,7 @@ impl Portals {
 				map_z_dimension,
 			);
 		// moving in a clockwise fashion around the valid ordinals of the boundary sector movement
-		// we inspect the [crate::flowfields::cost_field::CostField] values to calculate the portals along each valid sector side
+		// we inspect the [CostField] values to calculate the portals along each valid sector side
 		let cost_field = sector_cost_fields
 			.get()
 			.get(&sector_id)
@@ -538,7 +532,7 @@ impl Portals {
 #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-	use crate::flowfields::{sectors::SectorPortals};
+	use crate::flowfields::sectors::SectorPortals;
 
 use super::*;
 	#[test]

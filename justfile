@@ -57,7 +57,7 @@ doc-coverage:
   cargo +nightly doc --workspace --all-features --no-deps --release
   # https://github.com/rust-lang/rust/issues/58154
 code-coverage:
-  cargo tarpaulin --release --workspace --all-features --include-tests
+  cargo tarpaulin --release --workspace --all-features --include-tests --engine=llvm
 # install the crate from the local source rather than remote
 install:
   cargo install --path .

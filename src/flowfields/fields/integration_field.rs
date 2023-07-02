@@ -49,7 +49,7 @@
 //! So this encourages the pathing algorithm around obstacles and expensive regions.
 //!
 
-use super::{cost_field::CostField, *};
+use crate::prelude::*;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct IntegrationField([[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
@@ -69,15 +69,18 @@ impl IntegrationField {
 		}
 		field
 	}
+	/// Get a reference to the field array
 	pub fn get_field(&self) -> &[[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
+	/// Retrieve a grid cell value
 	pub fn get_grid_value(&self, column: usize, row: usize) -> u16 {
 		if column >= self.0.len() || row >= self.0[0].len() {
 			panic!("Cannot get a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
 		}
 		self.0[column][row]
 	}
+	/// Set a grid cell to a value
 	pub fn set_grid_value(&mut self, value: u16, column: usize, row: usize) {
 		if column >= self.0.len() || row >= self.0[0].len() {
 			panic!("Cannot set a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())

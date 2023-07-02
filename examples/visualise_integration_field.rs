@@ -2,9 +2,7 @@
 //!
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::flowfields::{
-	cost_field::CostField, integration_field::IntegrationField,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
 	App::new()

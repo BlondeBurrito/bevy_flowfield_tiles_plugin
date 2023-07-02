@@ -6,12 +6,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::flowfields::{
-	integration_field::IntegrationField,
-	portal::portal_graph::PortalGraph,
-	sectors::{SectorCostFields, SectorPortals},
-	MapDimensions,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
 	App::new()

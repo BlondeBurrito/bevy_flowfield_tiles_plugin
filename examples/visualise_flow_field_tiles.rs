@@ -6,12 +6,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::flowfields::{
-	integration_field::IntegrationField,
-	portal::portal_graph::PortalGraph,
-	sectors::{SectorCostFields, SectorPortals},
-	MapDimensions, flow_field::{FlowField, get_ordinal_from_bits}, Ordinal,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
 	App::new()
@@ -110,7 +105,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			flow_field.calculate(goals, None, int_field);
 			sector_flow_fields.insert(*sector_id, flow_field);
 		} else {
-			let dir_prev_sector = Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id);
+			let dir_prev_sector =
+				Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id);
 			let prev_int_field = &sector_int_fields[i - 1].2;
 			flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
 			sector_flow_fields.insert(*sector_id, flow_field);
@@ -182,19 +178,24 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 									.with_children(|p| {
 										// create each row value of the column
 										for value in array.iter() {
-											p.spawn((NodeBundle {
-												style: Style {
-													size: Size::new(
-														Val::Percent(100.0),
-														Val::Percent(10.0),
-													),
-													justify_content: JustifyContent::Center,
-													align_items: AlignItems::Center,
+											p.spawn((
+												NodeBundle {
+													style: Style {
+														size: Size::new(
+															Val::Percent(100.0),
+															Val::Percent(10.0),
+														),
+														justify_content: JustifyContent::Center,
+														align_items: AlignItems::Center,
+														..Default::default()
+													},
+													background_color: BackgroundColor(Color::WHITE),
 													..Default::default()
 												},
-												background_color: BackgroundColor(Color::WHITE),
-												..Default::default()
-											}, UiImage::new(asset_server.load(get_ord_icon(*value))),));
+												UiImage::new(
+													asset_server.load(get_ord_icon(*value)),
+												),
+											));
 										}
 									});
 								}
@@ -247,7 +248,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 fn get_ord_icon(value: u8) -> String {
 	// temp
 	if value == 64 {
-		return String::from("ordinal_icons/goal.png")
+		return String::from("ordinal_icons/goal.png");
 	}
 	//
 	let ordinal = get_ordinal_from_bits(value);
