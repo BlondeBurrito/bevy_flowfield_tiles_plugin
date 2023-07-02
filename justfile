@@ -54,8 +54,10 @@ changelog TAG:
 # evaluate documentation coverage
 doc-coverage:
   $env:RUSTDOCFLAGS="-Z unstable-options --show-coverage"
-  cargo +nightly doc --workspace --all-features --no-deps
+  cargo +nightly doc --workspace --all-features --no-deps --release
   # https://github.com/rust-lang/rust/issues/58154
+code-coverage:
+  cargo tarpaulin --release --workspace --all-features --include-tests
 # install the crate from the local source rather than remote
 install:
   cargo install --path .
@@ -63,6 +65,7 @@ install:
 dev-tools:
   cargo install loc;
   cargo install git-cliff;
+  cargo install blondie;
   cargo install flamegraph;
   cargo install cargo-bloat;
   cargo install cargo-deadlinks;
@@ -74,6 +77,7 @@ dev-tools:
   cargo install rust-script;
   rust-script --install-file-association;
   cargo install --locked cargo-deny
+  cargo install cargo-tarpaulin
 # Generate a diagram from a puml ile under ./docs
 diagram NAME:
   java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" docs/{{NAME}}.puml
