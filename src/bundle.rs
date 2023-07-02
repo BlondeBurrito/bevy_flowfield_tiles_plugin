@@ -36,6 +36,7 @@ pub struct FlowfieldTilesBundle {
 	sector_portals: SectorPortals,
 	portal_graph: PortalGraph,
 	map_dimensions: MapDimensions,
+	flow_field_cache: FlowFieldCache,
 }
 
 impl FlowfieldTilesBundle {
@@ -58,11 +59,13 @@ impl FlowfieldTilesBundle {
 			map_dimensions.get_column(),
 			map_dimensions.get_row(),
 		);
+		let cache = FlowFieldCache::default();
 		FlowfieldTilesBundle {
 			sector_cost_fields: cost_fields,
 			sector_portals: portals,
 			portal_graph: graph,
 			map_dimensions,
+			flow_field_cache: cache,
 		}
 	}
 }

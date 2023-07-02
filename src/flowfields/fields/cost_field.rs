@@ -54,25 +54,27 @@ impl Default for CostField {
 	}
 }
 
-impl CostField {
+impl Field<u8> for CostField {
 	/// Get a reference to the field array
-	pub fn get_field(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
+	fn get_field(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
 	/// Retrieve a grid cell value
-	pub fn get_grid_value(&self, column: usize, row: usize) -> u8 {
+	fn get_grid_value(&self, column: usize, row: usize) -> u8 {
 		if column >= self.0.len() || row >= self.0[0].len() {
 			panic!("Cannot get a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
 		}
 		self.0[column][row]
 	}
 	/// Set a grid cell to a value
-	pub fn set_grid_value(&mut self, value: u8, column: usize, row: usize) {
+	fn set_grid_value(&mut self, value: u8, column: usize, row: usize) {
 		if column >= self.0.len() || row >= self.0[0].len() {
 			panic!("Cannot set a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
 		}
 		self.0[column][row] = value;
 	}
+}
+impl CostField {
 	/// Tests whether two portals can see each other within a sector (one might be boxed in by impassable cost field values), additionally returns the number of steps taken to find a route between the two - this can be used as an edge weight
 	pub fn can_internal_portal_pair_see_each_other(
 		&self,

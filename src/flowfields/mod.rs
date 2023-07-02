@@ -44,9 +44,7 @@
 //! need to spend time calculating any cells, the actor can just move straight towards it)
 //!
 
-pub mod bundle;
 pub mod fields;
-pub mod plugin;
 pub mod portal;
 pub mod sectors;
 pub mod utilities;

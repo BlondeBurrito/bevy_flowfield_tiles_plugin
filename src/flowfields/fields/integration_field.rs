@@ -60,6 +60,26 @@ impl Default for IntegrationField {
 	}
 }
 
+impl Field<u16> for IntegrationField {
+	/// Get a reference to the field array
+	fn get_field(&self) -> &[[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
+		&self.0
+	}
+	/// Retrieve a grid cell value
+	fn get_grid_value(&self, column: usize, row: usize) -> u16 {
+		if column >= self.0.len() || row >= self.0[0].len() {
+			panic!("Cannot get a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+		}
+		self.0[column][row]
+	}
+	/// Set a grid cell to a value
+	fn set_grid_value(&mut self, value: u16, column: usize, row: usize) {
+		if column >= self.0.len() || row >= self.0[0].len() {
+			panic!("Cannot set a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+		}
+		self.0[column][row] = value;
+	}
+}
 impl IntegrationField {
 	/// Creates a new [IntegrationField] where all cells are set to `u16::MAX` apart from the `goals` which is set to `0`
 	pub fn new(goals: &Vec<(usize, usize)>) -> Self {
@@ -68,24 +88,6 @@ impl IntegrationField {
 			field.set_grid_value(0, goal.0, goal.1);
 		}
 		field
-	}
-	/// Get a reference to the field array
-	pub fn get_field(&self) -> &[[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
-		&self.0
-	}
-	/// Retrieve a grid cell value
-	pub fn get_grid_value(&self, column: usize, row: usize) -> u16 {
-		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot get a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
-		}
-		self.0[column][row]
-	}
-	/// Set a grid cell to a value
-	pub fn set_grid_value(&mut self, value: u16, column: usize, row: usize) {
-		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot set a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
-		}
-		self.0[column][row] = value;
 	}
 	/// Reset all the cells of the [IntegrationField] to `u16::MAX` apart from the `goals` which are the starting points of calculating the field which is set to `0`
 	pub fn reset(&mut self, goals: &Vec<(usize, usize)>) {

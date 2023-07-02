@@ -3,12 +3,16 @@
 
 #[doc(hidden)]
 pub use crate::flowfields::{
-	bundle::*,
 	fields::{cost_field::*, flow_field::*, integration_field::*, *},
-	plugin::*,
 	portal::portal_graph::*,
 	portal::portals::*,
 	sectors::*,
 	utilities::*,
 	*,
+};
+
+#[doc(hidden)]
+pub use crate::{
+	bundle::*,
+	plugin::*
 };
