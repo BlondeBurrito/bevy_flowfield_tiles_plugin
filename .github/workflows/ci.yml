@@ -12,7 +12,7 @@ env:
     
 jobs:
   nix_test:
-    name: test
+    name: nix_test
     runs-on: ubuntu-latest
     steps:
       - name: Nix dependencies
@@ -21,7 +21,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --release --workspace
   nix_build:
-    name: build
+    name: nix_build
     runs-on: ubuntu-latest
     steps:
       - name: Nix dependencies
@@ -30,14 +30,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release --workspace
   win_test:
-    name: test
+    name: win_test
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --release --workspace
   win_build:
-    name: build
+    name: win_build
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -45,7 +45,7 @@ jobs:
       - run: cargo build --release --workspace
   # uses so many build action minutes :(
   # macos_test:
-  #   name: test
+  #   name: macos_test
   #   runs-on: macos-latest
   #   steps:
   #     - name: deps
@@ -54,7 +54,7 @@ jobs:
   #     - uses: dtolnay/rust-toolchain@stable
   #     - run: cargo build --release --workspace
   # macos_build:
-  #   name: build
+  #   name: macos_build
   #   runs-on: macos-latest
   #   steps:
   #     - name: deps

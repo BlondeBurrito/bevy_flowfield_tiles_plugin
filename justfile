@@ -18,7 +18,7 @@ default:
   just --list
 # lint the code aggressively
 clippy:
-  cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::cargo_common_metadata -D clippy::missing_docs_in_private_items -W clippy::todo -W clippy::unimplemented
+  cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::cargo_common_metadata -D clippy::missing_docs_in_private_items -D clippy::todo -W clippy::unimplemented
 # run a chosen example
 example NAME:
   cargo run --release --example {{NAME}} --all-features
