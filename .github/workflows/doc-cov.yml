@@ -11,7 +11,7 @@ env:
   CARGO_TERM_COLOR: always
     
 jobs:
-  clippy:
+  doc_cov:
     name: doc_cov
     runs-on: ubuntu-latest
     steps:

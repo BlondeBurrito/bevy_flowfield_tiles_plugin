@@ -1,4 +1,4 @@
-name: Doc-cov
+name: Code-cov
 
 on:
   push:
@@ -11,8 +11,8 @@ env:
   CARGO_TERM_COLOR: always
     
 jobs:
-  clippy:
-    name: doc_cov
+  code_cov:
+    name: code_cov
     runs-on: ubuntu-latest
     steps:
       - name: Nix dependencies
@@ -20,4 +20,5 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
       - run: |
+          cargo install cargo-tarpaulin
           cargo tarpaulin --release --workspace --all-features --include-tests
