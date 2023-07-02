@@ -21,5 +21,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - run: |
           export RUSTDOCFLAGS="-Z unstable-options --show-coverage"
-          percent=${cargo +nightly doc --workspace --all-features --no-deps --release | grep [0-9]*\.[0-9]+%\scoverage | grep [0-9]*\.[0-9]+)
+          percent=$(cargo +nightly doc --workspace --all-features --no-deps --release | grep [0-9]*\.[0-9]+%\scoverage | grep [0-9]*\.[0-9]+)
           echo "$percent < 99.0" | bc -l
