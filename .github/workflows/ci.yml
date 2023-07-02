@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    
+env:
+  CARGO_TERM_COLOR: always
+    
+jobs:
+  nix_test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nix dependencies
+        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --release --workspace
+  nix_build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nix dependencies
+        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --workspace
+  win_test:
+    name: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --release --workspace
+  win_build:
+    name: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --workspace
+  # uses so many build action minutes :(
+  # macos_test:
+  #   name: test
+  #   runs-on: macos-latest
+  #   steps:
+  #     - name: deps
+  #       run: brew install michaeleisel/zld/zld
+  #     - uses: actions/checkout@v3
+  #     - uses: dtolnay/rust-toolchain@stable
+  #     - run: cargo build --release --workspace
+  # macos_build:
+  #   name: build
+  #   runs-on: macos-latest
+  #   steps:
+  #     - name: deps
+  #       run: brew install michaeleisel/zld/zld
+  #     - uses: actions/checkout@v3
+  #     - uses: dtolnay/rust-toolchain@stable
+  #     - run: cargo build --release --workspace
