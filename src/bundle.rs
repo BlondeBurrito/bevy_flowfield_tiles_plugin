@@ -36,10 +36,12 @@ pub struct FlowfieldTilesBundle {
 	sector_portals: SectorPortals,
 	portal_graph: PortalGraph,
 	map_dimensions: MapDimensions,
+	route_cache: RouteCache,
 	flow_field_cache: FlowFieldCache,
 }
 
 impl FlowfieldTilesBundle {
+	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
 	pub fn new(map_length: u32, map_depth: u32) -> Self {
 		let map_dimensions = MapDimensions::new(map_length, map_depth);
 		let cost_fields = SectorCostFields::new(map_length, map_depth);
@@ -59,12 +61,46 @@ impl FlowfieldTilesBundle {
 			map_dimensions.get_column(),
 			map_dimensions.get_row(),
 		);
+		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowfieldTilesBundle {
 			sector_cost_fields: cost_fields,
 			sector_portals: portals,
 			portal_graph: graph,
 			map_dimensions,
+			route_cache,
+			flow_field_cache: cache,
+		}
+	}
+	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from disk
+	#[cfg(feature = "ron")]
+	pub fn new_from_disk(map_length: u32, map_depth: u32, path: &str) -> Self {
+		let map_dimensions = MapDimensions::new(map_length, map_depth);
+		let cost_fields = SectorCostFields::from_file(path.to_string());
+		let mut portals = SectorPortals::new(map_length, map_depth);
+		// update default portals for cost fields
+		for (sector_id, _v) in cost_fields.get() {
+			portals.update_portals(
+				*sector_id,
+				&cost_fields,
+				map_dimensions.get_column(),
+				map_dimensions.get_row(),
+			);
+		}
+		let graph = PortalGraph::new(
+			&portals,
+			&cost_fields,
+			map_dimensions.get_column(),
+			map_dimensions.get_row(),
+		);
+		let route_cache = RouteCache::default();
+		let cache = FlowFieldCache::default();
+		FlowfieldTilesBundle {
+			sector_cost_fields: cost_fields,
+			sector_portals: portals,
+			portal_graph: graph,
+			map_dimensions,
+			route_cache,
 			flow_field_cache: cache,
 		}
 	}

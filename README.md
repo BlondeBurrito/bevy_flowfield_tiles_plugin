@@ -182,13 +182,38 @@ The thinner porition of each cell icon indicates the flow direction. The actor r
 
 To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) all `FlowFields` get placed into a `FlowFieldCache` with an identification system.
 
+The cache is made from two sister caches:
+
+1. Route Cache - when an actor requests to go somewhere a high-level route is generated from describing the overall series of sector-portals to traverse (`PortalGraph` A*). If a `FlowField` hasn't yet been calculated then an actor can use the `route_cache` as a fallback to gain a generalist direction they should start moving in. Once the `FlowFields` have been built they can swap over to using those more granular paths. Additionally changes to `CostFields` can change portal positions and the real best path, `FlowFields` are regenerated for the relevant sectors that `CostFields` have modified so during the regeneration steps an actor can once again use the high-level route as the fallback
+1. Field Cache
+
 # Usage
 
+```toml
+[dependencies]
+bevy_flowfield_tiles_plugin = "0.1"
+```
+
 ## Default
+
+```rust
+use bevy_flowfield_tiles_plugin::prelude::*;
+
+fn main() {
+	App::new()
+		// ... snip
+		.add_plugins(FlowFieldTilesPlugin)
+		// ... snip
+}
+```
 
 ## Custom System Setup and Constraints
 
 ## Initialising Data
+
+```rust
+	cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth));
+```
 
 ## Path Request
 
@@ -203,13 +228,15 @@ To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) all
 
 The [just](https://github.com/casey/just) command line runner is very useful for running a series of build steps/commands locally.
 
-In particular I like to use it to run a debug build (so the compiler can tell me about overflow errors and things), run all tests, generate documentation, compile the binary and finally run it - all from typing `just r` in a terminal.
+In particular I like to use it to run a debug build (so the compiler can tell me about overflow errors and things), run all tests, generate documentation and compile the release library - all from typing `just b` in a terminal.
 
 ## Diagrams
 
-Under `./docs` are a series of puml (plantUML) diagrams.
+All diagrams should be generated from code or from screengrabs of `examples`
 
-To generate a diagram setup puml use `just` with `just diagram [diagram_name]`, or to generate all of them `just diagrams`.
+When using code based diagrams puml (plantUML) is the preferred tool.
+
+To generate a diagram setup puml and use `just` with `just diagram [diagram_name]` to create the `.png`, or to generate all of them `just diagrams`.
 
 ## rustfmt.toml
 
@@ -227,13 +254,13 @@ Currently commented out, as I use clippy more I suspect to customise what it doe
 
 ```sh
 cargo install blondie
-# set env:DTRACE to blondie_trace.exe
+# set env:DTRACE to location and exe blondie_trace.exe
 cargo install flmaegraph
 # build the app
 cargo build --profile=flamegraph
 cargo build
 cargo build --release
-# then use admin terminal!!!
+# then must use admin terminal!!!
 $env:BEVY_ASSET_ROOT="C:\source\rust\bevy_flowfield_tiles_plugin"
 cargo flamegraph --package=bevy_flowfield_tiles_plugin --profile=flamegraph # release mode without stripping
 cargo flamegraph --package=bevy_flowfield_tiles_plugin --dev # dev mode

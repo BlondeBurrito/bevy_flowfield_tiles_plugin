@@ -12,7 +12,4 @@ pub use crate::flowfields::{
 };
 
 #[doc(hidden)]
-pub use crate::{
-	bundle::*,
-	plugin::*
-};
+pub use crate::{bundle::*, plugin::*};

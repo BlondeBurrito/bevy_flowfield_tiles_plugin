@@ -1,8 +1,8 @@
 //!
-//! 
+//!
 
-use bevy::prelude::*;
 use crate::prelude::*;
+use bevy::prelude::*;
 
 /// Used to update a sectors [CostField]
 pub struct EventUpdateCostfieldsCell {

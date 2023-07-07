@@ -87,3 +87,8 @@ required-features = ["ron"]
 name = "visualise_flow_field_tiles"
 path = "examples/visualise_flow_field_tiles.rs"
 required-features = ["ron"]
+
+[[example]]
+name = "flow_field_right_click"
+path = "examples/flow_field_right_click.rs"
+required-features = ["ron"]

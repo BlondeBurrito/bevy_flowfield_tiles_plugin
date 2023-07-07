@@ -258,6 +258,94 @@ pub fn get_boundary_ordinal_from_grid_cell(cell_id: &(usize, usize)) -> Vec<Ordi
 		panic!("Grid cell {:?} does not sit along the boundary", cell_id);
 	}
 }
+/// From a position in 2D `x, y` space with an origin at `(0, 0)` and the
+/// dimensions (pixels) of the map, calculate the sector ID that point resides in
+///
+/// `pixel_scale` refers to the dimensions of your map sprites, not that their `x` and `y` dimensions must be the same, i.e a square shape
+pub fn get_sector_id_from_xy(
+	position: Vec2,
+	map_x_dimension: u32,
+	map_y_dimension: u32,
+	pixel_scale: f32,
+) -> Option<(u32, u32)> {
+	if position.x < -((map_x_dimension / 2) as f32)
+		|| position.x > (map_x_dimension / 2) as f32
+		|| position.y < -((map_y_dimension / 2) as f32)
+		|| position.y > (map_y_dimension / 2) as f32
+	{
+		error!("OOB pos, x {}, y {}", position.x, position.y);
+		return None;
+	}
+	let x_sector_count = map_x_dimension / SECTOR_RESOLUTION as u32;
+	let y_sector_count = map_y_dimension / SECTOR_RESOLUTION as u32;
+	// The 2D world is centred at origin (0, 0). The sector grid has an origin in the top
+	// left at 2D world coords of (-map_x * pixel_scale / 2, 0, map_y * pixel_scale / 2).
+	// To translate the 2D world
+	// coords into a new coordinate system with a (0, 0) origin in the top left we add
+	// half the map dimension to each psition coordinatem
+	let x_origin = position.x + (map_x_dimension / 2) as f32;
+	let y_origin = position.y - (map_y_dimension / 2) as f32;
+	// the grid IDs follow a (column, row) convention, by dividing the repositioned dimension
+	// by the sector grid sizes and rounding down we determine the sector indices
+	let mut column = (x_origin / (pixel_scale * SECTOR_RESOLUTION as f32)).floor() as u32;
+	let mut row = (y_origin / (pixel_scale * SECTOR_RESOLUTION as f32)).floor() as u32;
+	// safety for x-y being at the exact limits of map size
+	if column >= x_sector_count {
+		column = x_sector_count - 1;
+	}
+	if row >= y_sector_count {
+		row = y_sector_count - 1;
+	}
+	Some((column, row))
+}
+/// Get the `(x,y)` coordinates of the top left corner of a sector in real space
+pub fn get_sector_xy_at_top_left(
+	sector_id: (u32, u32),
+	map_x_dimension: u32,
+	map_y_dimension: u32,
+	pixel_scale: f32,
+) -> Vec2 {
+	// x sector-grid origin begins in the negative
+	let x_origin = -(map_x_dimension as f32) / 2.0;
+	let sprite_length_of_sector = pixel_scale * SECTOR_RESOLUTION as f32;
+	let x = x_origin + sector_id.0 as f32 * sprite_length_of_sector;
+	// y sector grid origin begins in the positive
+	let y_origin = map_y_dimension as f32 / 2.0;
+	let y = y_origin - sector_id.1 as f32 * sprite_length_of_sector;
+	Vec2::new(x, y)
+}
+
+// pub fn get_field_cell_from_xy(
+// 	position: Vec2,
+// 	map_x_dimension: u32,
+// 	map_y_dimension: u32,
+// 	pixel_scale: f32,
+// 	sector_id: (u32, u32),
+// ) {
+// 	let sector_id = get_sector_id_from_xy(position, map_x_dimension, map_y_dimension, pixel_scale);
+// 	let sector_corner_origin =
+// 		get_sector_xy_at_top_left(position, map_x_dimension, map_y_dimension, pixel_scale);
+// }
+
+pub fn get_sector_and_field_id_from_xy(
+	position: Vec2,
+	map_x_dimension: u32,
+	map_y_dimension: u32,
+	pixel_scale: f32,
+) -> Option<((u32, u32), (usize, usize))> {
+	if let Some(sector_id) =
+		get_sector_id_from_xy(position, map_x_dimension, map_y_dimension, pixel_scale)
+	{
+		let sector_corner_origin =
+			get_sector_xy_at_top_left(sector_id, map_x_dimension, map_y_dimension, pixel_scale);
+		let field_id_0 = ((position.x - sector_corner_origin.x) / pixel_scale).floor() as usize;
+		let field_id_1 =
+			((-position.y + sector_corner_origin.y) / pixel_scale as f32).floor() as usize;
+		let field_id = (field_id_0, field_id_1);
+		return Some((sector_id, field_id));
+	}
+	None
+}
 
 /// From a position in `x, y, z` space and the dimensions of the map calcualte
 /// the sector ID that point resides in
@@ -266,6 +354,7 @@ pub fn get_sector_id_from_xyz(
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> (u32, u32) {
+	//TODO test whether position is outside map dimensions
 	let x_sector_count = map_x_dimension / SECTOR_RESOLUTION as u32;
 	let z_sector_count = map_z_dimension / SECTOR_RESOLUTION as u32;
 	// The 3D world is centred at origin (0, 0, 0). The sector grid has an origin in the top
@@ -307,6 +396,7 @@ pub fn get_field_cell_from_xyz(
 	}
 	(column, row)
 }
+//TODO doesn;t work
 /// From a point in 3D space calcualte what Sector and field cell it resides in
 pub fn get_sector_and_field_cell_from_xyz(
 	position: Vec3,
@@ -661,5 +751,23 @@ mod tests {
 		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 		let _cost_fields = SectorCostFields::from_file(path);
 		assert!(true)
+	}
+	#[test]
+	fn sector_from_xy_none() {
+		let dimensions = (1280, 1280);
+		let pixel_scale = 64.0;
+		let position = Vec2::new(-1500.0, 0.0);
+		let result = get_sector_id_from_xy(position, dimensions.0, dimensions.1, pixel_scale);
+
+		assert!(result.is_none());
+	}
+	#[test]
+	fn sector_from_xy() {
+		let dimensions = (1280, 1280);
+		let pixel_scale = 64.0;
+		let position = Vec2::new(530.0, 75.0);
+		let result = get_sector_id_from_xy(position, dimensions.0, dimensions.1, pixel_scale);
+		let actual = (1, 0);
+		assert_eq!(actual, result.unwrap());
 	}
 }
