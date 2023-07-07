@@ -1,4 +1,4 @@
-//! Generates a single [FlowField] visualisation which uses right-mouse input to set a goal position, causing the visualisation to update to graphically show the flow field lines
+//! Generates a single [FlowField] visualisation which uses right-mouse input to set a goal position, causing the visualisation to update to graphically show the flow field lines from a !static! actors position
 //!
 
 use bevy::{prelude::*, window::PrimaryWindow};
@@ -9,7 +9,14 @@ fn main() {
 		.add_plugins(DefaultPlugins)
 		.add_plugin(FlowFieldTilesPlugin)
 		.add_systems(Startup, (setup,))
-		.add_systems(Update, (user_input,))
+		.add_systems(
+			Update,
+			(
+				user_input,
+				actor_update_route,
+				update_sprite_visuals_based_on_actor,
+			),
+		)
 		.run();
 }
 /// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
@@ -18,6 +25,15 @@ struct GridLabel(usize, usize);
 /// Labels the actor to enable getting its [Transform] easily
 #[derive(Component)]
 struct Actor;
+/// Attached to the actor as a record of where it is and where it wants to go, used to lookup the correct FlowField
+#[derive(Default, Component)]
+struct Pathing {
+	source_sector: Option<(u32, u32)>,
+	source_grid_cell: Option<(usize, usize)>,
+	target_sector: Option<(u32, u32)>,
+	target_goal: Option<(usize, usize)>,
+	portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
+}
 
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// create the entity handling the algorithm
@@ -48,18 +64,21 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		}
 	}
 	// create the controllable actor
-	cmds.spawn(SpriteBundle{
+	cmds.spawn(SpriteBundle {
 		texture: asset_server.load("2d_actor_sprite.png"),
 		transform: Transform::from_xyz(0.0, 0.0, 1.0),
 		..default()
-	}).insert(Actor);
+	})
+	.insert(Actor)
+	.insert(Pathing::default());
 }
 
 fn user_input(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
-	actor_q: Query<&Transform, With<Actor>>
+	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
+	mut event: EventWriter<EventPathRequest>,
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 2d world positionn of cursor
@@ -78,14 +97,63 @@ fn user_input(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
-				let tform = actor_q.get_single().unwrap();
-				let (source_sector_id, source_grid_cell) = get_sector_and_field_id_from_xy(tform.translation.truncate(), 640, 640, 64.0).unwrap();
+				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
+				let (source_sector_id, source_grid_cell) =
+					get_sector_and_field_id_from_xy(tform.translation.truncate(), 640, 640, 64.0)
+						.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
 					source_sector_id, source_grid_cell
 				);
+				event.send(EventPathRequest::new(
+					source_sector_id,
+					source_grid_cell,
+					target_sector_id,
+					goal_id,
+				));
+				// update the actor pathing
+				pathing.source_sector = Some(source_sector_id);
+				pathing.source_grid_cell = Some(source_grid_cell);
+				pathing.target_sector = Some(target_sector_id);
+				pathing.target_goal = Some(goal_id);
 			} else {
 				error!("Cursor out of bounds");
+			}
+		}
+	}
+}
+/// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
+fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
+	let mut pathing = actor_q.get_single_mut().unwrap();
+	if let Some(_) = pathing.target_goal {
+		let route_cache = route_q.get_single().unwrap();
+		if let Some(route) = route_cache.get_route(
+			pathing.source_sector.unwrap(),
+			pathing.target_sector.unwrap(),
+			pathing.target_goal.unwrap(),
+		) {
+			pathing.portal_route = Some(route.clone());
+		}
+	}
+}
+
+/// Whenever the actor has a path assigned attempt to get the current flowfield and update all the map sprites to visualise the directions of flow
+fn update_sprite_visuals_based_on_actor(
+	actor_q: Query<&Pathing, With<Actor>>,
+	flowfield_q: Query<&FlowFieldCache>,
+	mut grid_q: Query<(&mut Handle<Image>, &GridLabel)>,
+	asset_server: Res<AssetServer>,
+) {
+	let pathing = actor_q.get_single().unwrap();
+	let cache = flowfield_q.get_single().unwrap();
+	if let Some(route) = &pathing.portal_route {
+		let op_flowfield = cache.get_field(route[0].0, route[0].1);
+		if let Some(flowfield) = op_flowfield {
+			for (mut handle, grid_label) in grid_q.iter_mut() {
+				let flow_value = flowfield.get_grid_value(grid_label.0, grid_label.1);
+				let icon = get_ord_icon(flow_value);
+				let new_handle: Handle<Image> = asset_server.load(icon);
+				*handle = new_handle;
 			}
 		}
 	}

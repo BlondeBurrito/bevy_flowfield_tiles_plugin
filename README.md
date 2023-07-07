@@ -48,9 +48,15 @@ For larger and larger environemnts with an increasing number of pathing actors i
 
 # Design/Process
 
-To generate a set of navigation `FlowFields` the game world is divided into Sectors indexed by `(column, row)` and each Sector has 3 layers of data: `[CostField, IntegrationField, Flowfield]`. Each layer aids the next in building out a path.
+<details>
+<summary>Click to expand!</summary>
+
+To generate a set of navigation `FlowFields` the game world is divided into Sectors indexed by `(column, row)` and each Sector has 3 layers of data: `[CostField, IntegrationField, Flowfield]`. Each layer aids the next in building out a path. A concept of `Portals` is used to connect Sectors together.
 
 ## Sector
+
+<details>
+<summary>Click to expand!</summary>
 
 For a 3-dimensional world the `x-z` plane defines the number of Sectors used to represent it with a constant called `SECTOR_RESOLUTION`, currently enforced at `10`. This means that a for a `30x30` world there would be `3x3` Sectors representing it. Each Sector has an associated unqiue ID taken as its position: `(column, row)`.
 
@@ -58,7 +64,12 @@ For a 3-dimensional world the `x-z` plane defines the number of Sectors used to 
 
 Likewise for a `300x550` world you'll be looking at `30` columns and `55` rows. The advantage of dividing a world into Sectors (as opposed to treating the whole world as a giant `Flowfield`) is that the work in generating a path can be split into multiple operations and only touch certain sectors. Say for the `300x550` world you do treat it as a single set of fields - when calculating a path you could potentially have to calculate the Flowfield values for `165,000` grid cells. Splitting it into sectors may mean that your path only takes you through 20 sectors, thereby only requiring `2,000` `Flowfield` grid cells to be calculated.
 
+</details>
+
 ## CostField
+
+<details>
+<summary>Click to expand!</summary>
 
 A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the grid. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the grid cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
 
@@ -68,7 +79,12 @@ At runtime the `CostField` is generated for each Sector with the default value -
 
 This array is used to generate the `IntegrationField` when requesting a navigatable path.
 
+</details>
+
 ## Portals
+
+<details>
+<summary>Click to expand!</summary>
 
 Each Sector has up to 4 boundaries with neighbouring Sectors (2 or 3 when the sector is in a corner or along the edge of the game world). Each boundary can contain Portals which indicate a navigatable point from the current Sector to a neighbour. Portals serve a dual purpose, one of which is to provide responsiveness - `FlowFields` may take time to generate so when an actor needs to move a quick A* pathing query can produce an inital path route based on moving from one Portal to another and they can start moving in the general direction to the goal/target/endpoint. Once the `FlowFields` have been built the actor can switch to using them for granular navigation instead.
 
@@ -92,7 +108,12 @@ For finding a path from one Sector to another at a Portal level all Sector Porta
 
 This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostField` is changed this triggers the regeneration of the sector Portals for the region that `CostField` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `nodes` and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D arrays but the graph is effectively 1D - it's a big long list of `nodes`. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `nodes` (like an A* result) you can find the location of each Portal in the grids.
 
+</details>
+
 ## IntegrationField
+
+<details>
+<summary>Click to expand!</summary>
 
 An `IntegrationField` is an `MxN` 2D array of 16-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target. It's an ephemeral field, as in it gets built for a required sector and then consumed by the `FlowField` calculation.
 
@@ -146,7 +167,12 @@ Notice that we don't bother generating the fields for sectors the actor doesn't 
 
 From the `IntegrationFields` we can now build the final set of fields - `FlowFields`
 
+</details>
+
 ## FlowField
+
+<details>
+<summary>Click to expand!</summary>
 
 A `FlowField` is an `MxN` 2D array of 8-bit values built from a Sectors `IntegrationField`. The first 4 bits of the value correspond to one of eight ordinal movement directions an actor can take (plus a zero vector when impassable) and the second 4 bits correspond to flags which should be used by a character controller/steering pipeline to follow a path.
 
@@ -178,7 +204,12 @@ Using the `IntegrationFields` generated before, with an actor in the top right t
 
 The thinner porition of each cell icon indicates the flow direction. The actor runs along the flow lines leading to the goal.
 
-## FlowField Cache
+</details>
+
+## Route & FlowField Cache
+
+<details>
+<summary>Click to expand!</summary>
 
 To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) all `FlowFields` get placed into a `FlowFieldCache` with an identification system.
 
@@ -186,6 +217,11 @@ The cache is made from two sister caches:
 
 1. Route Cache - when an actor requests to go somewhere a high-level route is generated from describing the overall series of sector-portals to traverse (`PortalGraph` A*). If a `FlowField` hasn't yet been calculated then an actor can use the `route_cache` as a fallback to gain a generalist direction they should start moving in. Once the `FlowFields` have been built they can swap over to using those more granular paths. Additionally changes to `CostFields` can change portal positions and the real best path, `FlowFields` are regenerated for the relevant sectors that `CostFields` have modified so during the regeneration steps an actor can once again use the high-level route as the fallback
 1. Field Cache
+
+</details>
+
+</details>
+</br>
 
 # Usage
 
@@ -217,12 +253,17 @@ fn main() {
 
 ## Path Request
 
+## Actor Sizes
+
 # Features
 
 * `serde` - enables serlialisation on some data types
 * `ron` - enables reading `CostField` from files. NB: fixed-size arrays in `.ron` are written as tuples
 
 # Local Info/Tools
+
+<details>
+<summary>Click to expand!</summary>
 
 ## justfile
 
@@ -265,6 +306,8 @@ $env:BEVY_ASSET_ROOT="C:\source\rust\bevy_flowfield_tiles_plugin"
 cargo flamegraph --package=bevy_flowfield_tiles_plugin --profile=flamegraph # release mode without stripping
 cargo flamegraph --package=bevy_flowfield_tiles_plugin --dev # dev mode
 ```
+
+</details>
 
 # LICENSE
 

@@ -14,10 +14,22 @@ impl Plugin for FlowFieldTilesPlugin {
 			.add_event::<cost_layer::EventRebuildSectorPortals>()
 			.add_event::<cost_layer::EventUpdatePortalGraph>()
 			.add_event::<flow_layer::EventPathRequest>()
-			.add_systems(Update, (cost_layer::process_costfields_updates,))
 			.add_systems(
 				Update,
-				(cost_layer::rebuild_portals, cost_layer::update_portal_graph).chain(),
+				(
+					cost_layer::process_costfields_updates,
+					cost_layer::rebuild_portals,
+					cost_layer::update_portal_graph,
+				)
+					.chain(),
+			)
+			.add_systems(
+				Update,
+				(
+					flow_layer::handle_path_requests,
+					flow_layer::generate_flow_fields,
+				)
+					.chain(),
 			);
 	}
 }

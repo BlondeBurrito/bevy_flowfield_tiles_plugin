@@ -200,43 +200,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 									});
 								}
 							}
-							None => {
-								// // sectors without int field calculated get an X in each grid cell
-								// for _ in 0..10 {
-								// 	p.spawn(NodeBundle {
-								// 		style: Style {
-								// 			size: Size::new(Val::Percent(10.0), Val::Percent(100.0)),
-								// 			flex_direction: FlexDirection::Column,
-								// 			..Default::default()
-								// 		},
-								// 		..Default::default()
-								// 	})
-								// 	.with_children(|p| {
-								// 		// create each row value of the column
-								// 		for _ in 0..10 {
-								// 			p.spawn(NodeBundle {
-								// 				style: Style {
-								// 					size: Size::new(Val::Percent(100.0), Val::Percent(10.0)),
-								// 					justify_content: JustifyContent::Center,
-								// 					align_items: AlignItems::Center,
-								// 					..Default::default()
-								// 				},
-								// 				..Default::default()
-								// 			})
-								// 			.with_children(|p| {
-								// 				p.spawn(TextBundle::from_section(
-								// 					"X".to_string(),
-								// 					TextStyle {
-								// 						font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-								// 						font_size: 10.0,
-								// 						color: Color::BLACK,
-								// 					},
-								// 				));
-								// 			});
-								// 		}
-								// 	});
-								// }
-							}
+							None => {}
 						}
 					});
 				}
