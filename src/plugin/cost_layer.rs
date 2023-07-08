@@ -12,6 +12,8 @@ pub struct EventUpdateCostfieldsCell {
 }
 
 impl EventUpdateCostfieldsCell {
+	/// Create a new instance of [EventUpdateCostfieldsCell]
+	#[cfg(not(tarpaulin_include))]
 	pub fn new(cell: (usize, usize), sector: (u32, u32), cell_value: u8) -> Self {
 		EventUpdateCostfieldsCell {
 			cell,
@@ -19,17 +21,21 @@ impl EventUpdateCostfieldsCell {
 			cell_value,
 		}
 	}
+	#[cfg(not(tarpaulin_include))]
 	pub fn get_cell(&self) -> (usize, usize) {
 		self.cell
 	}
+	#[cfg(not(tarpaulin_include))]
 	pub fn get_sector(&self) -> (u32, u32) {
 		self.sector
 	}
+	#[cfg(not(tarpaulin_include))]
 	pub fn get_cost_value(&self) -> u8 {
 		self.cell_value
 	}
 }
 /// Read [EventUpdateCostfieldsCell] and update the values within [CostField]
+#[cfg(not(tarpaulin_include))]
 pub fn process_costfields_updates(
 	mut events: EventReader<EventUpdateCostfieldsCell>,
 	mut costfields_q: Query<&mut SectorCostFields>,
@@ -56,9 +62,11 @@ pub struct EventRebuildSectorPortals {
 }
 
 impl EventRebuildSectorPortals {
+	#[cfg(not(tarpaulin_include))]
 	pub fn new(sector_id: (u32, u32)) -> Self {
 		EventRebuildSectorPortals { sector_id }
 	}
+	#[cfg(not(tarpaulin_include))]
 	pub fn get_sector_id(&self) -> (u32, u32) {
 		self.sector_id
 	}
@@ -66,6 +74,7 @@ impl EventRebuildSectorPortals {
 /// Process events indicating that a [CostField] has changed and as such update
 /// the [Portals] associated with the sector of the [CostField] and its
 /// neighbours need to be regenerated
+#[cfg(not(tarpaulin_include))]
 pub fn rebuild_portals(
 	mut event_portal_rebuild: EventReader<EventRebuildSectorPortals>,
 	mut portal_q: Query<(&mut SectorPortals, &SectorCostFields, &MapDimensions)>,
@@ -104,6 +113,7 @@ impl EventUpdatePortalGraph {
 
 /// Process events indicating that a [Portals] has been changed and as such update
 /// the navigation graph
+#[cfg(not(tarpaulin_include))]
 pub fn update_portal_graph(
 	mut event_graph: EventReader<EventRebuildSectorPortals>,
 	mut portal_q: Query<(

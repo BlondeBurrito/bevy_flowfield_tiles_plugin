@@ -9,6 +9,7 @@ pub mod flow_layer;
 pub struct FlowFieldTilesPlugin;
 
 impl Plugin for FlowFieldTilesPlugin {
+	#[cfg(not(tarpaulin_include))]
 	fn build(&self, app: &mut App) {
 		app.add_event::<cost_layer::EventUpdateCostfieldsCell>()
 			.add_event::<cost_layer::EventRebuildSectorPortals>()

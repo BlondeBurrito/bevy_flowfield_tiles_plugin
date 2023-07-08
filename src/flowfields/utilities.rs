@@ -93,7 +93,7 @@ impl Ordinal {
 		}
 		neighbours
 	}
-	/// Based on a sectors `(column, row)` position find the [Ordinal] directions for its boundaries that can support [portal::portals::Portals]
+	/// Based on a sectors `(column, row)` position find the [Ordinal] directions for its boundaries that can support [crate::prelude::Portals]
 	pub fn get_sector_portal_ordinals(
 		sector_id: &(u32, u32),
 		map_x_dimension: u32,

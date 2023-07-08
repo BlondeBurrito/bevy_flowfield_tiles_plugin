@@ -1,8 +1,8 @@
-//! A Portal indicates a pathable area from one [Sector] to another. Each side of a [Sector] can
+//! A Portal indicates a pathable area from one Sector to another. Each side of a Sector can
 //! have multiple portals if a side is 'split' due to an impassable value in the
-//! [crate::flowfields::cost_field::CostField]. A side that sits along the edge of the map
+//! [CostField]. A side that sits along the edge of the map
 //! itself cannot have a portal. For example here is a representation of a
-//! [crate::flowfields::cost_field::CostField] in the top-left corner of a map with the [PortalNode]
+//! [CostField] in the top-left corner of a map with the [PortalNode]
 //! positions labeled with a `P`:
 //!
 //! ```text
@@ -70,14 +70,17 @@ pub struct Portals([Vec<PortalNode>; 4]);
 
 impl Portals {
 	/// Get a reference to the array list of [PortalNode]
+	#[cfg(not(tarpaulin_include))]
 	pub fn get(&self) -> &[Vec<PortalNode>; 4] {
 		&self.0
 	}
 	/// Get a mutable reference to the array list of [PortalNode]
+	#[cfg(not(tarpaulin_include))]
 	pub fn get_mut(&mut self) -> &mut [Vec<PortalNode>; 4] {
 		&mut self.0
 	}
 	/// Get a reference to the list of [PortalNode]s along the side of a sector defined by the [Ordinal]
+	#[cfg(not(tarpaulin_include))]
 	pub fn get_portals_for_side(&self, ordinal: &Ordinal) -> &Vec<PortalNode> {
 		match ordinal {
 			Ordinal::North => &self.0[0],

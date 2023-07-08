@@ -4,7 +4,7 @@
 //! saying there is a wall or cliff/impassable terrain there). Any other value indicates a harder
 //! cost of movement which could be from a slope or marshland or others.
 //!
-//! Every [Sector] has a [CostsField] associated with it. An example cost field may look:
+//! Every Sector has a [CostField] associated with it. An example cost field may look:
 //!
 //! ```text
 //!  ___________________________________________________________

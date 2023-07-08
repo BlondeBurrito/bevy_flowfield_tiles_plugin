@@ -23,7 +23,7 @@ use super::portals::{PortalNode, Portals};
 ///
 /// To enable responsiveness in moving actors around a world they should initially be given a
 /// route to navigate based upon moving between the Sectors of the world, later on once a
-/// [FlowFields] has been generated they can be given a more accurate route to follow.
+/// [FlowField] has been generated they can be given a more accurate route to follow.
 /// [PortalGraph] enables a navigational route to be found between sectors using the [Portals]
 /// of sector boundaries to provide the responsiveness of "movement asked for, begin going in
 /// this direction, get a better route later"
@@ -231,7 +231,7 @@ impl PortalGraph {
 		}
 		self
 	}
-	/// When a [CostFields] is updated the corresponding [Portals] should be updated. This means that
+	/// When a [CostField] is updated the corresponding [Portals] should be updated. This means that
 	/// the [PortalGraph]'s `graph` may no longer accurately reflect how to move from one sector to
 	/// another. This method will recalculate the nodes and edges of the supplied sector and
 	/// its neighbouring sectors.

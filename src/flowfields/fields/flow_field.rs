@@ -63,6 +63,7 @@ impl Field<u8> for FlowField {
 	}
 }
 impl FlowField {
+	/// Calculate the [FlowField] from an [IntegrationField], additionally for a sector in a chain of sectors along a path this will peak into the previous sectors [IntegrationField] to apply a directional optimisation to this sector's [FlowField]
 	pub fn calculate(
 		&mut self,
 		goals: &Vec<(usize, usize)>,
@@ -224,6 +225,7 @@ fn lookup_portal_goal_neighbour_costs_in_previous_sector(
 pub fn abc(cell_value: u8) {
 	let flag_filter = 0b1111_0000;
 	let dir_filter = 0b0000_1111;
+	todo!();
 
 	let flags = cell_value & flag_filter;
 	match flags {
@@ -251,5 +253,69 @@ pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
 		BITS_NORTH_WEST => Ordinal::NorthWest,
 		BITS_ZERO => Ordinal::Zero,
 		_ => panic!("First 4 bits og cell are not recognised directions"),
+	}
+}
+
+// #[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+	use super::*;
+	#[test]
+	fn default_init() {
+		let flow_field = FlowField::default();
+		let v = flow_field.get_grid_value(0, 0);
+		assert_eq!(BITS_DEFAULT, v);
+	}
+	#[test]
+	fn calculate_flow_target_south() {
+		let cost_field = CostField::default();
+		// int field pair pointing towards goal in orthognal west direction
+		let ordinal_to_previous_sector = Ordinal::South;
+		let goals = vec![(0,9),(1,9), (2,9),(3,9),(4,9),(5,9),(6,9),(7,9),(8,9),(9,9)];
+		let mut previous_int_field = IntegrationField::new(&goals);
+		previous_int_field.calculate_field(&goals, &cost_field);
+		let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
+
+		let mut integration_field = IntegrationField::new(&goals);
+		integration_field.calculate_field(&goals, &cost_field);
+
+		let mut flow_field = FlowField::default();
+		flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
+
+		for column in flow_field.get_field().iter() {
+			for row_value in column.iter() {
+				if *row_value != BITS_PATHABLE + BITS_SOUTH && *row_value != BITS_PORTAL_GOAL + BITS_SOUTH {
+					println!("Flow field: {:?}", flow_field.get_field());
+					assert!(false);
+				}
+			}
+		}
+		assert!(true);
+	}
+	#[test]
+	fn calculate_flow_target_west() {
+		let cost_field = CostField::default();
+		// int field pair pointing towards goal in orthognal west direction
+		let ordinal_to_previous_sector = Ordinal::West;
+		let goals = vec![(0,0), (0,1),(0,2),(0,3),(0,4),(0,5),(0,6),(0,7),(0,8),(0,9)];
+		let mut previous_int_field = IntegrationField::new(&goals);
+		previous_int_field.calculate_field(&goals, &cost_field);
+		let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
+
+		let mut integration_field = IntegrationField::new(&goals);
+		integration_field.calculate_field(&goals, &cost_field);
+
+		let mut flow_field = FlowField::default();
+		flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
+
+		for column in flow_field.get_field().iter() {
+			for row_value in column.iter() {
+				if *row_value != BITS_PATHABLE + BITS_WEST && *row_value != BITS_PORTAL_GOAL + BITS_WEST {
+					println!("Flow field: {:?}", flow_field.get_field());
+					assert!(false);
+				}
+			}
+		}
+		assert!(true);
 	}
 }

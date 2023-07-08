@@ -56,8 +56,9 @@ doc-coverage:
   $env:RUSTDOCFLAGS="-Z unstable-options --show-coverage"
   cargo +nightly doc --workspace --all-features --no-deps --release
   # https://github.com/rust-lang/rust/issues/58154
+# evaluate test coverage
 code-coverage:
-  cargo tarpaulin --release --workspace --all-features --include-tests --engine=llvm
+  cargo tarpaulin --release --workspace --all-features --include-tests --engine=llvm --ignore-panics
 # install the crate from the local source rather than remote
 install:
   cargo install --path .

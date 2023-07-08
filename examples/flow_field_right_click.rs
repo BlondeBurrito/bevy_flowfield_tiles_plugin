@@ -41,7 +41,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let c_path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
 	let map_length = 10; // in sprite count
 	let map_depth = 10; // in sprite count
-	cmds.spawn(FlowfieldTilesBundle::new_from_disk(
+	cmds.spawn(FlowFieldTilesBundle::new_from_disk(
 		map_length, map_depth, &s_path,
 	));
 	// use the impression of the cost field to just init node images

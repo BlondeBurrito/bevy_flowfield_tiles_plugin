@@ -4,7 +4,7 @@ on:
   push:
     branches: [ none ]
   pull_request:
-    branches: [ main ]
+    branches: [ none ]
   workflow_dispatch:
     
 env:

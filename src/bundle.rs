@@ -10,17 +10,17 @@ use bevy::prelude::*;
 pub struct MapDimensions(u32, u32);
 
 impl MapDimensions {
-	pub fn new(x_length: u32, z_depth: u32) -> Self {
-		//TODO some kind of check to ensure map isn;t too small, must be 3x3? sectors at least
-		let x_sector_count = (x_length / SECTOR_RESOLUTION as u32).checked_sub(1);
-		let z_sector_count = (z_depth / SECTOR_RESOLUTION as u32).checked_sub(1);
-		if x_sector_count.is_none() || z_sector_count.is_none() {
+	/// Create a new instance of [MapDimensions]. In 2d the dimensions should be measured by the number of sprites that fit into the `x` (length) and `y` (depth) axes. For 3d the recommendation is for a `unit` of space to be 1 meter, thereby the world is `x` (length) meters by `z` (depth) meters
+	pub fn new(length: u32, depth: u32) -> Self {
+		let length_rem = length % SECTOR_RESOLUTION as u32;
+		let depth_rem = depth % SECTOR_RESOLUTION as u32;
+		if length_rem > 0 || depth_rem > 0 {
 			panic!(
-				"Map dimensions `({}, {})` cannot support sectors, try larger values",
-				x_length, z_depth
+				"Map dimensions `({}, {})` cannot support sectors, dimensions must be exact factors of {}",
+				length, depth, SECTOR_RESOLUTION
 			);
 		}
-		MapDimensions(x_length, z_depth)
+		MapDimensions(length, depth)
 	}
 	pub fn get_column(&self) -> u32 {
 		self.0
@@ -31,7 +31,7 @@ impl MapDimensions {
 }
 //TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Bundle)]
-pub struct FlowfieldTilesBundle {
+pub struct FlowFieldTilesBundle {
 	sector_cost_fields: SectorCostFields,
 	sector_portals: SectorPortals,
 	portal_graph: PortalGraph,
@@ -40,7 +40,7 @@ pub struct FlowfieldTilesBundle {
 	flow_field_cache: FlowFieldCache,
 }
 
-impl FlowfieldTilesBundle {
+impl FlowFieldTilesBundle {
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
 	pub fn new(map_length: u32, map_depth: u32) -> Self {
 		let map_dimensions = MapDimensions::new(map_length, map_depth);
@@ -63,7 +63,7 @@ impl FlowfieldTilesBundle {
 		);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
-		FlowfieldTilesBundle {
+		FlowFieldTilesBundle {
 			sector_cost_fields: cost_fields,
 			sector_portals: portals,
 			portal_graph: graph,
@@ -95,7 +95,7 @@ impl FlowfieldTilesBundle {
 		);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
-		FlowfieldTilesBundle {
+		FlowFieldTilesBundle {
 			sector_cost_fields: cost_fields,
 			sector_portals: portals,
 			portal_graph: graph,
@@ -103,5 +103,26 @@ impl FlowfieldTilesBundle {
 			route_cache,
 			flow_field_cache: cache,
 		}
+	}
+}
+
+// #[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+	use super::*;
+	#[test]
+	fn valid_map_dimensions() {
+		let _map_dimsions = MapDimensions::new(10, 10);
+		assert!(true)
+	}
+	#[test]
+	#[should_panic]
+	fn invalid_map_dimensions() {
+		MapDimensions::new(99, 3);
+	}
+	#[test]
+	fn new_bundle() {
+		let _ = FlowFieldTilesBundle::new(30, 30);
+		assert!(true)
 	}
 }

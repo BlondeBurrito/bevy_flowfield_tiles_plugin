@@ -28,7 +28,7 @@ impl EventPathRequest {
 		}
 	}
 }
-
+#[cfg(not(tarpaulin_include))]
 pub fn handle_path_requests(
 	mut events: EventReader<EventPathRequest>,
 	mut cache_q: Query<(
@@ -105,7 +105,7 @@ pub fn handle_path_requests(
 		}
 	}
 }
-
+#[cfg(not(tarpaulin_include))]
 pub fn generate_flow_fields(
 	mut cache_q: Query<
 		(

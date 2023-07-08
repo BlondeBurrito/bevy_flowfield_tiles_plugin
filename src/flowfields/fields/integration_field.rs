@@ -1,5 +1,5 @@
 //! The IntegrationField contains a 2D array of 16-bit values and it uses a [CostField] to
-//! produce a cumulative cost of reaching the goal/target. Every [Sector] has a [IntegrationField] associated with it.
+//! produce a cumulative cost of reaching the goal/target. Every Sector has a [IntegrationField] associated with it.
 //!
 //! When a new route needs to be processed the field is reset to `u16::MAX` and the grid cell containing the goal is set to `0`. A series of passes are performed from the goal as an expanding wavefront calculating the field values:
 //!
@@ -100,8 +100,10 @@ impl IntegrationField {
 			self.set_grid_value(0, goal.0, goal.1);
 		}
 	}
-	/// From a list of `goals` grid cells iterate over successive neighbouring cells
-	/// and calculate the field values from the `cost_field`
+	/// From a list of `goals` (the actual end target goal or portal grid cells
+	/// to the next sector towards the goal sector) grid cells iterate over
+	/// successive neighbouring cells and calculate the field values from the
+	/// `cost_field`
 	pub fn calculate_field(&mut self, goals: &Vec<(usize, usize)>, cost_field: &CostField) {
 		// further positions to process, tuple element 0 is the position, element 1 is the integration cost from the previous cell needed to help calculate element 0s cost
 		let mut queue: Vec<((usize, usize), u16)> = Vec::new();
