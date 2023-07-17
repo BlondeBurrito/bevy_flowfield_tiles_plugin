@@ -5,6 +5,7 @@ use crate::prelude::*;
 use bevy::prelude::*;
 
 /// Used to update a sectors [CostField]
+#[derive(Event)]
 pub struct EventUpdateCostfieldsCell {
 	cell: (usize, usize),
 	sector: (u32, u32),
@@ -57,6 +58,7 @@ pub fn process_costfields_updates(
 }
 /// Emitted when a [CostField] has been updated so the [Portals] of the sector
 /// and its neighbours can be rebuilt
+#[derive(Event)]
 pub struct EventRebuildSectorPortals {
 	sector_id: (u32, u32),
 }
@@ -98,6 +100,7 @@ pub fn rebuild_portals(
 
 /// Emitted when [Portals] has been updated so the
 /// [PortalGraph] of the sector and its neighbours can be rebuilt
+#[derive(Event)]
 pub struct EventUpdatePortalGraph {
 	sector_id: (u32, u32),
 }

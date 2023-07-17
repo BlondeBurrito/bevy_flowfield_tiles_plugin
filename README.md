@@ -10,8 +10,10 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 
 | bevy | bevy_flowfield_tiles_plugin |
 |------|-----------------------------|
-| [commit](https://github.com/bevyengine/bevy/commit/e9312254d8906e9f491c4f3761659df0d179687f) |  main                        |
-| 0.11 (unreleased) |  0.1 (unreleased) |
+| [commit](https://github.com/bevyengine/bevy/commit/8ba9571eedada4f3ff43cdf1402670b7fe7c280d) |  main                        |
+| 0.11 |  0.1 (unreleased) |
+
+<img src="docs/2d_with_steering.gif" alt="sgif" width="600"/>
 
 # Table of Contents
 
@@ -30,21 +32,21 @@ Pathfinding in games can take different forms and those forms have certain benef
 * NavMesh - a walkable surface generated from the topology of meshes in a game world defining a valid area of movement. It allows for a range of dynamic movement within the confines of the mesh and is a natural evolution of the Way-point Graph
 * FlowField Tiles - a means of handling crowd and flocking behaviour by generating a flow field (vector field) describing how an actor flows across a world. A large number of actors can flow in unison to an endpoint while sharing the same pathing data structure - saving compute resources and time
 
-For larger and larger environemnts with an increasing number of pathing actors it may be beneficial to adopt a flow field based approach due to the data sharing and formation/group like movement it promotes. FlowField Tiles are complex, it's effectively akin to fluid mechanics, so this is an attempt to bring an agnostic implementation to the [Bevy](https://github.com/bevyengine/bevy/tree/main) game engine. My motivation for this is that I recently implemented a Way-point Graph for a prototype. In order to provide 'ok' actor movement it had to be made from 16 million data points. To prevent an actor from occasionally zig-zagging across the graph the granularity had to be boosted to 80 million data points to create a 'lifelike' impression of movement. That was just silly so I began looking into the history of pathfinding whereupon I stumbled across FlowField Tiles and decided to try and implement it with my favourite langauge and engine.
+For larger and larger environemnts with an increasing number of pathing actors it may be beneficial to adopt a FlowField based approach due to the data sharing and formation/group like movement it promotes. FlowField Tiles are complex, it's effectively akin to fluid mechanics, so this is an attempt to bring an agnostic implementation to the [Bevy](https://github.com/bevyengine/bevy/tree/main) game engine. My motivation for this is that I recently implemented a Way-point Graph for a prototype. In order to provide 'ok' actor movement it had to be made from 16 million data points. To prevent an actor from occasionally zig-zagging across the game world the granularity had to be boosted to 80 million data points to create a 'lifelike' impression of movement. That was just silly so I began looking into the history of pathfinding whereupon I stumbled across FlowField Tiles and decided to try and implement it with my favourite langauge and engine.
 
 ## Useful Definitions
 
 * Sector - a slice of a game world composed of three 2D arrays called fields (`CostField`, `IntegrationField` and `FlowField`). A game world is effectively represented by a number of Sectors
 * CostField - a 2D array describing how difficult it is to path through each cell of the array. It is always present in system memory
 * Cost - how difficult/expensive it is to path somewhere, you could also call it <i>weight</i>, each cell of `CostField` has one of these
-* Portal - a navigatable point which links one Sector to another
+* Portal - a navigatable point which links one Sector to another to enable movement from one side of the world to another
 * IntegrationField - a 2D array which uses the CostField to determine a cumulative cost of reaching the goal/endpoint (where you want to path to). This is an ephemeral field - it exists when required to calculate a `FlowField`
 * FlowField - a 2D array built from the `IntegrationField` which decribes how an actor should move (flow) across the world
 * FlowField Cache - a means of storing `FlowFields` allowing multiple actors to use and reuse them
-* Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for discovery of Sectors/field cells
+* Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for discovery of Sectors/field cells at various points within the algorithm
 * Grid cell - an element of a 2D array
 * Goal - the target grid cell an actor needs to path to
-* Portal goal - a target point within a sector that allows an actor to transition to another sector, thus brining it closer towards/to the goal
+* Portal goal - a target point within a sector that allows an actor to transition to another sector, thus bringing it closer towards/to the goal
 
 # Design/Process
 
@@ -75,7 +77,7 @@ A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cos
 
 <img src="docs/cost_field.png" alt="cf" width="370"/>
 
-At runtime the `CostField` is generated for each Sector with the default value - although with the feature `ron` it is possible to load the fields from disk. See the [Usage](#usage) section below for details on updating the `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to to a higher cost or impassable `255`).
+At runtime the `CostField` is generated for each Sector with the default value - although with the feature `ron` it is possible to load the fields from disk. See the [Usage](#usage) section below for details on updating the `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to to a higher cost or an impassable `255` when something like a wall is placed or the ground splits into a fissure).
 
 This array is used to generate the `IntegrationField` when requesting a navigatable path.
 
@@ -86,7 +88,7 @@ This array is used to generate the `IntegrationField` when requesting a navigata
 <details>
 <summary>Click to expand!</summary>
 
-Each Sector has up to 4 boundaries with neighbouring Sectors (2 or 3 when the sector is in a corner or along the edge of the game world). Each boundary can contain Portals which indicate a navigatable point from the current Sector to a neighbour. Portals serve a dual purpose, one of which is to provide responsiveness - `FlowFields` may take time to generate so when an actor needs to move a quick A* pathing query can produce an inital path route based on moving from one Portal to another and they can start moving in the general direction to the goal/target/endpoint. Once the `FlowFields` have been built the actor can switch to using them for granular navigation instead.
+Each Sector has up to 4 boundaries with neighbouring Sectors (fewer when the sector is in a corner or along the edge of the game world). Each boundary can contain Portals which indicate a navigatable point from the current Sector to a neighbour. Portals serve a dual purpose, one of which is to provide responsiveness - `FlowFields` may take time to generate so when an actor needs to move a quick A* pathing query can produce an inital path route based on moving from one Portal to another and they can start moving in the general direction to the goal/target/endpoint. Once the `FlowFields` have been built the actor can switch to using them for granular navigation instead.
 
 The following sectors are located away from any edges of the world which means each boundary can have Portals (the purple cells):
 
@@ -145,7 +147,7 @@ So this encourages the pathing algorithm around obstacles and expensive areas in
 
 This covers calculating the `IntegrationField` for a single sector containing the goal but of course the actor could be in a sector far away, this is where `Portals` come back into play.
 
-From the `PortalGraph` we can get a path of `Portals` to guide the actor over several sectors to the desired sector, extending above the `IntegrationField` of the goal sector has been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade) to produce a series of `IntegrationFields` for the chaining Sectors describing the flow movement.
+From the `PortalGraph` we can get a path of `Portals` to guide the actor over several sectors to the desired sector, extending the above the `IntegrationField` of the goal sector has been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade) to produce a series of `IntegrationFields` for the chaining Sectors describing the flow movement.
 
 <img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="260" height="310"/><img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="260" height="310"/><img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="260" height="310"/>
 
@@ -192,7 +194,7 @@ The directional bits are defined as:
 The assistant flags are defined as:
 
 * `0b0001_0000` - pathable
-* `0b0010_0000` - has line-of-sight to goal, an actor no longer needs to follow the field, it can move in a straight line to the goal. This avoids calculating field values that aren't actually needed (UNIMPLEMENTED)
+* `0b0010_0000` - has line-of-sight to goal, an actor no longer needs to follow the field, it can move in a straight line to the goal. This avoids calculating field values that aren't actually needed (TODO UNIMPLEMENTED)
 * `0b0100_0000` - indicates the goal
 * `0b1000_0000` - indicates a portal goal leading to the next sector
 
@@ -211,12 +213,11 @@ The thinner porition of each cell icon indicates the flow direction. The actor r
 <details>
 <summary>Click to expand!</summary>
 
-To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) all `FlowFields` get placed into a `FlowFieldCache` with an identification system.
+To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) a pair of caches are used to store pathing data:
 
-The cache is made from two sister caches:
+1. Route Cache - when an actor requests to go somewhere a high-level route is generated from describing the overall series of sector-portals to traverse (`PortalGraph` A*). If a `FlowField` hasn't yet been calculated then an actor can use the `route_cache` as a fallback to gain a generalist direction they should start moving in. Once the `FlowFields` have been built they can swap over to using those more granular paths. Additionally changes to `CostFields` can change portal positions and the real best path, so `FlowFields` are regenerated for the relevant sectors that `CostFields` have modified and during the regeneration steps an actor can once again use the high-level route as the fallback
 
-1. Route Cache - when an actor requests to go somewhere a high-level route is generated from describing the overall series of sector-portals to traverse (`PortalGraph` A*). If a `FlowField` hasn't yet been calculated then an actor can use the `route_cache` as a fallback to gain a generalist direction they should start moving in. Once the `FlowFields` have been built they can swap over to using those more granular paths. Additionally changes to `CostFields` can change portal positions and the real best path, `FlowFields` are regenerated for the relevant sectors that `CostFields` have modified so during the regeneration steps an actor can once again use the high-level route as the fallback
-1. Field Cache
+1. Field Cache - for every sector-to-portal part of a route a `FlowField` is built and stored in the cache. Actors can poll this cache to get the true flow direction to their goal. A Character Controller/Steering Pipeline is responsible for interpreting the values of the `FlowField` to produce movement - while this plugin includes a Steering Pipeline the reality is that every game has it's own quirks and desires for movement so you will most likely want to build your own Pipeline. The real point of this plugin is to encapulsate the data structures and logic to make a `FlowField` which an Actor can then read through it's own implementation.
 
 </details>
 
@@ -225,12 +226,16 @@ The cache is made from two sister caches:
 
 # Usage
 
+Update your `Cargo.toml`:
+
 ```toml
 [dependencies]
 bevy_flowfield_tiles_plugin = "0.1"
 ```
 
 ## Default
+
+Add the plugin to your app:
 
 ```rust
 use bevy_flowfield_tiles_plugin::prelude::*;
@@ -245,13 +250,61 @@ fn main() {
 
 ## Custom System Setup and Constraints
 
+In your own simulation you may well be using custom schedules or stages to control logic execution, the plugin as is sets all the logic to run as part of the `Update` phase of the main Bevy schedule. To implement the logic into your own scheduling disect the contents of [`plugin/mod.rs`](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/src/plugin/mod.rs) - note that certain systems have been `chained` together and they <b><i>must</i></b> remain chained for accurate paths to be computed.
+
 ## Initialising Data
+
+Spawn the entity configured to your world size (looking through the examples will help explain this section too).
+
+In 3d length refers to the `x` dimension and depth refers to the `z` dimension. Each dimension should be exactly divisible by `10`.
+
+In 2d the dimensions can be configured in different ways:
+
+* For a world made from a grid of sprites then length is the number of sprites along the `x` axis and depth is the number of sprites along the `y` axis. E.g a world map made of many sprites where each sprite has dimensions `64x64` and the overall pixel dimensions of the world are `640x640`, means that the length is `640/64 = 10` and depth is `640/64 = 10`.
+* For a world made from a single sprite (or a handful) that represents a very large area (where an actor is comparitively small compared to the world) then you need to choose a scale by which the alogirthm will subdivide your world into sectors, this must be exactly divisible by 10. E.g a world has pixel dimensions of `1140x980`, to create a series of sectors representing a `114x98` pixel area we set the length parameter to `114` and the depth parameter to `98`.
 
 ```rust
 	cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth));
 ```
 
+Next you need to seed your `CostFields` to reflect the make up of your world, this can be done programmatically (in 3d you might fire a series of raycasts and based on collider collisions flip a `CostField` grid cell to a higher number) or you can load predetermined values from disk.
+
 ## Path Request
+
+By taking an actors Transform and some position in space you queue field generation by sending an `EventPathRequest` event:
+
+```rust
+fn some_system(mut event: EventWriter<EventPathRequest>) {
+	// 
+	if let Some((target_sector_id, goal_id)) =
+				get_sector_and_field_id_from_xy(world_position, 640, 640, 64.0)
+	{
+		if let Some((source_sector_id, source_grid_cell)) = get_sector_and_field_id_from_xy(
+				tform.translation.truncate(),
+				640,
+				640,
+				64.0
+			) {
+			event.send(EventPathRequest::new(
+				source_sector_id,
+				source_grid_cell,
+				target_sector_id,
+				goal_id,
+			));
+		}
+	}
+}
+```
+
+The actor can then query the `RouteCache` to begin following a high-level portal-to-portal route:
+
+```rust
+```
+
+And once the `FlowFields` have been built they can query the `FlowFieldCache` instead:
+
+```rust
+```
 
 ## Actor Sizes
 

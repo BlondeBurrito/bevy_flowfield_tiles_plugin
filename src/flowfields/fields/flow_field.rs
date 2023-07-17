@@ -2,6 +2,7 @@
 //!
 
 use crate::prelude::*;
+use bevy::prelude::*;
 
 const BITS_NORTH: u8 = 0b0000_0001;
 const BITS_EAST: u8 = 0b0000_0010;
@@ -149,36 +150,36 @@ fn lookup_portal_goal_neighbour_costs_in_previous_sector(
 			// orthogonal adjacent cost
 			let adj_pos = (portal_goal.0, 9);
 			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
-			adjacent_neighbours.push((Ordinal::South, adj_cost));
+			adjacent_neighbours.push((Ordinal::North, adj_cost));
 			// try and get a cost left
 			if portal_goal.0 > 0 {
 				let adj_pos = (portal_goal.0 - 1, 9);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
+				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
 			}
 			// try and get a cost right
 			if portal_goal.0 < FIELD_RESOLUTION - 1 {
 				let adj_pos = (portal_goal.0 + 1, 9);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
+				adjacent_neighbours.push((Ordinal::NorthEast, adj_cost));
 			}
 		}
 		Ordinal::East => {
 			// orthogonal adjacent cost
 			let adj_pos = (0, portal_goal.1);
 			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
-			adjacent_neighbours.push((Ordinal::West, adj_cost));
+			adjacent_neighbours.push((Ordinal::East, adj_cost));
 			// try and get a cost above
 			if portal_goal.1 > 0 {
 				let adj_pos = (0, portal_goal.1 - 1);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
+				adjacent_neighbours.push((Ordinal::NorthEast, adj_cost));
 			}
 			// try and get a cost below
 			if portal_goal.1 < FIELD_RESOLUTION - 1 {
 				let adj_pos = (0, portal_goal.1 + 1);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
+				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
 			}
 		}
 		Ordinal::South => {
@@ -252,7 +253,25 @@ pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
 		BITS_SOUTH_WEST => Ordinal::SouthWest,
 		BITS_NORTH_WEST => Ordinal::NorthWest,
 		BITS_ZERO => Ordinal::Zero,
-		_ => panic!("First 4 bits og cell are not recognised directions"),
+		_ => panic!("First 4 bits of cell are not recognised directions"),
+	}
+}
+/// Reading the directional bits of a [FlowField] grid cell obtain a unit
+/// vector in 2d space of the direction
+pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
+	let dir_filter = 0b0000_1111;
+	let dir = cell_value & dir_filter;
+	match dir {
+		BITS_NORTH => Vec2::new(0.0, 1.0),
+		BITS_EAST => Vec2::new(1.0, 0.0),
+		BITS_SOUTH => Vec2::new(0.0, -1.0),
+		BITS_WEST => Vec2::new(-1.0, 0.0),
+		BITS_NORTH_EAST => Vec2::new(1.0, 1.0),
+		BITS_SOUTH_EAST => Vec2::new(1.0, -1.0),
+		BITS_SOUTH_WEST => Vec2::new(-1.0, -1.0),
+		BITS_NORTH_WEST => Vec2::new(-1.0, 1.0),
+		BITS_ZERO => Vec2::new(0.0, 0.0),
+		_ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
 
@@ -271,7 +290,18 @@ mod tests {
 		let cost_field = CostField::default();
 		// int field pair pointing towards goal in orthognal west direction
 		let ordinal_to_previous_sector = Ordinal::South;
-		let goals = vec![(0,9),(1,9), (2,9),(3,9),(4,9),(5,9),(6,9),(7,9),(8,9),(9,9)];
+		let goals = vec![
+			(0, 9),
+			(1, 9),
+			(2, 9),
+			(3, 9),
+			(4, 9),
+			(5, 9),
+			(6, 9),
+			(7, 9),
+			(8, 9),
+			(9, 9),
+		];
 		let mut previous_int_field = IntegrationField::new(&goals);
 		previous_int_field.calculate_field(&goals, &cost_field);
 		let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
@@ -284,7 +314,9 @@ mod tests {
 
 		for column in flow_field.get_field().iter() {
 			for row_value in column.iter() {
-				if *row_value != BITS_PATHABLE + BITS_SOUTH && *row_value != BITS_PORTAL_GOAL + BITS_SOUTH {
+				if *row_value != BITS_PATHABLE + BITS_SOUTH
+					&& *row_value != BITS_PORTAL_GOAL + BITS_SOUTH
+				{
 					println!("Flow field: {:?}", flow_field.get_field());
 					assert!(false);
 				}
@@ -297,7 +329,18 @@ mod tests {
 		let cost_field = CostField::default();
 		// int field pair pointing towards goal in orthognal west direction
 		let ordinal_to_previous_sector = Ordinal::West;
-		let goals = vec![(0,0), (0,1),(0,2),(0,3),(0,4),(0,5),(0,6),(0,7),(0,8),(0,9)];
+		let goals = vec![
+			(0, 0),
+			(0, 1),
+			(0, 2),
+			(0, 3),
+			(0, 4),
+			(0, 5),
+			(0, 6),
+			(0, 7),
+			(0, 8),
+			(0, 9),
+		];
 		let mut previous_int_field = IntegrationField::new(&goals);
 		previous_int_field.calculate_field(&goals, &cost_field);
 		let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
@@ -310,7 +353,9 @@ mod tests {
 
 		for column in flow_field.get_field().iter() {
 			for row_value in column.iter() {
-				if *row_value != BITS_PATHABLE + BITS_WEST && *row_value != BITS_PORTAL_GOAL + BITS_WEST {
+				if *row_value != BITS_PATHABLE + BITS_WEST
+					&& *row_value != BITS_PORTAL_GOAL + BITS_WEST
+				{
 					println!("Flow field: {:?}", flow_field.get_field());
 					assert!(false);
 				}

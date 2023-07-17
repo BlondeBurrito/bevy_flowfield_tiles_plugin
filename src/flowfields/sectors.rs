@@ -264,27 +264,27 @@ pub fn get_boundary_ordinal_from_grid_cell(cell_id: &(usize, usize)) -> Vec<Ordi
 /// `pixel_scale` refers to the dimensions of your map sprites, not that their `x` and `y` dimensions must be the same, i.e a square shape
 pub fn get_sector_id_from_xy(
 	position: Vec2,
-	map_x_dimension: u32,
-	map_y_dimension: u32,
+	x_dimension_pixels: u32,
+	y_dimension_pixels: u32,
 	pixel_scale: f32,
 ) -> Option<(u32, u32)> {
-	if position.x < -((map_x_dimension / 2) as f32)
-		|| position.x > (map_x_dimension / 2) as f32
-		|| position.y < -((map_y_dimension / 2) as f32)
-		|| position.y > (map_y_dimension / 2) as f32
+	if position.x < -((x_dimension_pixels / 2) as f32)
+		|| position.x > (x_dimension_pixels / 2) as f32
+		|| position.y < -((y_dimension_pixels / 2) as f32)
+		|| position.y > (y_dimension_pixels / 2) as f32
 	{
 		error!("OOB pos, x {}, y {}", position.x, position.y);
 		return None;
 	}
-	let x_sector_count = map_x_dimension / SECTOR_RESOLUTION as u32;
-	let y_sector_count = map_y_dimension / SECTOR_RESOLUTION as u32;
+	let x_sector_count = x_dimension_pixels / SECTOR_RESOLUTION as u32;
+	let y_sector_count = y_dimension_pixels / SECTOR_RESOLUTION as u32;
 	// The 2D world is centred at origin (0, 0). The sector grid has an origin in the top
 	// left at 2D world coords of (-map_x * pixel_scale / 2, 0, map_y * pixel_scale / 2).
 	// To translate the 2D world
 	// coords into a new coordinate system with a (0, 0) origin in the top left we add
 	// half the map dimension to each psition coordinatem
-	let x_origin = position.x + (map_x_dimension / 2) as f32;
-	let y_origin = position.y - (map_y_dimension / 2) as f32;
+	let x_origin = position.x + (x_dimension_pixels / 2) as f32;
+	let y_origin = (y_dimension_pixels / 2) as f32 - position.y;
 	// the grid IDs follow a (column, row) convention, by dividing the repositioned dimension
 	// by the sector grid sizes and rounding down we determine the sector indices
 	let mut column = (x_origin / (pixel_scale * SECTOR_RESOLUTION as f32)).floor() as u32;

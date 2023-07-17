@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use crate::prelude::*;
 use bevy::prelude::*;
 
+#[derive(Event)]
 pub struct EventPathRequest {
 	source_sector: (u32, u32),
 	source_field_cell: (usize, usize),
@@ -36,13 +37,10 @@ pub fn handle_path_requests(
 		&PortalGraph,
 		&SectorPortals,
 		&SectorCostFields,
-		&MapDimensions,
 	)>,
 ) {
 	for event in events.iter() {
-		for (mut cache, graph, sector_portals, sector_cost_fields, map_dimensions) in
-			cache_q.iter_mut()
-		{
+		for (mut cache, graph, sector_portals, sector_cost_fields) in cache_q.iter_mut() {
 			// only run if the cache doesn't contain the route already
 			if !cache.get().contains_key(&(
 				event.source_sector,
@@ -59,11 +57,10 @@ pub fn handle_path_requests(
 					let mut path = graph
 						.convert_index_path_to_sector_portal_cells(node_route.1, &sector_portals);
 					if path.len() > 0 {
-						// // original order is from actor to goal, int fields need to be processed the other way around
-						// path.reverse();
+						// original order is from actor to goal, to help filtering we reverse
+						path.reverse();
 						// change target cell from portal to the real goal for the destination
-						let len = path.len();
-						path[len - 1].1 = event.target_goal;
+						path[0].1 = event.target_goal;
 						// filter out the entry portals of sectors, we only care about the end of each sector and the end goal itself
 						let mut sector_order = Vec::new();
 						let mut map = HashMap::new();
@@ -80,6 +77,8 @@ pub fn handle_path_requests(
 							sector_goals.push((*sector_id, *portal_id));
 						}
 						path = sector_goals;
+						// reverse again so the route describes moving from actor to goal
+						path.reverse(); //TODO this is messy
 					}
 					cache.insert_route(
 						event.source_sector,
@@ -111,7 +110,6 @@ pub fn generate_flow_fields(
 		(
 			&mut FlowFieldCache,
 			&RouteCache,
-			&PortalGraph,
 			&SectorPortals,
 			&SectorCostFields,
 			&MapDimensions,
@@ -119,16 +117,10 @@ pub fn generate_flow_fields(
 		Changed<RouteCache>,
 	>,
 ) {
-	for (
-		mut field_cache,
-		route_cache,
-		portal_graph,
-		sector_portals,
-		sector_cost_fields,
-		map_dimensions,
-	) in cache_q.iter_mut()
+	for (mut field_cache, route_cache, sector_portals, sector_cost_fields, map_dimensions) in
+		cache_q.iter_mut()
 	{
-		for (key, portal_path) in route_cache.get().iter() {
+		for (_key, portal_path) in route_cache.get().iter() {
 			// original order is from actor to goal, int fields need to be processed the other way around
 			let mut path = portal_path.clone();
 			path.reverse();

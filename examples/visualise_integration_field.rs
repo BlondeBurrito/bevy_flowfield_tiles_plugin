@@ -24,7 +24,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	cmds.spawn(NodeBundle {
 		// background canvas
 		style: Style {
-			size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+			width: Val::Percent(100.0),
+			height: Val::Percent(100.0),
 			flex_direction: FlexDirection::Column,
 			justify_content: JustifyContent::Center,
 			align_items: AlignItems::Center,
@@ -37,7 +38,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		// a centred box to contain the field values
 		p.spawn(NodeBundle {
 			style: Style {
-				size: Size::new(Val::Px(500.0), Val::Px(500.0)),
+				width: Val::Px(500.0),
+				height: Val::Px(500.0),
 				flex_direction: FlexDirection::Row,
 				..Default::default()
 			},
@@ -49,7 +51,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			for array in int_field.get_field().iter() {
 				p.spawn(NodeBundle {
 					style: Style {
-						size: Size::new(Val::Percent(10.0), Val::Percent(100.0)),
+						width: Val::Percent(10.0),
+						height: Val::Percent(100.0),
 						flex_direction: FlexDirection::Column,
 						..Default::default()
 					},
@@ -60,7 +63,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					for value in array.iter() {
 						p.spawn(NodeBundle {
 							style: Style {
-								size: Size::new(Val::Percent(100.0), Val::Percent(10.0)),
+								width: Val::Percent(100.0),
+								height: Val::Percent(10.0),
 								justify_content: JustifyContent::Center,
 								align_items: AlignItems::Center,
 								..Default::default()

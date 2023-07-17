@@ -1,4 +1,4 @@
-//! Generates a single [FlowField] visualisation which uses right-mouse input to set a goal position, causing the visualisation to update to graphically show the flow field lines from a !static! actors position
+//! Generates a single [FlowField] visualisation which uses right-mouse input to set a goal position, causing the visualisation to update to graphically show the flow field lines from a !static! actor position
 //!
 
 use bevy::{prelude::*, window::PrimaryWindow};
@@ -7,7 +7,7 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
-		.add_plugin(FlowFieldTilesPlugin)
+		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(Startup, (setup,))
 		.add_systems(
 			Update,

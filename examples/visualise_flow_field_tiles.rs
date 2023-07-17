@@ -117,7 +117,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	cmds.spawn(NodeBundle {
 		// background canvas
 		style: Style {
-			size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+			width: Val::Percent(100.0),
+			height: Val::Percent(100.0),
 			flex_direction: FlexDirection::Column,
 			justify_content: JustifyContent::Center,
 			align_items: AlignItems::Center,
@@ -130,7 +131,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		// a centred box to contain the fields
 		p.spawn(NodeBundle {
 			style: Style {
-				size: Size::new(Val::Px(1000.0), Val::Px(1000.0)),
+				width: Val::Px(1000.0),
+				height: Val::Px(1000.0),
 				flex_direction: FlexDirection::Column,
 				flex_wrap: FlexWrap::Wrap,
 				flex_shrink: 0.0,
@@ -146,10 +148,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					// bounding node of a sector
 					p.spawn(NodeBundle {
 						style: Style {
-							size: Size::new(
-								Val::Percent(100.0 / (map_dimensions.get_column() / 10) as f32),
-								Val::Percent(100.0 / (map_dimensions.get_row() / 10) as f32),
-							),
+							width: Val::Percent(100.0 / (map_dimensions.get_column() / 10) as f32),
+							height: Val::Percent(100.0 / (map_dimensions.get_row() / 10) as f32),
 							flex_direction: FlexDirection::Column,
 							flex_wrap: FlexWrap::Wrap,
 							flex_shrink: 0.0,
@@ -166,10 +166,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 								for array in field.get_field().iter() {
 									p.spawn(NodeBundle {
 										style: Style {
-											size: Size::new(
-												Val::Percent(10.0),
-												Val::Percent(100.0),
-											),
+											width: Val::Percent(10.0),
+											height: Val::Percent(100.0),
 											flex_direction: FlexDirection::Column,
 											..Default::default()
 										},
@@ -181,10 +179,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 											p.spawn((
 												NodeBundle {
 													style: Style {
-														size: Size::new(
-															Val::Percent(100.0),
-															Val::Percent(10.0),
-														),
+														width: Val::Percent(100.0),
+														height: Val::Percent(10.0),
 														justify_content: JustifyContent::Center,
 														align_items: AlignItems::Center,
 														..Default::default()

@@ -1,7 +1,7 @@
 //! Try building each field
-//! 
+//!
 
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 
 use bevy_flowfield_tiles_plugin::prelude::*;
 

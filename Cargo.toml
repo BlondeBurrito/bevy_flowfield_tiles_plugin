@@ -16,7 +16,7 @@ members = []
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy", rev = "e9312254d8906e9f491c4f3761659df0d179687f", default-features = false, features = [ "ktx2", "zstd" ] }
+bevy = { version = "0.11", default-features = false, features = [ "ktx2", "zstd" ] }
 petgraph = "0.6"
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
@@ -89,4 +89,9 @@ required-features = ["ron"]
 [[example]]
 name = "flow_field_right_click"
 path = "examples/flow_field_right_click.rs"
+required-features = ["ron"]
+
+[[example]]
+name = "2d_with_steering"
+path = "examples/2d_with_steering.rs"
 required-features = ["ron"]
