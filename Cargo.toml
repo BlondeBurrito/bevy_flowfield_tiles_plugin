@@ -69,8 +69,8 @@ name = "fib"
 harness = false
 
 [[example]]
-name = "visualise_integration_cost"
-path = "examples/visualise_integration_cost.rs"
+name = "visualise_cost_field"
+path = "examples/visualise_cost_field.rs"
 required-features = ["ron"]
 
 [[example]]

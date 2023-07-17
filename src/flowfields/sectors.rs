@@ -347,107 +347,107 @@ pub fn get_sector_and_field_id_from_xy(
 	}
 	None
 }
-//TODO fix me
-/// From a position in `x, y, z` space and the dimensions of the map calcualte
+
+/// From a position in `x, y, z` space and the dimensions of the map calculate
 /// the sector ID that point resides in
 pub fn get_sector_id_from_xyz(
 	position: Vec3,
 	map_x_dimension: u32,
 	map_z_dimension: u32,
-) -> (u32, u32) {
-	//TODO test whether position is outside map dimensions
+) -> Option<(u32, u32)> {
+	if position.x < -((map_x_dimension / 2) as f32)
+		|| position.x > (map_x_dimension / 2) as f32
+		|| position.z < -((map_z_dimension / 2) as f32)
+		|| position.z > (map_z_dimension / 2) as f32
+	{
+		error!("OOB pos, x {}, y {}", position.x, position.z);
+		return None;
+	}
 	let x_sector_count = map_x_dimension / SECTOR_RESOLUTION as u32;
 	let z_sector_count = map_z_dimension / SECTOR_RESOLUTION as u32;
 	// The 3D world is centred at origin (0, 0, 0). The sector grid has an origin in the top
-	// left at 3D world coords of (-map_x / 2, 0, -map_z / 2). To translate the 3D world
+	// left at 2D world coords of (-map_x / 2, 0, map_z / 2).
+	// To translate the 3D world
 	// coords into a new coordinate system with a (0, 0, 0) origin in the top left we add
 	// half the map dimension to each psition coordinatem
 	let x_origin = position.x + (map_x_dimension / 2) as f32;
-	let z_origin = position.z + (map_z_dimension / 2) as f32;
+	let z_origin = (map_z_dimension / 2) as f32 + position.z;
 	// the grid IDs follow a (column, row) convention, by dividing the repositioned dimension
 	// by the sector grid sizes and rounding down we determine the sector indices
-	let mut column = (x_origin / SECTOR_RESOLUTION as f32).floor() as u32;
-	let mut row = (z_origin / SECTOR_RESOLUTION as f32).floor() as u32;
-	// safety for x-y being at the exact limits of map size
+	let mut column = (x_origin / (SECTOR_RESOLUTION as f32)).floor() as u32;
+	let mut row = (z_origin / (SECTOR_RESOLUTION as f32)).floor() as u32;
+	// safety for x-z being at the exact limits of map size
 	if column >= x_sector_count {
 		column = x_sector_count - 1;
 	}
 	if row >= z_sector_count {
 		row = z_sector_count - 1;
 	}
-	(column, row)
+	Some((column, row))
 }
-//TODO fix me
-pub fn get_field_cell_from_xyz(
-	position: Vec3,
+
+/// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
+pub fn get_sector_xyz_at_top_left(
 	sector_id: (u32, u32),
 	map_x_dimension: u32,
 	map_z_dimension: u32,
-) -> (usize, usize) {
-	let origin_of_sector =
-		get_xyz_at_sector_top_left_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
-
-	let mut column = ((origin_of_sector.x - position.x).abs()).floor() as usize;
-	let mut row = ((origin_of_sector.z - position.z).abs()).floor() as usize;
-
-	if column >= FIELD_RESOLUTION {
-		column = FIELD_RESOLUTION - 1;
-	}
-	if row >= FIELD_RESOLUTION {
-		row = FIELD_RESOLUTION - 1;
-	}
-	(column, row)
+) -> Vec3 {
+	// x sector-grid origin begins in the negative
+	let x_origin = -(map_x_dimension as f32) / 2.0;
+	let x = x_origin + sector_id.0 as f32 * SECTOR_RESOLUTION as f32;
+	// z sector grid origin begins in the negative
+	let z_origin = -(map_z_dimension as f32) / 2.0;
+	let z = z_origin + sector_id.1 as f32 * SECTOR_RESOLUTION as f32;
+	Vec3::new(x, 0.0, z)
 }
-//TODO doesn;t work
+
 /// From a point in 3D space calcualte what Sector and field cell it resides in
 pub fn get_sector_and_field_cell_from_xyz(
 	position: Vec3,
 	map_x_dimension: u32,
 	map_z_dimension: u32,
-) -> ((u32, u32), (usize, usize)) {
-	let sector_id = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension);
-	let field_cell = get_field_cell_from_xyz(position, sector_id, map_x_dimension, map_z_dimension);
-	(sector_id, field_cell)
+) -> Option<((u32, u32), (usize, usize))> {
+	if let Some(sector_id) =
+		get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension)
+	{
+		let sector_corner_origin =
+			get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
+		let field_id_0 = (position.x - sector_corner_origin.x).floor() as usize;
+		let field_id_1 =
+			((position.z - sector_corner_origin.z)).floor() as usize;
+		let field_id = (field_id_0, field_id_1);
+		return Some((sector_id, field_id));
+	}
+	None
 }
-//TODO fix and test me
-/// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
-pub fn get_xyz_at_sector_top_left_from_sector_id(
-	sector_id: (u32, u32),
-	map_x_dimension: u32,
-	map_z_dimension: u32,
-) -> Vec3 {
-	let x = (sector_id.0 as i32 * SECTOR_RESOLUTION as i32 - (map_x_dimension / 2) as i32) as f32;
-	let z = (sector_id.1 as i32 * SECTOR_RESOLUTION as i32 - (map_z_dimension / 2) as i32) as f32;
-	Vec3::new(x, 0.0, z)
-}
-//TODO fix and test me
-/// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
-pub fn get_xyz_sector_centre_from_sector_id(
-	sector_id: (u32, u32),
-	map_x_dimension: u32,
-	map_z_dimension: u32,
-) -> Vec3 {
-	let x = (sector_id.0 as i32 * SECTOR_RESOLUTION as i32 - (map_x_dimension / 2) as i32) as f32
-		+ (SECTOR_RESOLUTION / 2) as f32;
-	let z = (sector_id.1 as i32 * SECTOR_RESOLUTION as i32 - (map_z_dimension / 2) as i32) as f32
-		+ (SECTOR_RESOLUTION / 2) as f32;
-	Vec3::new(x, 0.0, z)
-}
-//TODO fix and test me
-/// Calculate the real world `x, y, z` coordinates at the cetnre of a field cell within a sector based on map dimensions
-pub fn get_xyz_from_field_cell_within_sector(
-	sector_id: (u32, u32),
-	field_id: (usize, usize),
-	map_x_dimension: u32,
-	map_z_dimension: u32,
-) -> Vec3 {
-	let sector_xyz =
-		get_xyz_at_sector_top_left_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
-	let x_offset = (field_id.0 + 1) as f32 * 0.5;
-	let z_offset = (field_id.1 + 1) as f32 * 0.5;
+// //TODO fix and test me
+// /// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
+// pub fn get_xyz_sector_centre_from_sector_id(
+// 	sector_id: (u32, u32),
+// 	map_x_dimension: u32,
+// 	map_z_dimension: u32,
+// ) -> Vec3 {
+// 	let x = (sector_id.0 as i32 * SECTOR_RESOLUTION as i32 - (map_x_dimension / 2) as i32) as f32
+// 		+ (SECTOR_RESOLUTION / 2) as f32;
+// 	let z = (sector_id.1 as i32 * SECTOR_RESOLUTION as i32 - (map_z_dimension / 2) as i32) as f32
+// 		+ (SECTOR_RESOLUTION / 2) as f32;
+// 	Vec3::new(x, 0.0, z)
+// }
+// //TODO fix and test me
+// /// Calculate the real world `x, y, z` coordinates at the cetnre of a field cell within a sector based on map dimensions
+// pub fn get_xyz_from_field_cell_within_sector(
+// 	sector_id: (u32, u32),
+// 	field_id: (usize, usize),
+// 	map_x_dimension: u32,
+// 	map_z_dimension: u32,
+// ) -> Vec3 {
+// 	let sector_xyz =
+// 		get_xyz_at_sector_top_left_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
+// 	let x_offset = (field_id.0 + 1) as f32 * 0.5;
+// 	let z_offset = (field_id.1 + 1) as f32 * 0.5;
 
-	Vec3::new(sector_xyz.x + x_offset, 0.0, sector_xyz.z + z_offset)
-}
+// 	Vec3::new(sector_xyz.x + x_offset, 0.0, sector_xyz.z + z_offset)
+// }
 
 // #[rustfmt::skip]
 #[cfg(test)]
@@ -458,7 +458,7 @@ mod tests {
 		let map_x_dimension = 20;
 		let map_z_dimension = 20;
 		let position = Vec3::new(-5.0, 0.0, -5.0);
-		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension);
+		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension).unwrap();
 		let actual: (u32, u32) = (0, 0);
 		assert_eq!(actual, result);
 	}
@@ -467,7 +467,7 @@ mod tests {
 		let map_x_dimension = 20;
 		let map_z_dimension = 20;
 		let position = Vec3::new(5.0, 0.0, -5.0);
-		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension);
+		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension).unwrap();
 		let actual: (u32, u32) = (1, 0);
 		assert_eq!(actual, result);
 	}
@@ -476,7 +476,7 @@ mod tests {
 		let map_x_dimension = 20;
 		let map_z_dimension = 20;
 		let position = Vec3::new(5.0, 0.0, 5.0);
-		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension);
+		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension).unwrap();
 		let actual: (u32, u32) = (1, 1);
 		assert_eq!(actual, result);
 	}
@@ -485,7 +485,7 @@ mod tests {
 		let map_x_dimension = 20;
 		let map_z_dimension = 20;
 		let position = Vec3::new(-5.0, 0.0, 5.0);
-		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension);
+		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension).unwrap();
 		let actual: (u32, u32) = (0, 1);
 		assert_eq!(actual, result);
 	}
@@ -626,7 +626,7 @@ mod tests {
 		let map_x_dimension = 30;
 		let map_z_dimension = 30;
 		let result =
-			get_xyz_at_sector_top_left_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
+		get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
 		let actual = Vec3::new(-15.0, 0.0, -15.0);
 		assert_eq!(actual, result)
 	}
@@ -636,120 +636,120 @@ mod tests {
 		let map_x_dimension = 30;
 		let map_z_dimension = 30;
 		let result =
-			get_xyz_at_sector_top_left_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
+		get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
 		let actual = Vec3::new(-5.0, 0.0, -5.0);
 		assert_eq!(actual, result)
 	}
-	#[test]
-	fn sector_xyz_centre_zero() {
-		let sector_id = (0, 0);
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let result =
-			get_xyz_sector_centre_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
-		let actual = Vec3::new(-10.0, 0.0, -10.0);
-		assert_eq!(actual, result)
-	}
-	#[test]
-	fn sector_xyz_centre_centre() {
-		let sector_id = (1, 1);
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let result =
-			get_xyz_sector_centre_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
-		let actual = Vec3::new(0.0, 0.0, 0.0);
-		assert_eq!(actual, result)
-	}
-	#[test]
-	fn field_xyz() {
-		let sector_id = (0, 0);
-		let field_id = (0, 0);
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let result = get_xyz_from_field_cell_within_sector(
-			sector_id,
-			field_id,
-			map_x_dimension,
-			map_z_dimension,
-		);
-		let actual = Vec3::new(-14.5, 0.0, -14.5);
-		assert_eq!(actual, result)
-	}
-	#[test]
-	fn field_xyz2() {
-		let sector_id = (1, 1);
-		let field_id = (4, 4);
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let result = get_xyz_from_field_cell_within_sector(
-			sector_id,
-			field_id,
-			map_x_dimension,
-			map_z_dimension,
-		);
-		let actual = Vec3::new(-2.5, 0.0, -2.5);
-		assert_eq!(actual, result)
-	}
-	#[test]
-	fn field_xyz3() {
-		let sector_id = (2, 3);
-		let field_id = (0, 0);
-		let map_x_dimension = 100;
-		let map_z_dimension = 100;
-		let result = get_xyz_from_field_cell_within_sector(
-			sector_id,
-			field_id,
-			map_x_dimension,
-			map_z_dimension,
-		);
-		let actual = Vec3::new(-29.5, 0.0, -19.5);
-		assert_eq!(actual, result)
-	}
-	#[test]
-	fn field_xyz4() {
-		let sector_id = (2, 3);
-		let field_id = (3, 6);
-		let map_x_dimension = 100;
-		let map_z_dimension = 100;
-		let result = get_xyz_from_field_cell_within_sector(
-			sector_id,
-			field_id,
-			map_x_dimension,
-			map_z_dimension,
-		);
-		let actual = Vec3::new(-28.0, 0.0, -16.5);
-		assert_eq!(actual, result)
-	}
-	#[test]
-	fn field_xyz5() {
-		let sector_id = (4, 4);
-		let field_id = (9, 9);
-		let map_x_dimension = 100;
-		let map_z_dimension = 100;
-		let result = get_xyz_from_field_cell_within_sector(
-			sector_id,
-			field_id,
-			map_x_dimension,
-			map_z_dimension,
-		);
-		let actual = Vec3::new(-5.0, 0.0, -5.0);
-		assert_eq!(actual, result)
-	}
-	#[test]
-	fn field_xyz6() {
-		let sector_id = (2, 2);
-		let field_id = (5, 5);
-		let map_x_dimension = 100;
-		let map_z_dimension = 100;
-		let result = get_xyz_from_field_cell_within_sector(
-			sector_id,
-			field_id,
-			map_x_dimension,
-			map_z_dimension,
-		);
-		let actual = Vec3::new(-27.0, 0.0, -27.0);
-		assert_eq!(actual, result)
-	}
+	// #[test]
+	// fn sector_xyz_centre_zero() {
+	// 	let sector_id = (0, 0);
+	// 	let map_x_dimension = 30;
+	// 	let map_z_dimension = 30;
+	// 	let result =
+	// 		get_xyz_sector_centre_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
+	// 	let actual = Vec3::new(-10.0, 0.0, -10.0);
+	// 	assert_eq!(actual, result)
+	// }
+	// #[test]
+	// fn sector_xyz_centre_centre() {
+	// 	let sector_id = (1, 1);
+	// 	let map_x_dimension = 30;
+	// 	let map_z_dimension = 30;
+	// 	let result =
+	// 		get_xyz_sector_centre_from_sector_id(sector_id, map_x_dimension, map_z_dimension);
+	// 	let actual = Vec3::new(0.0, 0.0, 0.0);
+	// 	assert_eq!(actual, result)
+	// }
+	// #[test]
+	// fn field_xyz() {
+	// 	let sector_id = (0, 0);
+	// 	let field_id = (0, 0);
+	// 	let map_x_dimension = 30;
+	// 	let map_z_dimension = 30;
+	// 	let result = get_xyz_from_field_cell_within_sector(
+	// 		sector_id,
+	// 		field_id,
+	// 		map_x_dimension,
+	// 		map_z_dimension,
+	// 	);
+	// 	let actual = Vec3::new(-14.5, 0.0, -14.5);
+	// 	assert_eq!(actual, result)
+	// }
+	// #[test]
+	// fn field_xyz2() {
+	// 	let sector_id = (1, 1);
+	// 	let field_id = (4, 4);
+	// 	let map_x_dimension = 30;
+	// 	let map_z_dimension = 30;
+	// 	let result = get_xyz_from_field_cell_within_sector(
+	// 		sector_id,
+	// 		field_id,
+	// 		map_x_dimension,
+	// 		map_z_dimension,
+	// 	);
+	// 	let actual = Vec3::new(-2.5, 0.0, -2.5);
+	// 	assert_eq!(actual, result)
+	// }
+	// #[test]
+	// fn field_xyz3() {
+	// 	let sector_id = (2, 3);
+	// 	let field_id = (0, 0);
+	// 	let map_x_dimension = 100;
+	// 	let map_z_dimension = 100;
+	// 	let result = get_xyz_from_field_cell_within_sector(
+	// 		sector_id,
+	// 		field_id,
+	// 		map_x_dimension,
+	// 		map_z_dimension,
+	// 	);
+	// 	let actual = Vec3::new(-29.5, 0.0, -19.5);
+	// 	assert_eq!(actual, result)
+	// }
+	// #[test]
+	// fn field_xyz4() {
+	// 	let sector_id = (2, 3);
+	// 	let field_id = (3, 6);
+	// 	let map_x_dimension = 100;
+	// 	let map_z_dimension = 100;
+	// 	let result = get_xyz_from_field_cell_within_sector(
+	// 		sector_id,
+	// 		field_id,
+	// 		map_x_dimension,
+	// 		map_z_dimension,
+	// 	);
+	// 	let actual = Vec3::new(-28.0, 0.0, -16.5);
+	// 	assert_eq!(actual, result)
+	// }
+	// #[test]
+	// fn field_xyz5() {
+	// 	let sector_id = (4, 4);
+	// 	let field_id = (9, 9);
+	// 	let map_x_dimension = 100;
+	// 	let map_z_dimension = 100;
+	// 	let result = get_xyz_from_field_cell_within_sector(
+	// 		sector_id,
+	// 		field_id,
+	// 		map_x_dimension,
+	// 		map_z_dimension,
+	// 	);
+	// 	let actual = Vec3::new(-5.0, 0.0, -5.0);
+	// 	assert_eq!(actual, result)
+	// }
+	// #[test]
+	// fn field_xyz6() {
+	// 	let sector_id = (2, 2);
+	// 	let field_id = (5, 5);
+	// 	let map_x_dimension = 100;
+	// 	let map_z_dimension = 100;
+	// 	let result = get_xyz_from_field_cell_within_sector(
+	// 		sector_id,
+	// 		field_id,
+	// 		map_x_dimension,
+	// 		map_z_dimension,
+	// 	);
+	// 	let actual = Vec3::new(-27.0, 0.0, -27.0);
+	// 	assert_eq!(actual, result)
+	// }
 	#[test]
 	#[cfg(feature = "ron")]
 	fn sector_cost_fields_file() {
