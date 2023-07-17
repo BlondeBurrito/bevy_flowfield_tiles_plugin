@@ -177,8 +177,7 @@ pub fn generate_flow_fields(
 				if i == 0 {
 					flow_field.calculate(goals, None, int_field);
 					field_cache.insert_field(*sector_id, path[i].1, flow_field);
-				} else {
-					if let Some(dir_prev_sector) =
+				} else if let Some(dir_prev_sector) =
 						Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id) {
 							let prev_int_field = &sector_int_fields[i - 1].2;
 					flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
@@ -187,7 +186,6 @@ pub fn generate_flow_fields(
 						} else {
 							error!("Route {:?}", portal_path);
 						};
-				}
 			}
 		}
 	}

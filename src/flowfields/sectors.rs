@@ -414,7 +414,7 @@ pub fn get_sector_and_field_cell_from_xyz(
 			get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
 		let field_id_0 = (position.x - sector_corner_origin.x).floor() as usize;
 		let field_id_1 =
-			((position.z - sector_corner_origin.z)).floor() as usize;
+			(position.z - sector_corner_origin.z).floor() as usize;
 		let field_id = (field_id_0, field_id_1);
 		return Some((sector_id, field_id));
 	}
