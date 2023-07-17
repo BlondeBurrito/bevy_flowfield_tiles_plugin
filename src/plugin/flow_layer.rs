@@ -49,12 +49,13 @@ pub fn handle_path_requests(
 
 	for event in events.iter() {
 		for (mut cache, graph, sector_portals, sector_cost_fields) in cache_q.iter_mut() {
-			// only run if the cache doesn't contain the route already
-			if !cache.get().contains_key(&(
-				event.source_sector,
-				event.target_sector,
-				event.target_goal,
-			)) {
+			//TODO maybe reinstate this after benchmarking - means less accurate route due to reuse but better perf
+			// // only run if the cache doesn't contain the route already
+			// if !cache.get().contains_key(&(
+			// 	event.source_sector,
+			// 	event.target_sector,
+			// 	event.target_goal,
+			// )) {
 				if let Some(node_route) = graph.find_best_path(
 					(event.source_sector, event.source_field_cell),
 					(event.target_sector, event.target_goal),
@@ -66,7 +67,7 @@ pub fn handle_path_requests(
 						.convert_index_path_to_sector_portal_cells(node_route.1, sector_portals);
 					if !path.is_empty() {
 						// original order is from actor to goal, to help filtering we reverse
-						path.reverse();
+						path.reverse(); //TODO this is messy paired with below todo
 						// change target cell from portal to the real goal for the destination
 						path[0].1 = event.target_goal;
 						// filter out the entry portals of sectors, we only care about the end of each sector and the end goal itself
@@ -108,7 +109,7 @@ pub fn handle_path_requests(
 						vec![(event.target_sector, event.target_goal)],
 					);
 				}
-			}
+			// }
 		}
 	}
 }
@@ -134,8 +135,8 @@ pub fn generate_flow_fields(
 			path.reverse();
 			let mut sectors_expanded_goals = Vec::new();
 			for (i, (sector_id, goal)) in path.iter().enumerate() {
-				// only run if a FlowField hasn't been generated
-				if !field_cache.get().contains_key(&(*sector_id, *goal)) {
+				// // only run if a FlowField hasn't been generated
+				// if !field_cache.get().contains_key(&(*sector_id, *goal)) {
 					// first element is always the end target, don't bother with portal expansion
 					if i == 0 {
 						sectors_expanded_goals.push((*sector_id, vec![*goal]));
@@ -158,7 +159,7 @@ pub fn generate_flow_fields(
 							);
 						sectors_expanded_goals.push((*sector_id, g));
 					}
-				}
+				// }
 			}
 			// build the integration fields
 			let mut sector_int_fields = Vec::new();
@@ -177,11 +178,15 @@ pub fn generate_flow_fields(
 					flow_field.calculate(goals, None, int_field);
 					field_cache.insert_field(*sector_id, path[i].1, flow_field);
 				} else {
-					let dir_prev_sector =
-						Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id);
-					let prev_int_field = &sector_int_fields[i - 1].2;
+					if let Some(dir_prev_sector) =
+						Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id) {
+							let prev_int_field = &sector_int_fields[i - 1].2;
 					flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
+					//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own
 					field_cache.insert_field(*sector_id, path[i].1, flow_field);
+						} else {
+							error!("Route {:?}", portal_path);
+						};
 				}
 			}
 		}

@@ -1,6 +1,8 @@
 //! Useful structures and tools used by the fields
 //!
 
+use bevy::prelude::*;
+
 /// Determines the number of Sectors by dividing the map length and depth by this value
 pub const SECTOR_RESOLUTION: usize = 10;
 /// Defines the dimenions of all field arrays
@@ -175,20 +177,22 @@ impl Ordinal {
 		}
 	}
 	/// For two sectors next to each other it can be useful to find the [Ordinal] from the `source` to the `target`. This will panic if the two sectors are not orthogonally adjacent
-	pub fn sector_to_sector_direction(target: (u32, u32), source: (u32, u32)) -> Self {
+	pub fn sector_to_sector_direction(target: (u32, u32), source: (u32, u32)) -> Option<Self> {
 		let i32_target = (target.0 as i32, target.1 as i32);
 		let i32_source = (source.0 as i32, source.1 as i32);
 
 		let direction = (i32_target.0 - i32_source.0, i32_target.1 - i32_source.1);
 		match direction {
-			(0, -1) => Ordinal::North,
-			(1, 0) => Ordinal::East,
-			(0, 1) => Ordinal::South,
-			(-1, 0) => Ordinal::West,
-			_ => panic!(
+			(0, -1) => Some(Ordinal::North),
+			(1, 0) => Some(Ordinal::East),
+			(0, 1) => Some(Ordinal::South),
+			(-1, 0) => Some(Ordinal::West),
+			_ => {error!(
 				"Sector {:?} is not orthogonally adjacent to {:?}",
 				target, source
-			),
+			);
+			None
+		},
 		}
 	}
 }

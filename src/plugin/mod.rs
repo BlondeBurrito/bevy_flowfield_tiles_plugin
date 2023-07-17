@@ -21,16 +21,18 @@ impl Plugin for FlowFieldTilesPlugin {
 					cost_layer::process_costfields_updates,
 					cost_layer::rebuild_portals,
 					cost_layer::update_portal_graph,
-				)
-					.chain(),
-			)
-			.add_systems(
-				Update,
-				(
 					flow_layer::handle_path_requests,
 					flow_layer::generate_flow_fields,
 				)
 					.chain(),
 			);
+			// .add_systems(
+			// 	Update,
+			// 	(
+			// 		flow_layer::handle_path_requests,
+			// 		flow_layer::generate_flow_fields,
+			// 	)
+			// 		.chain(),
+			// );
 	}
 }
