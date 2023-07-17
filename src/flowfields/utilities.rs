@@ -187,12 +187,13 @@ impl Ordinal {
 			(1, 0) => Some(Ordinal::East),
 			(0, 1) => Some(Ordinal::South),
 			(-1, 0) => Some(Ordinal::West),
-			_ => {error!(
-				"Sector {:?} is not orthogonally adjacent to {:?}",
-				target, source
-			);
-			None
-		},
+			_ => {
+				error!(
+					"Sector {:?} is not orthogonally adjacent to {:?}",
+					target, source
+				);
+				None
+			}
 		}
 	}
 }

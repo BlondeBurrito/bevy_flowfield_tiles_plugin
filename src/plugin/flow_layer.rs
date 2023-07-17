@@ -45,7 +45,7 @@ pub fn handle_path_requests(
 		&SectorCostFields,
 	)>,
 ) {
-    use std::collections::hash_map::Entry;
+	use std::collections::hash_map::Entry;
 
 	for event in events.iter() {
 		for (mut cache, graph, sector_portals, sector_cost_fields) in cache_q.iter_mut() {
@@ -56,59 +56,57 @@ pub fn handle_path_requests(
 			// 	event.target_sector,
 			// 	event.target_goal,
 			// )) {
-				if let Some(node_route) = graph.find_best_path(
-					(event.source_sector, event.source_field_cell),
-					(event.target_sector, event.target_goal),
-					sector_portals,
-					sector_cost_fields,
-				) {
-					debug!("Portal path found");
-					let mut path = graph
-						.convert_index_path_to_sector_portal_cells(node_route.1, sector_portals);
-					if !path.is_empty() {
-						// original order is from actor to goal, to help filtering we reverse
-						path.reverse(); //TODO this is messy paired with below todo
-						// change target cell from portal to the real goal for the destination
-						path[0].1 = event.target_goal;
-						// filter out the entry portals of sectors, we only care about the end of each sector and the end goal itself
-						let mut sector_order = Vec::new();
-						let mut map = HashMap::new();
-						for p in path.iter() {
-							if let Entry::Vacant(e) = map.entry(p.0) {
-								e.insert(p.1);
-								sector_order.push(p.0);
-							}
+			if let Some(node_route) = graph.find_best_path(
+				(event.source_sector, event.source_field_cell),
+				(event.target_sector, event.target_goal),
+				sector_portals,
+				sector_cost_fields,
+			) {
+				debug!("Portal path found");
+				let mut path =
+					graph.convert_index_path_to_sector_portal_cells(node_route.1, sector_portals);
+				if !path.is_empty() {
+					// original order is from actor to goal, to help filtering we reverse
+					path.reverse(); //TODO this is messy paired with below todo
+				// change target cell from portal to the real goal for the destination
+					path[0].1 = event.target_goal;
+					// filter out the entry portals of sectors, we only care about the end of each sector and the end goal itself
+					let mut sector_order = Vec::new();
+					let mut map = HashMap::new();
+					for p in path.iter() {
+						if let Entry::Vacant(e) = map.entry(p.0) {
+							e.insert(p.1);
+							sector_order.push(p.0);
 						}
-						// reassemble to only include 1 element for each sector
-						let mut sector_goals = Vec::new();
-						for sector in sector_order.iter() {
-							let (sector_id, portal_id) = map.get_key_value(sector).unwrap();
-							sector_goals.push((*sector_id, *portal_id));
-						}
-						path = sector_goals;
-						// reverse again so the route describes moving from actor to goal
-						path.reverse(); //TODO this is messy
 					}
-					cache.insert_route(
-						event.source_sector,
-						event.target_sector,
-						event.target_goal,
-						path,
-					);
-				} else {
-					// a portal based route could not be found or the actor
-					// is within the same sector as the goal, for the latter
-					// we store a single element route
-					debug!(
-						"No portal path found, either local sector movement or just doesn't exist"
-					);
-					cache.insert_route(
-						event.source_sector,
-						event.target_sector,
-						event.target_goal,
-						vec![(event.target_sector, event.target_goal)],
-					);
+					// reassemble to only include 1 element for each sector
+					let mut sector_goals = Vec::new();
+					for sector in sector_order.iter() {
+						let (sector_id, portal_id) = map.get_key_value(sector).unwrap();
+						sector_goals.push((*sector_id, *portal_id));
+					}
+					path = sector_goals;
+					// reverse again so the route describes moving from actor to goal
+					path.reverse(); //TODO this is messy
 				}
+				cache.insert_route(
+					event.source_sector,
+					event.target_sector,
+					event.target_goal,
+					path,
+				);
+			} else {
+				// a portal based route could not be found or the actor
+				// is within the same sector as the goal, for the latter
+				// we store a single element route
+				debug!("No portal path found, either local sector movement or just doesn't exist");
+				cache.insert_route(
+					event.source_sector,
+					event.target_sector,
+					event.target_goal,
+					vec![(event.target_sector, event.target_goal)],
+				);
+			}
 			// }
 		}
 	}
@@ -137,28 +135,28 @@ pub fn generate_flow_fields(
 			for (i, (sector_id, goal)) in path.iter().enumerate() {
 				// // only run if a FlowField hasn't been generated
 				// if !field_cache.get().contains_key(&(*sector_id, *goal)) {
-					// first element is always the end target, don't bother with portal expansion
-					if i == 0 {
-						sectors_expanded_goals.push((*sector_id, vec![*goal]));
-					} else {
-						// portals represent the boundary to another sector, a portal can be spread over
-						// multple grid cells, expand the portal to provide multiple goal
-						// targets for moving to another sector
-						let neighbour_sector_id = path[i - 1].0;
-						let g = sector_portals
-							.get()
-							.get(sector_id)
-							.unwrap()
-							.expand_portal_into_goals(
-								sector_cost_fields,
-								sector_id,
-								goal,
-								&neighbour_sector_id,
-								map_dimensions.get_column(),
-								map_dimensions.get_row(),
-							);
-						sectors_expanded_goals.push((*sector_id, g));
-					}
+				// first element is always the end target, don't bother with portal expansion
+				if i == 0 {
+					sectors_expanded_goals.push((*sector_id, vec![*goal]));
+				} else {
+					// portals represent the boundary to another sector, a portal can be spread over
+					// multple grid cells, expand the portal to provide multiple goal
+					// targets for moving to another sector
+					let neighbour_sector_id = path[i - 1].0;
+					let g = sector_portals
+						.get()
+						.get(sector_id)
+						.unwrap()
+						.expand_portal_into_goals(
+							sector_cost_fields,
+							sector_id,
+							goal,
+							&neighbour_sector_id,
+							map_dimensions.get_column(),
+							map_dimensions.get_row(),
+						);
+					sectors_expanded_goals.push((*sector_id, g));
+				}
 				// }
 			}
 			// build the integration fields
@@ -178,14 +176,15 @@ pub fn generate_flow_fields(
 					flow_field.calculate(goals, None, int_field);
 					field_cache.insert_field(*sector_id, path[i].1, flow_field);
 				} else if let Some(dir_prev_sector) =
-						Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id) {
-							let prev_int_field = &sector_int_fields[i - 1].2;
+					Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
+				{
+					let prev_int_field = &sector_int_fields[i - 1].2;
 					flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
 					//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own
 					field_cache.insert_field(*sector_id, path[i].1, flow_field);
-						} else {
-							error!("Route {:?}", portal_path);
-						};
+				} else {
+					error!("Route {:?}", portal_path);
+				};
 			}
 		}
 	}

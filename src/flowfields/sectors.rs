@@ -340,8 +340,7 @@ pub fn get_sector_and_field_id_from_xy(
 		let sector_corner_origin =
 			get_sector_xy_at_top_left(sector_id, map_x_dimension, map_y_dimension, pixel_scale);
 		let field_id_0 = ((position.x - sector_corner_origin.x) / pixel_scale).floor() as usize;
-		let field_id_1 =
-			((-position.y + sector_corner_origin.y) / pixel_scale).floor() as usize;
+		let field_id_1 = ((-position.y + sector_corner_origin.y) / pixel_scale).floor() as usize;
 		let field_id = (field_id_0, field_id_1);
 		return Some((sector_id, field_id));
 	}
@@ -407,14 +406,11 @@ pub fn get_sector_and_field_cell_from_xyz(
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> Option<((u32, u32), (usize, usize))> {
-	if let Some(sector_id) =
-		get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension)
-	{
+	if let Some(sector_id) = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension) {
 		let sector_corner_origin =
 			get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
 		let field_id_0 = (position.x - sector_corner_origin.x).floor() as usize;
-		let field_id_1 =
-			(position.z - sector_corner_origin.z).floor() as usize;
+		let field_id_1 = (position.z - sector_corner_origin.z).floor() as usize;
 		let field_id = (field_id_0, field_id_1);
 		return Some((sector_id, field_id));
 	}
@@ -625,8 +621,7 @@ mod tests {
 		let sector_id = (0, 0);
 		let map_x_dimension = 30;
 		let map_z_dimension = 30;
-		let result =
-		get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
+		let result = get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
 		let actual = Vec3::new(-15.0, 0.0, -15.0);
 		assert_eq!(actual, result)
 	}
@@ -635,8 +630,7 @@ mod tests {
 		let sector_id = (1, 1);
 		let map_x_dimension = 30;
 		let map_z_dimension = 30;
-		let result =
-		get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
+		let result = get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
 		let actual = Vec3::new(-5.0, 0.0, -5.0);
 		assert_eq!(actual, result)
 	}

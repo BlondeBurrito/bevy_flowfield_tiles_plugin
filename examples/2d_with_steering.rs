@@ -242,13 +242,13 @@ fn update_sprite_visuals_based_on_actor(
 			// look for the value in the route_map if it's part of the flow, otherwise use the cost field
 			if route_map.contains_key(&(sector_label.0, sector_label.1)) {
 				let goal = route_map.get(&(sector_label.0, sector_label.1)).unwrap();
-				if let Some(flowfield) = f_cache
-					.get_field((sector_label.0, sector_label.1), *goal) {
-						let flow_value = flowfield.get_grid_value(grid_label.0, grid_label.1);
+				if let Some(flowfield) = f_cache.get_field((sector_label.0, sector_label.1), *goal)
+				{
+					let flow_value = flowfield.get_grid_value(grid_label.0, grid_label.1);
 					let icon = get_ord_icon(flow_value);
 					let new_handle: Handle<Image> = asset_server.load(icon);
 					*handle = new_handle;
-					}
+				}
 			} else {
 				let value = sc_cache
 					.get()

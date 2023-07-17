@@ -170,16 +170,16 @@ fn user_input(
 /// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
 	for mut pathing in actor_q.iter_mut() {
-	if let Some(_) = pathing.target_goal {
-		let route_cache = route_q.get_single().unwrap();
-		if let Some(route) = route_cache.get_route(
-			pathing.source_sector.unwrap(),
-			pathing.target_sector.unwrap(),
-			pathing.target_goal.unwrap(),
-		) {
-			pathing.portal_route = Some(route.clone());
+		if let Some(_) = pathing.target_goal {
+			let route_cache = route_q.get_single().unwrap();
+			if let Some(route) = route_cache.get_route(
+				pathing.source_sector.unwrap(),
+				pathing.target_sector.unwrap(),
+				pathing.target_goal.unwrap(),
+			) {
+				pathing.portal_route = Some(route.clone());
+			}
 		}
-	}
 	}
 }
 /// Actor speed measured in pixels per fixed tick
@@ -211,7 +211,8 @@ fn actor_steering(
 						// get the flow field
 						if let Some(field) = flow_cache.get_field(*sector, *goal) {
 							// based on actor grid cell find the directional vector it should move in
-							let cell_value = field.get_grid_value(curr_actor_grid.0, curr_actor_grid.1);
+							let cell_value =
+								field.get_grid_value(curr_actor_grid.0, curr_actor_grid.1);
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 							// info!("In sector {:?}, in grid cell {:?}", sector, curr_actor_grid);
 							// info!("Direction to move: {}", dir);
