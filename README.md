@@ -4,6 +4,8 @@
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/blondeburrito/bevy_flowfield_tiles_plugin/ci.yml)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/blondeburrito/bevy_flowfield_tiles_plugin/code-cov.yml?label=CodeCov>85%)
 
+<img src="docs/emblem.png" alt="e" width="300"/>
+
 # bevy_flowfield_tiles_plugin
 
 Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/GameAIPro_Chapter23_Crowd_Pathfinding_and_Steering_Using_Flow_Field_Tiles.pdf) this is an attempt to implement the data structures and logic required to generate a Flowfield representation of a world which can be used to pathfind movable actors.
@@ -13,7 +15,7 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 | [commit](https://github.com/bevyengine/bevy/commit/8ba9571eedada4f3ff43cdf1402670b7fe7c280d) |  main                        |
 | 0.11 |  0.1 (unreleased) |
 
-<img src="docs/2d_with_steering.gif" alt="sgif" width="600"/>
+<img src="docs/2d_with_steering.gif" alt="sgif" width="500"/>
 
 # Table of Contents
 
