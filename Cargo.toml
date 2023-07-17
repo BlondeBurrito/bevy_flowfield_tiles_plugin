@@ -69,6 +69,11 @@ name = "fib"
 harness = false
 
 [[example]]
+name = "visualise_integration_cost"
+path = "examples/visualise_integration_cost.rs"
+required-features = ["ron"]
+
+[[example]]
 name = "visualise_integration_field"
 path = "examples/visualise_integration_field.rs"
 required-features = ["ron"]
@@ -91,4 +96,9 @@ required-features = ["ron"]
 [[example]]
 name = "2d_with_steering"
 path = "examples/2d_with_steering.rs"
+required-features = ["ron"]
+
+[[example]]
+name = "2d_multi_actor"
+path = "examples/2d_multi_actor.rs"
 required-features = ["ron"]
