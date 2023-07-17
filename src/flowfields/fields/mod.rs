@@ -23,9 +23,13 @@ pub trait Field<T> {
 
 #[derive(Eq)]
 pub struct RouteMetadata {
+	/// Starting sector of the route
 	source_sector: (u32, u32),
+	/// Starting field/grid cell in the starting sector
 	source_grid_cell: (usize, usize),
+	/// Sector to find a route to
 	target_sector: (u32, u32),
+	/// Field/grid cell of the goal in the target sector
 	target_goal: (usize, usize),
 	//? If a game is running for 136 years bad things will start happening here
 	/// Marks the route based on time elapsed since app start, used to enable automatic cleardown of long lived routes that are probably not needed anymore
@@ -34,15 +38,10 @@ pub struct RouteMetadata {
 // we don't want to compare `time_generated` so manually impl PartialEq
 impl PartialEq for RouteMetadata {
 	fn eq(&self, other: &Self) -> bool {
-		if self.source_sector == other.source_sector
+		self.source_sector == other.source_sector
 			&& self.source_grid_cell == other.source_grid_cell
 			&& self.target_sector == other.target_sector
 			&& self.target_goal == other.target_goal
-		{
-			true
-		} else {
-			false
-		}
 	}
 }
 /// Each entry is given an ID of `(sector_id, sector_id, goal_id)` referring to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
@@ -87,9 +86,12 @@ impl RouteCache {
 		self.0.remove(&(source_sector, target_sector, goal_id));
 	}
 }
+/// Describes the properties of a [FlowField]
 #[derive(Eq)]
 pub struct FlowFieldMetadata {
+	/// The sector of the corresponding [FlowField]
 	sector_id: (u32, u32),
+	/// Portal goal or true target goal of the sector
 	goal_id: (usize, usize),
 	//? If a game is running for 136 years bad things will start happening here
 	/// Marks the field based on time elapsed since app start, used to enable automatic cleardown of long lived fields that are probably not needed anymore
@@ -98,11 +100,7 @@ pub struct FlowFieldMetadata {
 // we don't want to compare `time_generated` so manually impl PartialEq
 impl PartialEq for FlowFieldMetadata {
 	fn eq(&self, other: &Self) -> bool {
-		if self.sector_id == other.sector_id && self.goal_id == other.goal_id {
-			true
-		} else {
-			false
-		}
+		self.sector_id == other.sector_id && self.goal_id == other.goal_id
 	}
 }
 //? means of invalidating fields in cache that are very old?

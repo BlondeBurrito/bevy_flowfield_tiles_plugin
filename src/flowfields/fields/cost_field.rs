@@ -88,8 +88,8 @@ impl CostField {
 		let queue = vec![source];
 		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
 		let visited = HashSet::new();
-		let is_routable = process_neighbours(target, queue, visited, &self, 0);
-
+		let is_routable = process_neighbours(target, queue, visited, self, 0);
+		/// Recursively process the cells to see if there's a path
 		fn process_neighbours(
 			target: (usize, usize),
 			queue: Vec<(usize, usize)>,
@@ -116,7 +116,7 @@ impl CostField {
 					}
 				}
 			}
-			if next_neighbours.len() != 0 {
+			if !next_neighbours.is_empty() {
 				process_neighbours(target, next_neighbours, visited, cost_field, steps_taken)
 			} else {
 				(false, steps_taken)
@@ -127,7 +127,7 @@ impl CostField {
 	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]
 	pub fn from_file(path: String) -> Self {
-		let file = std::fs::File::open(&path).expect("Failed opening CostField file");
+		let file = std::fs::File::open(path).expect("Failed opening CostField file");
 		let field: CostField = match ron::de::from_reader(file) {
 			Ok(field) => field,
 			Err(e) => panic!("Failed deserializing CostField: {}", e),
@@ -153,7 +153,6 @@ mod tests {
 	fn cost_field_file() {
 		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field.ron";
 		let _cost_field = CostField::from_file(path);
-		assert!(true)
 	}
 	#[test]
 	fn internal_portal_visibility_true() {

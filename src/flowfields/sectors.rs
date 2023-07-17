@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 
 use crate::prelude::*;
 use bevy::prelude::*;
-
+//TODO: is this needed?
+/// Shared behaviour of a sector
 trait Sector {}
 
 /// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
@@ -40,7 +41,7 @@ impl SectorCostFields {
 	/// From a `ron` file generate the [SectorCostFields]
 	#[cfg(feature = "ron")]
 	pub fn from_file(path: String) -> Self {
-		let file = std::fs::File::open(&path).expect("Failed opening CostField file");
+		let file = std::fs::File::open(path).expect("Failed opening CostField file");
 		let fields: SectorCostFields = match ron::de::from_reader(file) {
 			Ok(fields) => fields,
 			Err(e) => panic!("Failed deserializing SectorCostFields: {}", e),
@@ -252,7 +253,7 @@ pub fn get_boundary_ordinal_from_grid_cell(cell_id: &(usize, usize)) -> Vec<Ordi
 	if cell_id.0 == 0 {
 		boundaries.push(Ordinal::West);
 	}
-	if boundaries.len() != 0 {
+	if !boundaries.is_empty() {
 		boundaries
 	} else {
 		panic!("Grid cell {:?} does not sit along the boundary", cell_id);
@@ -340,13 +341,13 @@ pub fn get_sector_and_field_id_from_xy(
 			get_sector_xy_at_top_left(sector_id, map_x_dimension, map_y_dimension, pixel_scale);
 		let field_id_0 = ((position.x - sector_corner_origin.x) / pixel_scale).floor() as usize;
 		let field_id_1 =
-			((-position.y + sector_corner_origin.y) / pixel_scale as f32).floor() as usize;
+			((-position.y + sector_corner_origin.y) / pixel_scale).floor() as usize;
 		let field_id = (field_id_0, field_id_1);
 		return Some((sector_id, field_id));
 	}
 	None
 }
-
+//TODO fix me
 /// From a position in `x, y, z` space and the dimensions of the map calcualte
 /// the sector ID that point resides in
 pub fn get_sector_id_from_xyz(
@@ -376,6 +377,7 @@ pub fn get_sector_id_from_xyz(
 	}
 	(column, row)
 }
+//TODO fix me
 pub fn get_field_cell_from_xyz(
 	position: Vec3,
 	sector_id: (u32, u32),
@@ -407,6 +409,7 @@ pub fn get_sector_and_field_cell_from_xyz(
 	let field_cell = get_field_cell_from_xyz(position, sector_id, map_x_dimension, map_z_dimension);
 	(sector_id, field_cell)
 }
+//TODO fix and test me
 /// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
 pub fn get_xyz_at_sector_top_left_from_sector_id(
 	sector_id: (u32, u32),
@@ -417,6 +420,7 @@ pub fn get_xyz_at_sector_top_left_from_sector_id(
 	let z = (sector_id.1 as i32 * SECTOR_RESOLUTION as i32 - (map_z_dimension / 2) as i32) as f32;
 	Vec3::new(x, 0.0, z)
 }
+//TODO fix and test me
 /// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
 pub fn get_xyz_sector_centre_from_sector_id(
 	sector_id: (u32, u32),
@@ -429,6 +433,7 @@ pub fn get_xyz_sector_centre_from_sector_id(
 		+ (SECTOR_RESOLUTION / 2) as f32;
 	Vec3::new(x, 0.0, z)
 }
+//TODO fix and test me
 /// Calculate the real world `x, y, z` coordinates at the cetnre of a field cell within a sector based on map dimensions
 pub fn get_xyz_from_field_cell_within_sector(
 	sector_id: (u32, u32),
@@ -750,7 +755,6 @@ mod tests {
 	fn sector_cost_fields_file() {
 		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 		let _cost_fields = SectorCostFields::from_file(path);
-		assert!(true)
 	}
 	#[test]
 	fn sector_from_xy_none() {

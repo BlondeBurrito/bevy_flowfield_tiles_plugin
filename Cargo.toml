@@ -27,7 +27,7 @@ version.workspace = true
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "An implementation"
+description = "An implementation of FlowField (vector field) pathfinding as a plugin to the Bevy game engine"
 readme.workspace = true
 license.workspace = true
 homepage.workspace = true
@@ -37,9 +37,6 @@ categories.workspace = true
 exclude.workspace = true
 publish = false
 
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dev-dependencies]
 criterion = "0.5"
 bevy = { workspace = true, features = ["bevy_asset", "bevy_winit", "bevy_pbr", "bevy_gltf", "bevy_render", "bevy_sprite", "bevy_text", "bevy_ui", "png", "x11"] }
@@ -47,7 +44,7 @@ bevy = { workspace = true, features = ["bevy_asset", "bevy_winit", "bevy_pbr", "
 [dependencies]
 bevy = { workspace = true }
 petgraph = { workspace = true }
-serde = { workpspace = true, optional = true}
+serde = { workspace = true, optional = true}
 ron = { workspace = true, optional = true}
 
 [features]
@@ -64,7 +61,7 @@ strip = false
 
 [profile.release]
 codegen-units = 2
-# lto = true # currently breaks examples
+# lto = true # slow
 strip = true # strip symbols to reduce binary size on linux and mac
 
 [[bench]]

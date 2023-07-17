@@ -6,11 +6,17 @@ use std::collections::HashMap;
 use crate::prelude::*;
 use bevy::prelude::*;
 
+/// A request to queue up an attempt at generating a Route and a series of
+/// [FlowField]s describing a path from the source to target
 #[derive(Event)]
 pub struct EventPathRequest {
+	/// The starting sector of the request
 	source_sector: (u32, u32),
+	/// The starting field/grid cell of the statrting sector
 	source_field_cell: (usize, usize),
+	/// The sector to try and find a path to
 	target_sector: (u32, u32),
+	/// The field/grid cell in the target sector to find a path to
 	target_goal: (usize, usize),
 }
 
@@ -39,6 +45,8 @@ pub fn handle_path_requests(
 		&SectorCostFields,
 	)>,
 ) {
+    use std::collections::hash_map::Entry;
+
 	for event in events.iter() {
 		for (mut cache, graph, sector_portals, sector_cost_fields) in cache_q.iter_mut() {
 			// only run if the cache doesn't contain the route already
@@ -55,8 +63,8 @@ pub fn handle_path_requests(
 				) {
 					debug!("Portal path found");
 					let mut path = graph
-						.convert_index_path_to_sector_portal_cells(node_route.1, &sector_portals);
-					if path.len() > 0 {
+						.convert_index_path_to_sector_portal_cells(node_route.1, sector_portals);
+					if !path.is_empty() {
 						// original order is from actor to goal, to help filtering we reverse
 						path.reverse();
 						// change target cell from portal to the real goal for the destination
@@ -65,8 +73,8 @@ pub fn handle_path_requests(
 						let mut sector_order = Vec::new();
 						let mut map = HashMap::new();
 						for p in path.iter() {
-							if !map.contains_key(&p.0) {
-								map.insert(p.0, p.1);
+							if let Entry::Vacant(e) = map.entry(p.0) {
+								e.insert(p.1);
 								sector_order.push(p.0);
 							}
 						}
@@ -138,11 +146,11 @@ pub fn generate_flow_fields(
 						let neighbour_sector_id = path[i - 1].0;
 						let g = sector_portals
 							.get()
-							.get(&sector_id)
+							.get(sector_id)
 							.unwrap()
 							.expand_portal_into_goals(
-								&sector_cost_fields,
-								&sector_id,
+								sector_cost_fields,
+								sector_id,
 								goal,
 								&neighbour_sector_id,
 								map_dimensions.get_column(),

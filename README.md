@@ -241,10 +241,10 @@ Add the plugin to your app:
 use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
-	App::new()
-		// ... snip
-		.add_plugins(FlowFieldTilesPlugin)
-		// ... snip
+    App::new()
+        // ... snip
+        .add_plugins(FlowFieldTilesPlugin)
+        // ... snip
 }
 ```
 
@@ -264,7 +264,7 @@ In 2d the dimensions can be configured in different ways:
 * For a world made from a single sprite (or a handful) that represents a very large area (where an actor is comparitively small compared to the world) then you need to choose a scale by which the alogirthm will subdivide your world into sectors, this must be exactly divisible by 10. E.g a world has pixel dimensions of `1140x980`, to create a series of sectors representing a `114x98` pixel area we set the length parameter to `114` and the depth parameter to `98`.
 
 ```rust
-	cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth));
+    cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth));
 ```
 
 Next you need to seed your `CostFields` to reflect the make up of your world, this can be done programmatically (in 3d you might fire a series of raycasts and based on collider collisions flip a `CostField` grid cell to a higher number) or you can load predetermined values from disk.
@@ -274,39 +274,93 @@ Next you need to seed your `CostFields` to reflect the make up of your world, th
 By taking an actors Transform and some position in space you queue field generation by sending an `EventPathRequest` event:
 
 ```rust
-fn some_system(mut event: EventWriter<EventPathRequest>) {
-	// 
-	if let Some((target_sector_id, goal_id)) =
-				get_sector_and_field_id_from_xy(world_position, 640, 640, 64.0)
-	{
-		if let Some((source_sector_id, source_grid_cell)) = get_sector_and_field_id_from_xy(
-				tform.translation.truncate(),
-				640,
-				640,
-				64.0
-			) {
-			event.send(EventPathRequest::new(
-				source_sector_id,
-				source_grid_cell,
-				target_sector_id,
-				goal_id,
-			));
-		}
-	}
+fn some_system(mut event: EventWriter<EventPathRequest>, ***some other params***) {
+    if let Some((target_sector_id, goal_id)) =
+        get_sector_and_field_id_from_xy(world_position, 640, 640, 64.0)
+    {
+        if let Some((source_sector_id, source_grid_cell)) = get_sector_and_field_id_from_xy(
+                tform.translation.truncate(),
+                640,
+                640,
+                64.0
+            ) {
+            event.send(EventPathRequest::new(
+                source_sector_id,
+                source_grid_cell,
+                target_sector_id,
+                goal_id,
+            ));
+        }
+    }
 }
 ```
 
-The actor can then query the `RouteCache` to begin following a high-level portal-to-portal route:
+The actor can then query the `RouteCache` to begin following a high-level portal-to-portal route.
+
+Note this example is very basic as it only handles a single actor, in an application you'd devise your own handling system:
 
 ```rust
+fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
+    let mut pathing = actor_q.get_single_mut().unwrap();
+    if let Some(_) = pathing.target_goal {
+        let route_cache = route_q.get_single().unwrap();
+        if let Some(route) = route_cache.get_route(
+            pathing.source_sector.unwrap(),
+            pathing.target_sector.unwrap(),
+            pathing.target_goal.unwrap(),
+        ) {
+            pathing.portal_route = Some(route.clone());
+        }
+    }
+}
 ```
 
-And once the `FlowFields` have been built they can query the `FlowFieldCache` instead:
+And once the `FlowFields` have been built they can query the `FlowFieldCache` instead and apply/queue up some kind of movement.
+
+Note this example is very basic as it only handles a single actor, in an application you'd devise your own handling system:
 
 ```rust
+fn actor_steering(
+    mut actor_q: Query<(&mut Transform, &Pathing), With<Actor>>,
+    flow_cache_q: Query<&FlowFieldCache>,
+) {
+    let (mut tform, pathing) = actor_q.get_single_mut().unwrap();
+    let flow_cache = flow_cache_q.get_single().unwrap();
+
+    if pathing.target_goal.is_some() {
+        // lookup the overarching route
+        if let Some(route) = &pathing.portal_route {
+            // find the current actors postion in grid space
+            let (curr_actor_sector, curr_actor_grid) = get_sector_and_field_id_from_xy(
+                tform.translation.truncate(),
+                30 * 64,
+                30 * 64,
+                64.0,
+            )
+            .unwrap();
+            // lookup the relevant sector-goal of this sector
+            'routes: for (sector, goal) in route.iter() {
+                if *sector == curr_actor_sector {
+                    // get the flow field
+                    if let Some(field) = flow_cache.get_field(*sector, *goal) {
+                        // based on actor grid cell find the directional vector it should move in
+                        let cell_value = field.get_grid_value(curr_actor_grid.0, curr_actor_grid.1);
+                        let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+                        let velocity = dir * SPEED;
+                        // move the actor based on the velocity
+                        tform.translation += velocity.extend(0.0);
+                    }
+                    break 'routes;
+                }
+            }
+        }
+    }
+}
 ```
 
 ## Actor Sizes
+
+[TODO](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/2)
 
 # Features
 

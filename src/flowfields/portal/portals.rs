@@ -147,7 +147,7 @@ impl Portals {
 		// should be updated
 		let valid_ordinals_for_this_sector: Vec<(Ordinal, (u32, u32))> =
 			get_ordinal_and_ids_of_neighbouring_sectors(
-				&sector_id,
+				sector_id,
 				map_x_dimension,
 				map_z_dimension,
 			);
@@ -155,7 +155,7 @@ impl Portals {
 		// we inspect the [CostField] values to calculate the portals along each valid sector side
 		let cost_field = sector_cost_fields
 			.get()
-			.get(&sector_id)
+			.get(sector_id)
 			.expect("Invalid sector id");
 		for (ord, adjoining_sector_id) in valid_ordinals_for_this_sector.iter() {
 			match ord {
@@ -164,7 +164,7 @@ impl Portals {
 					let column_range = 0..FIELD_RESOLUTION;
 					let fixed_row = 0;
 					let adjoining_cost_field =
-						sector_cost_fields.get().get(&adjoining_sector_id).unwrap();
+						sector_cost_fields.get().get(adjoining_sector_id).unwrap();
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for i in column_range {
@@ -211,7 +211,7 @@ impl Portals {
 					let fixed_column = FIELD_RESOLUTION - 1;
 					let row_range = 0..FIELD_RESOLUTION;
 					let adjoining_cost_field =
-						sector_cost_fields.get().get(&adjoining_sector_id).unwrap();
+						sector_cost_fields.get().get(adjoining_sector_id).unwrap();
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for j in row_range {
@@ -257,7 +257,7 @@ impl Portals {
 					let column_range = 0..FIELD_RESOLUTION;
 					let fixed_row = FIELD_RESOLUTION - 1;
 					let adjoining_cost_field =
-						sector_cost_fields.get().get(&adjoining_sector_id).unwrap();
+						sector_cost_fields.get().get(adjoining_sector_id).unwrap();
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for i in column_range {
@@ -303,7 +303,7 @@ impl Portals {
 					let fixed_column = 0;
 					let row_range = 0..FIELD_RESOLUTION;
 					let adjoining_cost_field =
-						sector_cost_fields.get().get(&adjoining_sector_id).unwrap();
+						sector_cost_fields.get().get(adjoining_sector_id).unwrap();
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for j in row_range {
@@ -368,7 +368,7 @@ impl Portals {
 		if boundary_ordinals.len() > 1 {
 			let valid_ordinals_for_this_sector: Vec<(Ordinal, (u32, u32))> =
 				get_ordinal_and_ids_of_neighbouring_sectors(
-					&sector_id,
+					sector_id,
 					map_x_dimension,
 					map_z_dimension,
 				);
@@ -388,8 +388,8 @@ impl Portals {
 		goals.push(*portal_id);
 		// from the portal walk either left/right or up/down depending on the ordinal
 		// until an impassable cost field value is found
-		let this_cost_field = sector_cost_fields.get().get(&sector_id).unwrap();
-		let adjoining_cost_field = sector_cost_fields.get().get(&neighbour_sector_id).unwrap();
+		let this_cost_field = sector_cost_fields.get().get(sector_id).unwrap();
+		let adjoining_cost_field = sector_cost_fields.get().get(neighbour_sector_id).unwrap();
 		match boundary_ordinal {
 			Ordinal::North => {
 				// walk left from the portal

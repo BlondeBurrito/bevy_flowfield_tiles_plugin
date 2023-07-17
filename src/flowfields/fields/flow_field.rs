@@ -1,23 +1,36 @@
-//!
+//! Defines the [FlowField], the various bit values associated with it and the
+//! logic for calculating a field from an [IntegrationField]
 //!
 
 use crate::prelude::*;
 use bevy::prelude::*;
-
+/// Bit to indicate a northerly direction
 const BITS_NORTH: u8 = 0b0000_0001;
+/// Bit to indicate an easterly direction
 const BITS_EAST: u8 = 0b0000_0010;
+/// Bit to indicate a southerly direction
 const BITS_SOUTH: u8 = 0b0000_0100;
+/// Bit to indicate a westerly direction
 const BITS_WEST: u8 = 0b0000_1000;
+/// Bit to indicate a north-easterly direction
 const BITS_NORTH_EAST: u8 = 0b0000_0011;
+/// Bit to indicate a south-easterly direction
 const BITS_SOUTH_EAST: u8 = 0b0000_0110;
+/// Bit to indicate south-westerly direction
 const BITS_SOUTH_WEST: u8 = 0b0000_1100;
+/// Bit to indicate a north-westerly direction
 const BITS_NORTH_WEST: u8 = 0b0000_1001;
+/// Bit to indicate an impassable grid
 const BITS_ZERO: u8 = 0b0000_0000;
+/// Default grid cell value of a new [FlowField]
 const BITS_DEFAULT: u8 = 0b0000_1111;
-
+/// Flags a pathable grid cell
 const BITS_PATHABLE: u8 = 0b0001_0000;
+/// Flags a grid cell that has line-of-sight to the goal
 const BITS_HAS_LOS: u8 = 0b0010_0000;
+/// Flags a grid cell as being the goal
 const BITS_GOAL: u8 = 0b0100_0000;
+/// Flags a grid cell as being a portal to another sector
 const BITS_PORTAL_GOAL: u8 = 0b1000_0000;
 
 pub fn convert_ordinal_to_bits_dir(ordinal: Ordinal) -> u8 {
@@ -67,16 +80,12 @@ impl FlowField {
 	/// Calculate the [FlowField] from an [IntegrationField], additionally for a sector in a chain of sectors along a path this will peak into the previous sectors [IntegrationField] to apply a directional optimisation to this sector's [FlowField]
 	pub fn calculate(
 		&mut self,
-		goals: &Vec<(usize, usize)>,
+		goals: &[(usize, usize)],
 		previous_sector_ord_int: Option<(Ordinal, &IntegrationField)>,
 		integration_field: &IntegrationField,
 	) {
-		// set goal cells
-		if previous_sector_ord_int.is_none() {
-			self.set_grid_value(BITS_GOAL, goals[0].0, goals[0].1);
-		} else {
+		if let Some((ord, prev_field)) = previous_sector_ord_int {
 			// peek into the previous sector to create better flows over the portal goals
-			let (ord, prev_field) = previous_sector_ord_int.unwrap();
 			for goal in goals.iter() {
 				// based on the ordinal get up to 3 neighbour int costs
 				let possible_neighbours =
@@ -98,6 +107,9 @@ impl FlowField {
 					self.set_grid_value(value, goal.0, goal.1);
 				} //TODO this sould never ever be none...
 			}
+		} else {
+			// set goal cells
+			self.set_grid_value(BITS_GOAL, goals[0].0, goals[0].1);
 		}
 
 		for (i, column) in integration_field.get_field().iter().enumerate() {
@@ -132,10 +144,6 @@ impl FlowField {
 				}
 			}
 		}
-
-		// fn process(flow_field: &mut FlowField, queue: Vec<(usize, usize)>, int_field: &IntegrationField) {
-		// 	let mut next_neighbours = Vec::new();
-		// }
 	}
 }
 /// Used by a [FlowField] calculation that needs to peek into the previous sectors [IntegrationField] to align portal goal directional bits to the most optimal integration costs
@@ -222,23 +230,23 @@ fn lookup_portal_goal_neighbour_costs_in_previous_sector(
 	}
 	adjacent_neighbours
 }
+//TODO? high level steering within this plugin??
+// pub fn abc(cell_value: u8) {
+// 	let flag_filter = 0b1111_0000;
+// 	let dir_filter = 0b0000_1111;
+// 	todo!();
 
-pub fn abc(cell_value: u8) {
-	let flag_filter = 0b1111_0000;
-	let dir_filter = 0b0000_1111;
-	todo!();
-
-	let flags = cell_value & flag_filter;
-	match flags {
-		BITS_GOAL => {
-			// arrived at goal,
-		}
-		BITS_PORTAL_GOAL => {}
-		BITS_HAS_LOS => {}
-		BITS_PATHABLE => {}
-		_ => panic!("Last 4 bits of cell are not recognised flags"),
-	}
-}
+// 	let flags = cell_value & flag_filter;
+// 	match flags {
+// 		BITS_GOAL => {
+// 			// arrived at goal,
+// 		}
+// 		BITS_PORTAL_GOAL => {}
+// 		BITS_HAS_LOS => {}
+// 		BITS_PATHABLE => {}
+// 		_ => panic!("Last 4 bits of cell are not recognised flags"),
+// 	}
+// }
 
 pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
 	let dir_filter = 0b0000_1111;
@@ -318,11 +326,10 @@ mod tests {
 					&& *row_value != BITS_PORTAL_GOAL + BITS_SOUTH
 				{
 					println!("Flow field: {:?}", flow_field.get_field());
-					assert!(false);
+					panic!("Some FlowField default bits have not been replaced");
 				}
 			}
 		}
-		assert!(true);
 	}
 	#[test]
 	fn calculate_flow_target_west() {
@@ -357,10 +364,9 @@ mod tests {
 					&& *row_value != BITS_PORTAL_GOAL + BITS_WEST
 				{
 					println!("Flow field: {:?}", flow_field.get_field());
-					assert!(false);
+					panic!("Some FlowField default bits have not been replaced");
 				}
 			}
 		}
-		assert!(true);
 	}
 }

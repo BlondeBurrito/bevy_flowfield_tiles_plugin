@@ -32,11 +32,17 @@ impl MapDimensions {
 //TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Bundle)]
 pub struct FlowFieldTilesBundle {
+	/// [CostField]s of all sectors
 	sector_cost_fields: SectorCostFields,
+	/// Portals for all sectors
 	sector_portals: SectorPortals,
+	/// Graph describing how to get from one sector to another
 	portal_graph: PortalGraph,
+	/// Size of the world
 	map_dimensions: MapDimensions,
+	/// Cache of overarching portal-portal routes
 	route_cache: RouteCache,
+	/// Cache of [FlowField]s that can be queried in a steering pipeline
 	flow_field_cache: FlowFieldCache,
 }
 
@@ -47,7 +53,7 @@ impl FlowFieldTilesBundle {
 		let cost_fields = SectorCostFields::new(map_length, map_depth);
 		let mut portals = SectorPortals::new(map_length, map_depth);
 		// update default portals for cost fields
-		for (sector_id, _v) in cost_fields.get() {
+		for sector_id in cost_fields.get().keys() {
 			portals.update_portals(
 				*sector_id,
 				&cost_fields,
@@ -79,7 +85,7 @@ impl FlowFieldTilesBundle {
 		let cost_fields = SectorCostFields::from_file(path.to_string());
 		let mut portals = SectorPortals::new(map_length, map_depth);
 		// update default portals for cost fields
-		for (sector_id, _v) in cost_fields.get() {
+		for sector_id in cost_fields.get().keys() {
 			portals.update_portals(
 				*sector_id,
 				&cost_fields,
@@ -113,7 +119,6 @@ mod tests {
 	#[test]
 	fn valid_map_dimensions() {
 		let _map_dimsions = MapDimensions::new(10, 10);
-		assert!(true)
 	}
 	#[test]
 	#[should_panic]
@@ -123,6 +128,5 @@ mod tests {
 	#[test]
 	fn new_bundle() {
 		let _ = FlowFieldTilesBundle::new(30, 30);
-		assert!(true)
 	}
 }

@@ -30,6 +30,7 @@ use super::portals::{PortalNode, Portals};
 //TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))] https://github.com/petgraph/petgraph/pull/550
 #[derive(Component, Default)]
 pub struct PortalGraph {
+	/// The graph for storing nodes and edges
 	graph: StableGraph<u32, i32, petgraph::Directed>,
 	/// The `graph` cannot store [PortalNode]s directly instead it records entries with a [NodeIndex].
 	/// Based on the vectors of each sector in [SectorPortals] we create a means of storing
@@ -49,9 +50,9 @@ impl PortalGraph {
 		map_z_dimension: u32,
 	) -> Self {
 		let mut portal_graph = PortalGraph::default();
-		portal_graph.build_graph_nodes(&sector_portals);
-		portal_graph.build_edges_within_each_sector(&sector_portals, sector_cost_fields);
-		portal_graph.build_edges_between_sectors(&sector_portals, map_x_dimension, map_z_dimension);
+		portal_graph.build_graph_nodes(sector_portals);
+		portal_graph.build_edges_within_each_sector(sector_portals, sector_cost_fields);
+		portal_graph.build_edges_between_sectors(sector_portals, map_x_dimension, map_z_dimension);
 		portal_graph
 	}
 	/// Builds the [StableGraph] nodes for each portal within a sector
@@ -115,9 +116,9 @@ impl PortalGraph {
 		// to all portals in the sector
 		let all_sector_portals = portals
 			.get()
-			.to_vec()
-			.into_iter()
+			.iter()
 			.flatten()
+			.cloned()
 			.collect::<Vec<PortalNode>>()
 			.iter()
 			.map(|&x| x.get_column_row())
@@ -302,9 +303,9 @@ impl PortalGraph {
 	) -> &mut Self {
 		let mut graph = PortalGraph::default();
 		graph
-			.build_graph_nodes(&sector_portals)
-			.build_edges_within_each_sector(&sector_portals, &sector_cost_fields)
-			.build_edges_between_sectors(&sector_portals, map_x_dimension, map_z_dimension);
+			.build_graph_nodes(sector_portals)
+			.build_edges_within_each_sector(sector_portals, sector_cost_fields)
+			.build_edges_between_sectors(sector_portals, map_x_dimension, map_z_dimension);
 		self.graph = graph.graph;
 		self
 	}
@@ -556,7 +557,7 @@ use super::*;
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
 				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, map_x_dimension, map_z_dimension),
-				None => assert!(false),
+				None => panic!("Key {:?} not found in Portals", sector_id),
 			}
 		}
 		// build the graph
@@ -580,7 +581,7 @@ use super::*;
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
 				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, map_x_dimension, map_z_dimension),
-				None => assert!(false),
+				None => panic!("Key {:?} not found in Portals", sector_id),
 			}
 		}
 		
@@ -624,7 +625,7 @@ use super::*;
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
 				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, map_x_dimension, map_z_dimension),
-				None => assert!(false),
+				None => panic!("Key {:?} not found in Portals", sector_id),
 			}
 		}
 		
@@ -771,7 +772,7 @@ use super::*;
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
 				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, map_x_dimension, map_z_dimension),
-				None => assert!(false),
+				None => panic!("Key {:?} not found in Portals", sector_id),
 			}
 		}
 		

@@ -186,7 +186,7 @@ impl Ordinal {
 			(0, 1) => Ordinal::South,
 			(-1, 0) => Ordinal::West,
 			_ => panic!(
-				"Cell {:?} is not orthogonally adjacent to {:?}",
+				"Sector {:?} is not orthogonally adjacent to {:?}",
 				target, source
 			),
 		}

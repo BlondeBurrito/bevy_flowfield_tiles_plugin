@@ -7,8 +7,11 @@ use bevy::prelude::*;
 /// Used to update a sectors [CostField]
 #[derive(Event)]
 pub struct EventUpdateCostfieldsCell {
+	/// Field/grid cell to update
 	cell: (usize, usize),
+	/// The sector the field/grid cell resides in
 	sector: (u32, u32),
+	/// The value the field/grid cell should be assigned
 	cell_value: u8,
 }
 
@@ -60,6 +63,7 @@ pub fn process_costfields_updates(
 /// and its neighbours can be rebuilt
 #[derive(Event)]
 pub struct EventRebuildSectorPortals {
+	/// Unique ID of the sector
 	sector_id: (u32, u32),
 }
 
@@ -102,6 +106,7 @@ pub fn rebuild_portals(
 /// [PortalGraph] of the sector and its neighbours can be rebuilt
 #[derive(Event)]
 pub struct EventUpdatePortalGraph {
+	/// Unique ID of the sector
 	sector_id: (u32, u32),
 }
 

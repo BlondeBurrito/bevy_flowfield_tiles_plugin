@@ -104,14 +104,14 @@ impl IntegrationField {
 	/// to the next sector towards the goal sector) grid cells iterate over
 	/// successive neighbouring cells and calculate the field values from the
 	/// `cost_field`
-	pub fn calculate_field(&mut self, goals: &Vec<(usize, usize)>, cost_field: &CostField) {
+	pub fn calculate_field(&mut self, goals: &[(usize, usize)], cost_field: &CostField) {
 		// further positions to process, tuple element 0 is the position, element 1 is the integration cost from the previous cell needed to help calculate element 0s cost
 		let mut queue: Vec<((usize, usize), u16)> = Vec::new();
 		for goal in goals.iter() {
 			queue.push(((*goal), self.get_grid_value(goal.0, goal.1)));
 		}
 		process_neighbours(self, queue, cost_field);
-
+		/// Recursively prcoess the cells
 		fn process_neighbours(
 			int_field: &mut IntegrationField,
 			queue: Vec<((usize, usize), u16)>,
@@ -135,7 +135,7 @@ impl IntegrationField {
 					}
 				}
 			}
-			if next_neighbours.len() != 0 {
+			if !next_neighbours.is_empty() {
 				process_neighbours(int_field, next_neighbours, cost_field);
 			}
 		}
