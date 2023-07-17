@@ -33,6 +33,7 @@ const BITS_GOAL: u8 = 0b0100_0000;
 /// Flags a grid cell as being a portal to another sector
 const BITS_PORTAL_GOAL: u8 = 0b1000_0000;
 
+/// Convert an [Ordinal] to a bit representation
 pub fn convert_ordinal_to_bits_dir(ordinal: Ordinal) -> u8 {
 	match ordinal {
 		Ordinal::North => BITS_NORTH,
@@ -248,6 +249,14 @@ fn lookup_portal_goal_neighbour_costs_in_previous_sector(
 // 	}
 // }
 
+/// If a cell has direct vision to the goal then the [FlowField] should be
+/// disregarded as the actor can move in a stright line to the goal
+pub fn has_line_of_sight(cell_value: u8) -> bool {
+	let flag_filter = 0b1111_0000;
+	let flag = cell_value & flag_filter;
+	flag == BITS_HAS_LOS
+}
+/// From a pathable [FlowField] cell get the directional [Ordinal] of movement
 pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
 	let dir_filter = 0b0000_1111;
 	let dir = cell_value & dir_filter;
