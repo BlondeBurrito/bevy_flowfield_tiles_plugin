@@ -436,21 +436,21 @@ impl PortalGraph {
 		}
 		best_path
 	}
-	/// Iterate over the "translator" (`self.node_index_translation`) and search for a portal's `search_index`
-	/// ([NodeIndex]), if found return the `sector_id` it is located in
-	fn find_sector_id_from_graph_index(&self, search_index: &NodeIndex) -> Option<(u32, u32)> {
-		let translator = &self.node_index_translation;
-		for (sector_id, node_ordinals) in translator.iter() {
-			for nodes in node_ordinals.iter() {
-				for n in nodes.iter() {
-					if *search_index == *n {
-						return Some(*sector_id);
-					}
-				}
-			}
-		}
-		None
-	}
+	// /// Iterate over the "translator" (`self.node_index_translation`) and search for a portal's `search_index`
+	// /// ([NodeIndex]), if found return the `sector_id` it is located in
+	// fn find_sector_id_from_graph_index(&self, search_index: &NodeIndex) -> Option<(u32, u32)> {
+	// 	let translator = &self.node_index_translation;
+	// 	for (sector_id, node_ordinals) in translator.iter() {
+	// 		for nodes in node_ordinals.iter() {
+	// 			for n in nodes.iter() {
+	// 				if *search_index == *n {
+	// 					return Some(*sector_id);
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// 	None
+	// }
 	/// Iterate over the "translator" (`self.node_index_translation`) and search for a portal node of
 	/// `search_index` and identify the sector it resides in and the cell grid
 	/// position of it within that sector
