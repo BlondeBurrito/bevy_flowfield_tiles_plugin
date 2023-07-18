@@ -26,6 +26,8 @@ struct GridLabel(usize, usize);
 #[derive(Component)]
 struct Actor;
 /// Attached to the actor as a record of where it is and where it wants to go, used to lookup the correct FlowField
+#[allow(clippy::type_complexity)]
+#[allow(clippy::missing_docs_in_private_items)]
 #[derive(Default, Component)]
 struct Pathing {
 	source_sector: Option<(u32, u32)>,
@@ -34,7 +36,7 @@ struct Pathing {
 	target_goal: Option<(usize, usize)>,
 	portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
 }
-
+/// Init bundle and setup world and actor
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// create the entity handling the algorithm
 	let s_path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_field_single.ron";
@@ -45,7 +47,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		map_length, map_depth, &s_path,
 	));
 	// use the impression of the cost field to just init node images
-	let cost_field = CostField::from_file(String::from(c_path));
+	let cost_field = CostField::from_file(c_path);
 	// create a blank visualisation
 	cmds.spawn(Camera2dBundle::default());
 	for (i, column) in cost_field.get_field().iter().enumerate() {
@@ -72,7 +74,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	.insert(Actor)
 	.insert(Pathing::default());
 }
-
+/// Handle user mouse clicks
 fn user_input(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
@@ -125,7 +127,7 @@ fn user_input(
 /// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
 	let mut pathing = actor_q.get_single_mut().unwrap();
-	if let Some(_) = pathing.target_goal {
+	if pathing.target_goal.is_some() {
 		let route_cache = route_q.get_single().unwrap();
 		if let Some(route) = route_cache.get_route(
 			pathing.source_sector.unwrap(),
@@ -158,7 +160,7 @@ fn update_sprite_visuals_based_on_actor(
 		}
 	}
 }
-
+/// Get asset path of psrite assets
 fn get_basic_icon(value: u8) -> String {
 	if value == 255 {
 		String::from("ordinal_icons/impassable.png")
@@ -168,7 +170,7 @@ fn get_basic_icon(value: u8) -> String {
 		panic!("Require basic icon")
 	}
 }
-
+/// Get asset path of ordinal icon
 fn get_ord_icon(value: u8) -> String {
 	// temp
 	if value == 64 {

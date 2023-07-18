@@ -10,7 +10,7 @@ fn main() {
 		.add_systems(Startup, (setup,))
 		.run();
 }
-
+/// Init world
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// setup the field
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";

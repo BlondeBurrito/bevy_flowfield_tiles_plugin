@@ -2,7 +2,7 @@
 //!
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-
+/// Blah
 fn fib(n: u64) -> u64 {
 	match n {
 		0 => 1,

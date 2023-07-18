@@ -3,7 +3,7 @@
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
-
+/// Timestep of actor movement system
 const ACTOR_TIMESTEP: f32 = 0.25;
 
 fn main() {
@@ -33,6 +33,8 @@ struct ActorA;
 struct ActorB;
 
 /// Attached to the Actor as a record of where it is and where it wants to go, used to lookup the correct FlowField
+#[allow(clippy::type_complexity)]
+#[allow(clippy::missing_docs_in_private_items)]
 #[derive(Default, Component)]
 struct Pathing {
 	source_sector: Option<(u32, u32)>,
@@ -107,6 +109,7 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 }
 
 /// Handle generating a PathRequest via right click
+#[allow(clippy::type_complexity)]
 fn user_input(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
@@ -217,7 +220,7 @@ fn actor_update_route(
 	route_q: Query<&RouteCache>,
 ) {
 	for mut pathing in actor_a_q.iter_mut() {
-		if let Some(_) = pathing.target_goal {
+		if pathing.target_goal.is_some() {
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
@@ -229,7 +232,7 @@ fn actor_update_route(
 		}
 	}
 	for mut pathing in actor_b_q.iter_mut() {
-		if let Some(_) = pathing.target_goal {
+		if pathing.target_goal.is_some() {
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
@@ -246,6 +249,7 @@ const SPEED: f32 = 64.0;
 
 /// If the Actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the Actor
+#[allow(clippy::type_complexity)]
 fn actor_steering(
 	mut actor_a_q: Query<(&mut Transform, &mut Pathing), (With<ActorA>, Without<ActorB>)>,
 	mut actor_b_q: Query<(&mut Transform, &mut Pathing), (With<ActorB>, Without<ActorA>)>,
@@ -321,7 +325,7 @@ fn actor_steering(
 		}
 	}
 }
-
+/// Get the asset path to sprite icons
 fn get_basic_icon(value: u8) -> String {
 	if value == 255 {
 		String::from("ordinal_icons/impassable.png")

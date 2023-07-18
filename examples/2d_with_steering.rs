@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
-
+/// Timestep of actor movement system
 const ACTOR_TIMESTEP: f32 = 0.25;
 
 fn main() {
@@ -33,6 +33,8 @@ struct GridLabel(usize, usize);
 struct Actor;
 
 /// Attached to the actor as a record of where it is and where it wants to go, used to lookup the correct FlowField
+#[allow(clippy::type_complexity)]
+#[allow(clippy::missing_docs_in_private_items)]
 #[derive(Default, Component)]
 struct Pathing {
 	source_sector: Option<(u32, u32)>,
@@ -156,7 +158,7 @@ fn user_input(
 /// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
 	let mut pathing = actor_q.get_single_mut().unwrap();
-	if let Some(_) = pathing.target_goal {
+	if pathing.target_goal.is_some() {
 		let route_cache = route_q.get_single().unwrap();
 		if let Some(route) = route_cache.get_route(
 			pathing.source_sector.unwrap(),
@@ -211,7 +213,7 @@ fn actor_steering(
 		}
 	}
 }
-
+/// Get asset path to sprite icons
 fn get_basic_icon(value: u8) -> String {
 	if value == 255 {
 		String::from("ordinal_icons/impassable.png")
@@ -262,7 +264,7 @@ fn update_sprite_visuals_based_on_actor(
 		}
 	}
 }
-
+/// Get the asset path to ordinal icons
 fn get_ord_icon(value: u8) -> String {
 	// temp
 	if value == 64 {

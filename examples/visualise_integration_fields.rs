@@ -14,7 +14,7 @@ fn main() {
 		.add_systems(Startup, (setup,))
 		.run();
 }
-
+/// Init world
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// calculate the fields
 	let map_dimensions = MapDimensions::new(30, 30);
@@ -23,7 +23,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut sector_portals =
 		SectorPortals::new(map_dimensions.get_column(), map_dimensions.get_row());
 	// update default portals for cost fields
-	for (sector_id, _v) in sector_cost_fields.get() {
+	for sector_id in sector_cost_fields.get().keys() {
 		sector_portals.update_portals(
 			*sector_id,
 			&sector_cost_fields,
@@ -62,8 +62,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut sector_order = Vec::new();
 	let mut map = HashMap::new();
 	for p in path.iter() {
-		if !map.contains_key(&p.0) {
-			map.insert(p.0, p.1);
+		if let std::collections::hash_map::Entry::Vacant(e) = map.entry(p.0) {
+			e.insert(p.1);
 			sector_order.push(p.0);
 		}
 	}
@@ -76,11 +76,11 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			let neighbour_sector_id = sector_order[i - 1];
 			let g = sector_portals
 				.get()
-				.get(&sector_id)
+				.get(sector_id)
 				.unwrap()
 				.expand_portal_into_goals(
 					&sector_cost_fields,
-					&sector_id,
+					sector_id,
 					portal_id,
 					&neighbour_sector_id,
 					map_dimensions.get_column(),
@@ -145,8 +145,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					.with_children(|p| {
 						// the array area of the sector
 						let int_field = sector_int_fields.get(&(i, j));
-						match int_field {
-							Some(field) => {
+							if let Some(field) = int_field {
 								// create each column from the field
 								for array in field.get_field().iter() {
 									p.spawn(NodeBundle {
@@ -189,51 +188,13 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 									});
 								}
 							}
-							None => {
-								// // sectors without int field calculated get an X in each grid cell
-								// for _ in 0..10 {
-								// 	p.spawn(NodeBundle {
-								// 		style: Style {
-								// 			size: Size::new(Val::Percent(10.0), Val::Percent(100.0)),
-								// 			flex_direction: FlexDirection::Column,
-								// 			..Default::default()
-								// 		},
-								// 		..Default::default()
-								// 	})
-								// 	.with_children(|p| {
-								// 		// create each row value of the column
-								// 		for _ in 0..10 {
-								// 			p.spawn(NodeBundle {
-								// 				style: Style {
-								// 					size: Size::new(Val::Percent(100.0), Val::Percent(10.0)),
-								// 					justify_content: JustifyContent::Center,
-								// 					align_items: AlignItems::Center,
-								// 					..Default::default()
-								// 				},
-								// 				..Default::default()
-								// 			})
-								// 			.with_children(|p| {
-								// 				p.spawn(TextBundle::from_section(
-								// 					"X".to_string(),
-								// 					TextStyle {
-								// 						font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-								// 						font_size: 10.0,
-								// 						color: Color::BLACK,
-								// 					},
-								// 				));
-								// 			});
-								// 		}
-								// 	});
-								// }
-							}
-						}
 					});
 				}
 			}
 		});
 	});
 }
-
+/// Get the colour of a UI node
 fn get_colour(cost: u16) -> Color {
 	match cost {
 		0 => Color::WHITE,

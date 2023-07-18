@@ -14,7 +14,7 @@ fn main() {
 		.add_systems(Startup, (setup,))
 		.run();
 }
-
+/// Init world
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// calculate the fields
 	let map_dimensions = MapDimensions::new(30, 30);
@@ -23,7 +23,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut sector_portals =
 		SectorPortals::new(map_dimensions.get_column(), map_dimensions.get_row());
 	// update default portals for cost fields
-	for (sector_id, _v) in sector_cost_fields.get() {
+	for sector_id in sector_cost_fields.get().keys() {
 		sector_portals.update_portals(
 			*sector_id,
 			&sector_cost_fields,
@@ -62,8 +62,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut sector_order = Vec::new();
 	let mut map = HashMap::new();
 	for p in path.iter() {
-		if !map.contains_key(&p.0) {
-			map.insert(p.0, p.1);
+		if let std::collections::hash_map::Entry::Vacant(e) = map.entry(p.0) {
+			e.insert(p.1);
 			sector_order.push(p.0);
 		}
 	}
@@ -76,11 +76,11 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			let neighbour_sector_id = sector_order[i - 1];
 			let g = sector_portals
 				.get()
-				.get(&sector_id)
+				.get(sector_id)
 				.unwrap()
 				.expand_portal_into_goals(
 					&sector_cost_fields,
-					&sector_id,
+					sector_id,
 					portal_id,
 					&neighbour_sector_id,
 					map_dimensions.get_column(),
@@ -104,15 +104,13 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		if *sector_id == target_sector {
 			flow_field.calculate(goals, None, int_field);
 			sector_flow_fields.insert(*sector_id, flow_field);
-		} else {
-			if let Some(dir_prev_sector) =
+		} else if let Some(dir_prev_sector) =
 				Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
 			{
 				let prev_int_field = &sector_int_fields[i - 1].2;
 				flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
 				sector_flow_fields.insert(*sector_id, flow_field);
 			};
-		}
 	}
 	// create a UI grid
 	cmds.spawn(Camera2dBundle::default());
@@ -162,8 +160,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					.with_children(|p| {
 						// the array area of the sector
 						let flow_field = sector_flow_fields.get(&(i, j));
-						match flow_field {
-							Some(field) => {
+							if let Some(field) = flow_field {
 								// create each column from the field
 								for array in field.get_field().iter() {
 									p.spawn(NodeBundle {
@@ -198,15 +195,13 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 									});
 								}
 							}
-							None => {}
-						}
 					});
 				}
 			}
 		});
 	});
 }
-
+/// Get the asset path of ordinal icons
 fn get_ord_icon(value: u8) -> String {
 	// temp
 	if value == 64 {
