@@ -105,12 +105,12 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			flow_field.calculate(goals, None, int_field);
 			sector_flow_fields.insert(*sector_id, flow_field);
 		} else if let Some(dir_prev_sector) =
-				Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
-			{
-				let prev_int_field = &sector_int_fields[i - 1].2;
-				flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
-				sector_flow_fields.insert(*sector_id, flow_field);
-			};
+			Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
+		{
+			let prev_int_field = &sector_int_fields[i - 1].2;
+			flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
+			sector_flow_fields.insert(*sector_id, flow_field);
+		};
 	}
 	// create a UI grid
 	cmds.spawn(Camera2dBundle::default());
@@ -160,41 +160,39 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					.with_children(|p| {
 						// the array area of the sector
 						let flow_field = sector_flow_fields.get(&(i, j));
-							if let Some(field) = flow_field {
-								// create each column from the field
-								for array in field.get_field().iter() {
-									p.spawn(NodeBundle {
-										style: Style {
-											width: Val::Percent(10.0),
-											height: Val::Percent(100.0),
-											flex_direction: FlexDirection::Column,
-											..Default::default()
-										},
+						if let Some(field) = flow_field {
+							// create each column from the field
+							for array in field.get_field().iter() {
+								p.spawn(NodeBundle {
+									style: Style {
+										width: Val::Percent(10.0),
+										height: Val::Percent(100.0),
+										flex_direction: FlexDirection::Column,
 										..Default::default()
-									})
-									.with_children(|p| {
-										// create each row value of the column
-										for value in array.iter() {
-											p.spawn((
-												NodeBundle {
-													style: Style {
-														width: Val::Percent(100.0),
-														height: Val::Percent(10.0),
-														justify_content: JustifyContent::Center,
-														align_items: AlignItems::Center,
-														..Default::default()
-													},
-													background_color: BackgroundColor(Color::WHITE),
+									},
+									..Default::default()
+								})
+								.with_children(|p| {
+									// create each row value of the column
+									for value in array.iter() {
+										p.spawn((
+											NodeBundle {
+												style: Style {
+													width: Val::Percent(100.0),
+													height: Val::Percent(10.0),
+													justify_content: JustifyContent::Center,
+													align_items: AlignItems::Center,
 													..Default::default()
 												},
-												UiImage::new(
-													asset_server.load(get_ord_icon(*value)),
-												),
-											));
-										}
-									});
-								}
+												background_color: BackgroundColor(Color::WHITE),
+												..Default::default()
+											},
+											UiImage::new(asset_server.load(get_ord_icon(*value))),
+										));
+									}
+								});
 							}
+						}
 					});
 				}
 			}

@@ -154,6 +154,14 @@ impl PartialEq for FlowFieldMetadata {
 impl Eq for FlowFieldMetadata {}
 
 impl FlowFieldMetadata {
+	/// Get the sector
+	pub fn get_sector_id(&self) -> (u32, u32) {
+		self.sector_id
+	}
+	/// Get the goal
+	pub fn get_goal_id(&self) -> (usize, usize) {
+		self.goal_id
+	}
 	/// Get when the field was generated
 	pub fn get_time_generated(&self) -> Duration {
 		self.time_generated

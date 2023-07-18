@@ -1,4 +1,6 @@
-//!
+//! Logic for handling changes to a [CostField] which in turn updates Portals,
+//! [PortalGraph] and cleaning of cached routes which may of been made invalid
+//! by the cost change
 //!
 
 use crate::prelude::*;
@@ -130,6 +132,7 @@ pub fn update_portal_graph(
 		&SectorCostFields,
 		&MapDimensions,
 	)>,
+	mut event_cache_clean: EventWriter<EventCleanCaches>
 ) {
 	for event in event_graph.iter() {
 		let sector_id = event.get_sector_id();
@@ -144,5 +147,75 @@ pub fn update_portal_graph(
 				dimensions.get_row(),
 			);
 		}
+		event_cache_clean.send(EventCleanCaches(sector_id));
+	}
+}
+/// For the given sector any route or [FlowField] making use of it needs to have the cached entry removed and a new request made to regenerate the route
+#[derive(Event)]
+pub struct EventCleanCaches((u32, u32));
+
+//TODO in order to regenerate the routes the source field cell needs to be known - a cost field change may make that field cell invalid though... disable regen for now, steering pipeline/character controler will have to poll the route cache and request a new one....
+/// Lookup any cached data records making use of sectors that have had their [CostField] adjusted and remove them from the cache
+#[cfg(not(tarpaulin_include))]
+pub fn clean_cache(
+	mut events: EventReader<EventCleanCaches>,
+	mut q_flow: Query<&mut FlowFieldCache>,
+	mut q_route: Query<&mut RouteCache>,
+	// mut event_path_request: EventWriter<EventPathRequest>,
+) {
+	let mut sectors = Vec::new();
+	for event in events.iter() {
+		sectors.push(event.0);
+	}
+	if !sectors.is_empty() {
+		let mut to_purge = Vec::new();
+		for mut flow_cache in q_flow.iter_mut() {
+			let map = flow_cache.get_mut();
+			for id in sectors.iter() {
+				for metadata in map.keys() {
+					if *id == metadata.get_sector_id() {
+						to_purge.push(*metadata);
+					}
+				}
+			}
+			for purge_me in to_purge.iter() {
+				flow_cache.remove_field(*purge_me);
+			}
+		}
+		let mut to_purge = Vec::new();
+		for mut route_cache in q_route.iter_mut() {
+			let map = route_cache.get_mut();
+			for id in sectors.iter() {
+				'next: for (metadata, route) in map.iter() {
+					if *id == metadata.get_source_sector() {
+						to_purge.push(*metadata);
+						continue 'next;
+					}
+					if *id == metadata.get_target_sector() {
+						to_purge.push(*metadata);
+						continue 'next;
+					}
+					for (route_sector, _) in route.iter() {
+						if *id == *route_sector {
+							to_purge.push(*metadata);
+							continue 'next;
+						}
+					}
+				}
+			}
+			for purge_me in to_purge.iter() {
+				route_cache.remove_route(*purge_me);
+			}
+		}
+		// // send events to regenerate routes
+		// for metadata in to_purge.iter() {
+		// 	//TODO someway of getting the orignal source_grid_cell instead of (5,5) assumption
+		// 	event_path_request.send(EventPathRequest::new(
+		// 		metadata.get_source_sector(),
+		// 		(5, 5),
+		// 		metadata.get_target_sector(),
+		// 		metadata.get_target_goal(),
+		// 	))
+		// }
 	}
 }

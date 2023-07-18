@@ -269,7 +269,7 @@ In 2d the dimensions can be configured in different ways:
     cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth));
 ```
 
-Next you need to seed your `CostFields` to reflect the make up of your world, this can be done programmatically (in 3d you might fire a series of raycasts and based on collider collisions flip a `CostField` grid cell to a higher number) or you can load predetermined values from disk.
+Next you need to seed your `CostFields` to reflect the make up of your world, this can be done programmatically (in 3d you might fire a series of raycasts and based on collider collisions flip a `CostField` grid cell to a higher number via `EventUpdateCostfieldsCell`) or you can load predetermined values from disk.
 
 ## Path Request
 

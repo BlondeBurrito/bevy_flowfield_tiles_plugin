@@ -145,49 +145,47 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					.with_children(|p| {
 						// the array area of the sector
 						let int_field = sector_int_fields.get(&(i, j));
-							if let Some(field) = int_field {
-								// create each column from the field
-								for array in field.get_field().iter() {
-									p.spawn(NodeBundle {
-										style: Style {
-											width: Val::Percent(10.0),
-											height: Val::Percent(100.0),
-											flex_direction: FlexDirection::Column,
-											..Default::default()
-										},
+						if let Some(field) = int_field {
+							// create each column from the field
+							for array in field.get_field().iter() {
+								p.spawn(NodeBundle {
+									style: Style {
+										width: Val::Percent(10.0),
+										height: Val::Percent(100.0),
+										flex_direction: FlexDirection::Column,
 										..Default::default()
-									})
-									.with_children(|p| {
-										// create each row value of the column
-										for value in array.iter() {
-											p.spawn(NodeBundle {
-												style: Style {
-													width: Val::Percent(100.0),
-													height: Val::Percent(10.0),
-													justify_content: JustifyContent::Center,
-													align_items: AlignItems::Center,
-													..Default::default()
-												},
-												background_color: BackgroundColor(get_colour(
-													*value,
-												)),
+									},
+									..Default::default()
+								})
+								.with_children(|p| {
+									// create each row value of the column
+									for value in array.iter() {
+										p.spawn(NodeBundle {
+											style: Style {
+												width: Val::Percent(100.0),
+												height: Val::Percent(10.0),
+												justify_content: JustifyContent::Center,
+												align_items: AlignItems::Center,
 												..Default::default()
-											})
-											.with_children(|p| {
-												p.spawn(TextBundle::from_section(
-													value.to_string(),
-													TextStyle {
-														font: asset_server
-															.load("fonts/FiraSans-Bold.ttf"),
-														font_size: 10.0,
-														color: Color::BLACK,
-													},
-												));
-											});
-										}
-									});
-								}
+											},
+											background_color: BackgroundColor(get_colour(*value)),
+											..Default::default()
+										})
+										.with_children(|p| {
+											p.spawn(TextBundle::from_section(
+												value.to_string(),
+												TextStyle {
+													font: asset_server
+														.load("fonts/FiraSans-Bold.ttf"),
+													font_size: 10.0,
+													color: Color::BLACK,
+												},
+											));
+										});
+									}
+								});
 							}
+						}
 					});
 				}
 			}
