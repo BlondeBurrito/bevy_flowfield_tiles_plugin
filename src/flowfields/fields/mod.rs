@@ -20,13 +20,11 @@ pub trait Field<T> {
 	/// Set a grid cell to a value
 	fn set_grid_value(&mut self, value: T, column: usize, row: usize);
 }
-
-#[derive(Eq)]
+/// Describes the properties of a route
+#[derive(Clone, Copy, Debug)]
 pub struct RouteMetadata {
 	/// Starting sector of the route
 	source_sector: (u32, u32),
-	/// Starting field/grid cell in the starting sector
-	source_grid_cell: (usize, usize),
 	/// Sector to find a route to
 	target_sector: (u32, u32),
 	/// Field/grid cell of the goal in the target sector
@@ -39,31 +37,79 @@ pub struct RouteMetadata {
 impl PartialEq for RouteMetadata {
 	fn eq(&self, other: &Self) -> bool {
 		self.source_sector == other.source_sector
-			&& self.source_grid_cell == other.source_grid_cell
 			&& self.target_sector == other.target_sector
 			&& self.target_goal == other.target_goal
 	}
 }
-/// Each entry is given an ID of `(sector_id, sector_id, goal_id)` referring to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
+impl Eq for RouteMetadata {}
+
+impl Ord for RouteMetadata {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		(self.source_sector, self.target_sector, self.target_goal).cmp(&(
+			other.source_sector,
+			other.target_sector,
+			other.target_goal,
+		))
+	}
+}
+
+impl PartialOrd for RouteMetadata {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl RouteMetadata {
+	/// Get the source sector
+	pub fn get_source_sector(&self) -> (u32, u32) {
+		self.source_sector
+	}
+	/// Get the target sector
+	pub fn get_target_sector(&self) -> (u32, u32) {
+		self.target_sector
+	}
+	/// Get the goal
+	pub fn get_target_goal(&self) -> (usize, usize) {
+		self.target_goal
+	}
+	/// Get when the route was generated
+	pub fn get_time_generated(&self) -> Duration {
+		self.time_generated
+	}
+}
+/// Each key makes use of custom Ord and Eq implementations based on comparing `(sector_id, sector_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
+#[allow(clippy::type_complexity)]
 #[derive(Component, Default)]
-pub struct RouteCache(
-	BTreeMap<((u32, u32), (u32, u32), (usize, usize)), Vec<((u32, u32), (usize, usize))>>,
-);
+pub struct RouteCache(BTreeMap<RouteMetadata, Vec<((u32, u32), (usize, usize))>>);
 
 impl RouteCache {
-	pub fn get(
-		&self,
-	) -> &BTreeMap<((u32, u32), (u32, u32), (usize, usize)), Vec<((u32, u32), (usize, usize))>> {
+	/// Get the map of routes
+	#[allow(clippy::type_complexity)]
+	pub fn get(&self) -> &BTreeMap<RouteMetadata, Vec<((u32, u32), (usize, usize))>> {
 		&self.0
 	}
+	/// Get a mutable reference to the map of routes
+	#[allow(clippy::type_complexity)]
+	pub fn get_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Vec<((u32, u32), (usize, usize))>> {
+		&mut self.0
+	}
 	/// Get a high-level sector to sector route. Returns [None] if it doesn't exist
+	#[allow(clippy::type_complexity)]
 	pub fn get_route(
 		&self,
 		source_sector: (u32, u32),
 		target_sector: (u32, u32),
 		goal_id: (usize, usize),
 	) -> Option<&Vec<((u32, u32), (usize, usize))>> {
-		self.0.get(&(source_sector, target_sector, goal_id))
+		let route_data = RouteMetadata {
+			source_sector,
+			target_sector,
+			target_goal: goal_id,
+			time_generated: Duration::default(),
+		};
+		let route = self.0.get(&route_data);
+		trace!("Route: {:?}", route);
+		route
 	}
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`
 	pub fn insert_route(
@@ -71,23 +117,24 @@ impl RouteCache {
 		source_sector: (u32, u32),
 		target_sector: (u32, u32),
 		goal_id: (usize, usize),
+		elapsed_duration: Duration,
 		route: Vec<((u32, u32), (usize, usize))>,
 	) {
-		self.0
-			.insert((source_sector, target_sector, goal_id), route);
+		let route_data = RouteMetadata {
+			source_sector,
+			target_sector,
+			target_goal: goal_id,
+			time_generated: elapsed_duration,
+		};
+		self.0.insert(route_data, route);
 	}
 	/// Remove a high-level  route of sector-portal paths (or just the end goal if local sector pathing) from the `route_cache`
-	pub fn remove_route(
-		&mut self,
-		source_sector: (u32, u32),
-		target_sector: (u32, u32),
-		goal_id: (usize, usize),
-	) {
-		self.0.remove(&(source_sector, target_sector, goal_id));
+	pub fn remove_route(&mut self, route_metadata: RouteMetadata) {
+		self.0.remove(&route_metadata);
 	}
 }
 /// Describes the properties of a [FlowField]
-#[derive(Eq)]
+#[derive(Clone, Copy)]
 pub struct FlowFieldMetadata {
 	/// The sector of the corresponding [FlowField]
 	sector_id: (u32, u32),
@@ -103,32 +150,70 @@ impl PartialEq for FlowFieldMetadata {
 		self.sector_id == other.sector_id && self.goal_id == other.goal_id
 	}
 }
-//? means of invalidating fields in cache that are very old?
+
+impl Eq for FlowFieldMetadata {}
+
+impl FlowFieldMetadata {
+	/// Get when the field was generated
+	pub fn get_time_generated(&self) -> Duration {
+		self.time_generated
+	}
+}
+
+impl Ord for FlowFieldMetadata {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		(self.sector_id, self.goal_id).cmp(&(other.sector_id, other.goal_id))
+	}
+}
+
+impl PartialOrd for FlowFieldMetadata {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+//TODO? means of invalidating fields in cache that are very old?
 /// Each generated [FlowField] is placed into this cache so that multiple actors can read from the same dataset.
 ///
 /// Each entry is given an ID of `(sector_id, goal_id)` and actors can poll the cache to retrieve the field once it's built and inserted. Note that `goal_id` can refer to the true end-goal or it can refer to a portal position when a path spans multiple sectors
 #[derive(Component, Default)]
-pub struct FlowFieldCache(BTreeMap<((u32, u32), (usize, usize)), FlowField>);
+pub struct FlowFieldCache(BTreeMap<FlowFieldMetadata, FlowField>);
 
 impl FlowFieldCache {
-	pub fn get(&self) -> &BTreeMap<((u32, u32), (usize, usize)), FlowField> {
+	/// Get the map of [FlowField]s
+	pub fn get(&self) -> &BTreeMap<FlowFieldMetadata, FlowField> {
 		&self.0
+	}
+	/// Get a mutable reference to the map of [FlowField]s
+	pub fn get_mut(&mut self) -> &mut BTreeMap<FlowFieldMetadata, FlowField> {
+		&mut self.0
 	}
 	/// Get a [FlowField] based on the `sector_id` and `goal_id`. Returns [None] if the cache doesn't contain a record
 	pub fn get_field(&self, sector_id: (u32, u32), goal_id: (usize, usize)) -> Option<&FlowField> {
-		self.0.get(&(sector_id, goal_id))
+		let flow_meta = FlowFieldMetadata {
+			sector_id,
+			goal_id,
+			time_generated: Duration::default(),
+		};
+		self.0.get(&flow_meta)
 	}
 	/// Insert a [FlowField] into the cache with a sector-goal ID
 	pub fn insert_field(
 		&mut self,
 		sector_id: (u32, u32),
 		goal_id: (usize, usize),
+		elapsed_duration: Duration,
 		field: FlowField,
 	) {
-		self.0.insert((sector_id, goal_id), field);
+		let flow_meta = FlowFieldMetadata {
+			sector_id,
+			goal_id,
+			time_generated: elapsed_duration,
+		};
+		self.0.insert(flow_meta, field);
 	}
 	/// Remove a [FlowField] from the cache (when it needs regenerating from a [CostField] update)
-	pub fn remove_field(&mut self, sector_id: (u32, u32), goal_id: (usize, usize)) {
-		self.0.remove(&(sector_id, goal_id));
+	pub fn remove_field(&mut self, flow_meta: FlowFieldMetadata) {
+		self.0.remove(&flow_meta);
 	}
 }

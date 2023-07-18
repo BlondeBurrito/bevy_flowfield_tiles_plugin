@@ -44,6 +44,7 @@ pub fn handle_path_requests(
 		&SectorPortals,
 		&SectorCostFields,
 	)>,
+	time: Res<Time>,
 ) {
 	use std::collections::hash_map::Entry;
 
@@ -93,6 +94,7 @@ pub fn handle_path_requests(
 					event.source_sector,
 					event.target_sector,
 					event.target_goal,
+					time.elapsed(),
 					path,
 				);
 			} else {
@@ -104,6 +106,7 @@ pub fn handle_path_requests(
 					event.source_sector,
 					event.target_sector,
 					event.target_goal,
+					time.elapsed(),
 					vec![(event.target_sector, event.target_goal)],
 				);
 			}
@@ -123,6 +126,7 @@ pub fn generate_flow_fields(
 		),
 		Changed<RouteCache>,
 	>,
+	time: Res<Time>,
 ) {
 	for (mut field_cache, route_cache, sector_portals, sector_cost_fields, map_dimensions) in
 		cache_q.iter_mut()
@@ -174,18 +178,54 @@ pub fn generate_flow_fields(
 				// direction optimisations
 				if i == 0 {
 					flow_field.calculate(goals, None, int_field);
-					field_cache.insert_field(*sector_id, path[i].1, flow_field);
+					field_cache.insert_field(*sector_id, path[i].1, time.elapsed(), flow_field);
 				} else if let Some(dir_prev_sector) =
 					Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
 				{
 					let prev_int_field = &sector_int_fields[i - 1].2;
 					flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
 					//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own
-					field_cache.insert_field(*sector_id, path[i].1, flow_field);
+					field_cache.insert_field(*sector_id, path[i].1, time.elapsed(), flow_field);
 				} else {
 					error!("Route {:?}", portal_path);
 				};
 			}
+		}
+	}
+}
+/// Purge any routes older than 15 minutes
+#[cfg(not(tarpaulin_include))]
+pub fn cleanup_old_routes(mut q_route_cache: Query<&mut RouteCache>, time: Res<Time>) {
+	for mut cache in q_route_cache.iter_mut() {
+		let mut routes_to_purge = Vec::new();
+		for data in cache.get_mut().keys() {
+			let elapsed = time.elapsed();
+			let diff = elapsed.saturating_sub(data.get_time_generated());
+			if diff.as_secs() > 900 {
+				routes_to_purge.push(*data);
+			}
+		}
+		for purge in routes_to_purge.iter() {
+			info!("Purging");
+			cache.remove_route(*purge);
+		}
+	}
+}
+/// Purge any [FlowField]s older than 15 minutes
+#[cfg(not(tarpaulin_include))]
+pub fn cleanup_old_flowfields(mut q_flow_cache: Query<&mut FlowFieldCache>, time: Res<Time>) {
+	for mut cache in q_flow_cache.iter_mut() {
+		let mut routes_to_purge = Vec::new();
+		for data in cache.get_mut().keys() {
+			let elapsed = time.elapsed();
+			let diff = elapsed.saturating_sub(data.get_time_generated());
+			if diff.as_secs() > 900 {
+				routes_to_purge.push(*data);
+			}
+		}
+		for purge in routes_to_purge.iter() {
+			info!("Purging flowfield");
+			cache.remove_field(*purge);
 		}
 	}
 }
