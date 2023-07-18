@@ -102,3 +102,8 @@ required-features = ["ron"]
 name = "2d_multi_actor"
 path = "examples/2d_multi_actor.rs"
 required-features = ["ron"]
+
+[[example]]
+name = "2d_multi_actor_controls"
+path = "examples/2d_multi_actor_controls.rs"
+required-features = ["ron"]
