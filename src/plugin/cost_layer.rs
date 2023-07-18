@@ -132,7 +132,7 @@ pub fn update_portal_graph(
 		&SectorCostFields,
 		&MapDimensions,
 	)>,
-	mut event_cache_clean: EventWriter<EventCleanCaches>
+	mut event_cache_clean: EventWriter<EventCleanCaches>,
 ) {
 	for event in event_graph.iter() {
 		let sector_id = event.get_sector_id();

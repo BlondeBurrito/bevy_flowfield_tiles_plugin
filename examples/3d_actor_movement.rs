@@ -37,26 +37,30 @@ struct Pathing {
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut camera = Camera3dBundle::default();
 	camera.transform.translation = Vec3::new(0.0, 40.0, 10.0);
-	camera.transform.look_at(Vec3::new(0.0,0.0,0.0), Vec3::Y);
+	camera.transform.look_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y);
 	cmds.spawn(camera);
 	cmds.spawn(SceneBundle {
 		scene: asset_server.load("3d/3d_map.gltf#Scene0"),
 		..default()
 	});
 	cmds.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 9000.0,
-            range: 100.,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(0.0, 50.0, 0.0),
-        ..default()
-    });
+		point_light: PointLight {
+			intensity: 9000.0,
+			range: 100.,
+			shadows_enabled: true,
+			..default()
+		},
+		transform: Transform::from_xyz(0.0, 50.0, 0.0),
+		..default()
+	});
 }
 
 /// Spawn navigation related entities
-fn setup_navigation(mut cmds: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>,) {
+fn setup_navigation(
+	mut cmds: Commands,
+	mut meshes: ResMut<Assets<Mesh>>,
+	mut materials: ResMut<Assets<StandardMaterial>>,
+) {
 	// create the entity handling the algorithm
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let map_length = 30;
@@ -65,10 +69,13 @@ fn setup_navigation(mut cmds: Commands, mut meshes: ResMut<Assets<Mesh>>, mut ma
 		map_length, map_depth, &path,
 	));
 	// create the controllable actor in the top right corner
-	let mesh = meshes.add(Mesh::try_from(shape::Icosphere {
-		radius: 0.5,
-		subdivisions: 32,
-	}).unwrap());
+	let mesh = meshes.add(
+		Mesh::try_from(shape::Icosphere {
+			radius: 0.5,
+			subdivisions: 32,
+		})
+		.unwrap(),
+	);
 	let material = materials.add(Color::BLUE.into());
 	cmds.spawn(PbrBundle {
 		mesh,
@@ -93,28 +100,25 @@ fn user_input(
 		let (camera, camera_transform) = camera_q.single();
 		let window = windows.single();
 		let ray_point = window
-		.cursor_position()
-		.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)).map(|ray| 
-			ray.intersect_plane(Vec3::ZERO, Vec3::Y).map(|distance| ray.get_point(distance))
-		);
-		if let Some(op_world_position) = ray_point
-		{
+			.cursor_position()
+			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+			.map(|ray| {
+				ray.intersect_plane(Vec3::ZERO, Vec3::Y)
+					.map(|distance| ray.get_point(distance))
+			});
+		if let Some(op_world_position) = ray_point {
 			let world_position = op_world_position.unwrap();
 			info!("World cursor position: {:?}", world_position);
 			if let Some((target_sector_id, goal_id)) =
-			get_sector_and_field_cell_from_xyz(world_position, 30, 30)
+				get_sector_and_field_cell_from_xyz(world_position, 30, 30)
 			{
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_grid_cell) = get_sector_and_field_cell_from_xyz(
-					tform.translation,
-					30,
-					30,
-				)
-				.unwrap();
+				let (source_sector_id, source_grid_cell) =
+					get_sector_and_field_cell_from_xyz(tform.translation, 30, 30).unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
 					source_sector_id, source_grid_cell
@@ -168,12 +172,8 @@ fn actor_steering(
 		if let Some(route) = &pathing.portal_route {
 			// info!("Route: {:?}", route);
 			// find the current actors postion in grid space
-			let (curr_actor_sector, curr_actor_grid) = get_sector_and_field_cell_from_xyz(
-				tform.translation,
-				30,
-				30,
-			)
-			.unwrap();
+			let (curr_actor_sector, curr_actor_grid) =
+				get_sector_and_field_cell_from_xyz(tform.translation, 30, 30).unwrap();
 			// lookup the relevant sector-goal of this sector
 			'routes: for (sector, goal) in route.iter() {
 				if *sector == curr_actor_sector {
