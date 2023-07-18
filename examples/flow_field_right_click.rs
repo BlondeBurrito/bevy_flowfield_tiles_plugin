@@ -67,7 +67,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	}
 	// create the controllable actor
 	cmds.spawn(SpriteBundle {
-		texture: asset_server.load("2d_actor_sprite.png"),
+		texture: asset_server.load("2d/2d_actor_sprite.png"),
 		transform: Transform::from_xyz(0.0, 0.0, -1.0),
 		..default()
 	})

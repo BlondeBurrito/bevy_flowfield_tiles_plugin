@@ -92,7 +92,7 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	));
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
-		texture: asset_server.load("2d_actor_sprite.png"),
+		texture: asset_server.load("2d/2d_actor_sprite.png"),
 		transform: Transform::from_xyz(928.0, 928.0, 1.0),
 		..default()
 	})

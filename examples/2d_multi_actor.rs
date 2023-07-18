@@ -104,7 +104,7 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	];
 	for pos in actor_positions.iter() {
 		cmds.spawn(SpriteBundle {
-			texture: asset_server.load("2d_actor_sprite.png"),
+			texture: asset_server.load("2d/2d_actor_sprite.png"),
 			transform: Transform::from_xyz(pos.x, pos.y, pos.z),
 			..default()
 		})
