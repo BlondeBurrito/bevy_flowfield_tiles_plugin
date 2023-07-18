@@ -291,6 +291,24 @@ pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
 		_ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
+/// Reading the directional bits of a [FlowField] grid cell obtain a unit
+/// vector in 3d space of the direction across the x-z plane
+pub fn get_3d_direction_unit_vector_from_bits(cell_value: u8) -> Vec3 {
+	let dir_filter = 0b0000_1111;
+	let dir = cell_value & dir_filter;
+	match dir {
+		BITS_NORTH => Vec3::new(0.0, 0.0, -1.0),
+		BITS_EAST => Vec3::new(1.0, 0.0, 0.0),
+		BITS_SOUTH => Vec3::new(0.0, 0.0, 1.0),
+		BITS_WEST => Vec3::new(-1.0, 0.0, 0.0),
+		BITS_NORTH_EAST => Vec3::new(1.0, 0.0, -1.0),
+		BITS_SOUTH_EAST => Vec3::new(1.0, 0.0, 1.0),
+		BITS_SOUTH_WEST => Vec3::new(-1.0, 0.0, 1.0),
+		BITS_NORTH_WEST => Vec3::new(-1.0, 0.0, -1.0),
+		BITS_ZERO => Vec3::new(0.0, 0.0, 0.0),
+		_ => panic!("First 4 bits of cell are not recognised directions"),
+	}
+}
 
 // #[rustfmt::skip]
 #[cfg(test)]

@@ -39,7 +39,7 @@ publish = false
 
 [dev-dependencies]
 criterion = "0.5"
-bevy = { workspace = true, features = ["bevy_asset", "bevy_winit", "bevy_pbr", "bevy_gltf", "bevy_render", "bevy_sprite", "bevy_text", "bevy_ui", "png", "x11"] }
+bevy = { workspace = true, default-features = true }
 
 [dependencies]
 bevy = { workspace = true }
@@ -106,4 +106,9 @@ required-features = ["ron"]
 [[example]]
 name = "2d_multi_actor_controls"
 path = "examples/2d_multi_actor_controls.rs"
+required-features = ["ron"]
+
+[[example]]
+name = "3d_actor_movement"
+path = "examples/3d_actor_movement.rs"
 required-features = ["ron"]

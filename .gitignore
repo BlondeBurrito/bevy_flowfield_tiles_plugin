@@ -17,3 +17,6 @@ Cargo.lock
 # tmp img
 *.kra~
 *.png~
+
+# blender
+*.blend1
