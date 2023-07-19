@@ -1,6 +1,7 @@
 //! Logic relating to [FlowField] generation
 //!
 
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use crate::prelude::*;
@@ -46,8 +47,6 @@ pub fn handle_path_requests(
 	)>,
 	time: Res<Time>,
 ) {
-	use std::collections::hash_map::Entry;
-
 	for event in events.iter() {
 		for (mut cache, graph, sector_portals, sector_cost_fields) in cache_q.iter_mut() {
 			//TODO maybe reinstate this after benchmarking - means less accurate route due to reuse but better perf
@@ -67,28 +66,7 @@ pub fn handle_path_requests(
 				let mut path =
 					graph.convert_index_path_to_sector_portal_cells(node_route.1, sector_portals);
 				if !path.is_empty() {
-					// original order is from actor to goal, to help filtering we reverse
-					path.reverse(); //TODO this is messy paired with below todo
-				// change target cell from portal to the real goal for the destination
-					path[0].1 = event.target_goal;
-					// filter out the entry portals of sectors, we only care about the end of each sector and the end goal itself
-					let mut sector_order = Vec::new();
-					let mut map = HashMap::new();
-					for p in path.iter() {
-						if let Entry::Vacant(e) = map.entry(p.0) {
-							e.insert(p.1);
-							sector_order.push(p.0);
-						}
-					}
-					// reassemble to only include 1 element for each sector
-					let mut sector_goals = Vec::new();
-					for sector in sector_order.iter() {
-						let (sector_id, portal_id) = map.get_key_value(sector).unwrap();
-						sector_goals.push((*sector_id, *portal_id));
-					}
-					path = sector_goals;
-					// reverse again so the route describes moving from actor to goal
-					path.reverse(); //TODO this is messy
+					filter_path(&mut path, event.target_goal);
 				}
 				cache.insert_route(
 					event.source_sector,
@@ -114,6 +92,36 @@ pub fn handle_path_requests(
 		}
 	}
 }
+/// Generated portal-portal routes contain two elements for each sector, one
+/// for an actors entry and when for an actors exit, we only need to know
+/// about the elements which an actor would use to exit the sector so we filter
+/// the route and trim it down
+#[allow(clippy::type_complexity)]
+pub fn filter_path(path: &mut Vec<((u32, u32), (usize, usize))>, target_goal: (usize, usize)) {
+	// original order is from actor to goal, to help filtering we reverse
+	path.reverse(); //TODO this is messy paired with below todo
+				// change target cell from portal to the real goal for the destination
+	path[0].1 = target_goal;
+	// filter out the entry portals of sectors, we only care about the end of each sector and the end goal itself
+	let mut sector_order = Vec::new();
+	let mut map = HashMap::new();
+	for p in path.iter() {
+		if let Entry::Vacant(e) = map.entry(p.0) {
+			e.insert(p.1);
+			sector_order.push(p.0);
+		}
+	}
+	// reassemble to only include 1 element for each sector
+	let mut sector_goals = Vec::new();
+	for sector in sector_order.iter() {
+		let (sector_id, portal_id) = map.get_key_value(sector).unwrap();
+		sector_goals.push((*sector_id, *portal_id));
+	}
+	*path = sector_goals;
+	// reverse again so the route describes moving from actor to goal
+	path.reverse(); //TODO this is messy
+}
+
 #[cfg(not(tarpaulin_include))]
 pub fn generate_flow_fields(
 	mut cache_q: Query<
@@ -206,7 +214,6 @@ pub fn cleanup_old_routes(mut q_route_cache: Query<&mut RouteCache>, time: Res<T
 			}
 		}
 		for purge in routes_to_purge.iter() {
-			info!("Purging");
 			cache.remove_route(*purge);
 		}
 	}
@@ -224,8 +231,40 @@ pub fn cleanup_old_flowfields(mut q_flow_cache: Query<&mut FlowFieldCache>, time
 			}
 		}
 		for purge in routes_to_purge.iter() {
-			info!("Purging flowfield");
 			cache.remove_field(*purge);
 		}
 	}
+}
+#[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn filter_graph_route() {
+		// path in 3x3 sector grid, moving from top right to bottom left
+		let mut path: Vec<((u32, u32), (usize, usize))> = vec![
+			((2, 0), (0, 4)), // start sector and exit
+			((1, 0), (9, 4)), // entry portal of next sector
+			((1, 0), (3, 9)), // exit portal of next sector
+			((1, 1), (3, 0)), // entry portal of next sector
+			((1, 1), (5, 9)), // exit portal of next sector
+			((1, 2), (5, 0)), // entry portal of next sector
+			((1, 2), (0, 3)), // exit portal of next sector
+			((0, 2), (9, 3)) // goal sector and entry portal
+		];
+		let target_goal = (4, 4);
+
+		filter_path(&mut path, target_goal);
+		let actual = vec![
+			((2, 0), (0, 4)),
+			((1, 0), (3, 9)),
+			((1, 1), (5, 9)),
+			((1, 2), (0, 3)),
+			((0, 2), (4, 4)) // gets switch to target_goal
+		];
+
+		assert_eq!(actual, path);
+	}
+
 }

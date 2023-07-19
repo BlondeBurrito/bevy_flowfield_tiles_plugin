@@ -65,8 +65,38 @@ codegen-units = 2
 strip = true # strip symbols to reduce binary size on linux and mac
 
 [[bench]]
-name = "fib"
+name = "calc_route"
 harness = false
+
+[[bench]]
+name = "calc_flow_open"
+harness = false
+
+# [[bench]]
+# name = "calc_flow_sparse"
+# harness = false
+
+# [[bench]]
+# name = "calc_flow_maze"
+# harness = false
+
+[[bench]]
+name = "init_bundle"
+harness = false
+
+[[bench]]
+name = "init_cost_fields"
+harness = false
+
+[[bench]]
+name = "init_portals"
+harness = false
+
+[[bench]]
+name = "init_portal_graph"
+harness = false
+
+###################
 
 [[example]]
 name = "visualise_cost_field"

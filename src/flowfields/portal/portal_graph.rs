@@ -28,7 +28,7 @@ use super::portals::{PortalNode, Portals};
 /// of sector boundaries to provide the responsiveness of "movement asked for, begin going in
 /// this direction, get a better route later"
 //TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))] https://github.com/petgraph/petgraph/pull/550
-#[derive(Component, Default)]
+#[derive(Component, Default, Clone)]
 pub struct PortalGraph {
 	/// The graph for storing nodes and edges
 	graph: StableGraph<u32, i32, petgraph::Directed>,

@@ -46,6 +46,7 @@ use std::collections::HashSet;
 use crate::prelude::*;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone)]
 pub struct CostField([[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 
 impl Default for CostField {

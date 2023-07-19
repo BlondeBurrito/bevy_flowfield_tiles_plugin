@@ -15,7 +15,7 @@ trait Sector {}
 /// top left of the map ((-x_max, -z_max) for 3d, (-x_max, y_max) for 2d)
 /// and values are the [CostField] associated with that sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct SectorCostFields(BTreeMap<(u32, u32), CostField>);
 
 impl SectorCostFields {
@@ -55,7 +55,7 @@ impl SectorCostFields {
 /// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
 /// and values are the [Portals] associated with that sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct SectorPortals(BTreeMap<(u32, u32), Portals>);
 
 impl SectorPortals {

@@ -79,7 +79,7 @@ impl RouteMetadata {
 }
 /// Each key makes use of custom Ord and Eq implementations based on comparing `(source_id, target_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
 #[allow(clippy::type_complexity)]
-#[derive(Component, Default)]
+#[derive(Component, Default, Clone)]
 pub struct RouteCache(BTreeMap<RouteMetadata, Vec<((u32, u32), (usize, usize))>>);
 
 impl RouteCache {

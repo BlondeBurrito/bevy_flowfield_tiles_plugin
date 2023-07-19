@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 /// The length `x` and depth `z` (or `y` in 2d) of the map
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component, Default)]
+#[derive(Component, Default, Clone)]
 pub struct MapDimensions(u32, u32);
 
 impl MapDimensions {
