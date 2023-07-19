@@ -1,4 +1,6 @@
 //! Measure calculating a route from one sector to another
+//! 
+//! World is 100 sectors by 100 sectors
 //!
 
 use std::time::Duration;
@@ -63,7 +65,7 @@ fn calc(portals: SectorPortals, cost_fields: SectorCostFields, graph: PortalGrap
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-	let mut group = c.benchmark_group("smaller_sample");
+	let mut group = c.benchmark_group("algorithm_use");
 	group.significance_level(0.05).sample_size(100);
 	let (portals, cost_fields, graph) = prepare_fields(1000, 1000);
 	group.bench_function("calc_route", |b| {

@@ -26,7 +26,7 @@ fn init_portals(cost_fields: SectorCostFields, map_dimensions: MapDimensions) {
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-	let mut group = c.benchmark_group("smaller_sample");
+	let mut group = c.benchmark_group("data_initialisation");
 	group.significance_level(0.05).sample_size(100);
 	let (cost_fields, map_dimensions) = prepare_fields(1000, 1000);
 	group.bench_function("init_portals", |b| {

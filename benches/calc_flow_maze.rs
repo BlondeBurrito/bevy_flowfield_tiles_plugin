@@ -1,4 +1,6 @@
 //! Measure a FlowField generation for a world with a maze of impassable field cells
+//! 
+//! World is 100 sectors by 100 sectors
 //!
 
 use std::time::Duration;
@@ -132,7 +134,7 @@ fn flow_maze(
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-	let mut group = c.benchmark_group("smaller_sample");
+	let mut group = c.benchmark_group("algorithm_use");
 	group.significance_level(0.05).sample_size(100);
 	let (portals, cost_fields, map_dimensions, route_cache) = prepare_fields(1000, 1000);
 	group.bench_function("calc_flow_sparse", |b| {

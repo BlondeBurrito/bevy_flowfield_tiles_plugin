@@ -39,7 +39,7 @@ fn init_graph(
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-	let mut group = c.benchmark_group("smaller_sample");
+	let mut group = c.benchmark_group("data_initialisation");
 	group.significance_level(0.1).sample_size(10);
 	let (portals, cost_fields, map_dimensions) = prepare_fields(1000, 1000);
 	group.bench_function("init_portal_graph", |b| {
