@@ -41,7 +41,7 @@
 //!
 //! When an agent needs to path somewhere it is initially given a path based on moving from one portal
 //! to another portal/end sector. This ensures responsiveness so when a player issues a movement order
-//! the agent immediately starts pathing. In the background the other components of the Flowfields can
+//! the agent can immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
 use crate::prelude::*;

@@ -1,5 +1,7 @@
-//! Defines the [FlowField], the various bit values associated with it and the
-//! logic for calculating a field from an [IntegrationField]
+//! A [FlowField] is a 2D array of 8-bit values. The various bit values
+//! associated with it indicate directions of movement and flags to idenitfy
+//! what's a goal, what's pathable and others. A steering pipeline/character
+//! controller should read and interpret a [FlowField] to provide movement.
 //!
 
 use crate::prelude::*;

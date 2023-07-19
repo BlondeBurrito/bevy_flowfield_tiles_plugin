@@ -77,7 +77,7 @@ impl RouteMetadata {
 		self.time_generated
 	}
 }
-/// Each key makes use of custom Ord and Eq implementations based on comparing `(sector_id, sector_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
+/// Each key makes use of custom Ord and Eq implementations based on comparing `(source_id, target_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
 #[allow(clippy::type_complexity)]
 #[derive(Component, Default)]
 pub struct RouteCache(BTreeMap<RouteMetadata, Vec<((u32, u32), (usize, usize))>>);
@@ -180,7 +180,6 @@ impl PartialOrd for FlowFieldMetadata {
 	}
 }
 
-//TODO? means of invalidating fields in cache that are very old?
 /// Each generated [FlowField] is placed into this cache so that multiple actors can read from the same dataset.
 ///
 /// Each entry is given an ID of `(sector_id, goal_id)` and actors can poll the cache to retrieve the field once it's built and inserted. Note that `goal_id` can refer to the true end-goal or it can refer to a portal position when a path spans multiple sectors

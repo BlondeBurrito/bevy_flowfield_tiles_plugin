@@ -6,6 +6,7 @@ alias db := debug
 alias t := test
 alias b := build
 alias r := run
+alias clogu := changelog-unreleased
 alias clog := changelog
 # alias cn := clean
 
@@ -27,7 +28,7 @@ bench:
   cargo bench -q --benches --workspace
 # run a debug build so the compiler can call out overflow errors etc, rather than making assumptions
 debug:
-  cargo build --workspace
+  cargo build --workspace --all-features
 # run tests
 test: debug
   cargo test --release --workspace --all-features
@@ -48,6 +49,9 @@ push MESSAGE +BRANCH='main':
   git add .
   git commit -m "{{MESSAGE}}"
   git push origin {{BRANCH}}
+# generate a changelog with git-cliff-based on conventional commits
+changelog-unreleased:
+  git cliff -u --output CHANGELOG.md
 # generate a changelog with git-cliff-based on conventional commits
 changelog TAG:
   git cliff --tag {{TAG}} --output CHANGELOG.md
@@ -79,9 +83,9 @@ dev-tools:
   rust-script --install-file-association;
   cargo install --locked cargo-deny
   cargo install cargo-tarpaulin
-# Generate a diagram from a puml ile under ./docs
+# Generate a diagram from a puml file under ./docs
 diagram NAME:
   java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" docs/{{NAME}}.puml
-# Generate all diagrams under ./docs
+# Generate all puml diagrams under ./docs
 diagrams:
   ForEach ($i in Get-ChildItem -Path "./docs/*.puml") {java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" $i.FullName}

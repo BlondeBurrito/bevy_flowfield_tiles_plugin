@@ -10,8 +10,9 @@ use bevy::prelude::*;
 /// Shared behaviour of a sector
 trait Sector {}
 
-/// Keys represent unique sector IDs and are in the format of `(column, row)` when considering a
-/// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
+/// Keys represent unique sector IDs and are in the format of `(column, row)`
+/// when considering a grid of sectors across the map. The sectors begin in the
+/// top left of the map ((-x_max, -z_max) for 3d, (-x_max, y_max) for 2d)
 /// and values are the [CostField] associated with that sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component)]
@@ -315,19 +316,7 @@ pub fn get_sector_xy_at_top_left(
 	let y = y_origin - sector_id.1 as f32 * sprite_length_of_sector;
 	Vec2::new(x, y)
 }
-
-// pub fn get_field_cell_from_xy(
-// 	position: Vec2,
-// 	map_x_dimension: u32,
-// 	map_y_dimension: u32,
-// 	pixel_scale: f32,
-// 	sector_id: (u32, u32),
-// ) {
-// 	let sector_id = get_sector_id_from_xy(position, map_x_dimension, map_y_dimension, pixel_scale);
-// 	let sector_corner_origin =
-// 		get_sector_xy_at_top_left(position, map_x_dimension, map_y_dimension, pixel_scale);
-// }
-
+/// From a 2d position get the sector and field cell it resides in
 pub fn get_sector_and_field_id_from_xy(
 	position: Vec2,
 	map_x_dimension: u32,

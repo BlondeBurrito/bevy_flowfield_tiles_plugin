@@ -8,7 +8,7 @@
 
 # bevy_flowfield_tiles_plugin
 
-Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/GameAIPro_Chapter23_Crowd_Pathfinding_and_Steering_Using_Flow_Field_Tiles.pdf) this is an attempt to implement the data structures and logic required to generate a Flowfield representation of a world which can be used to pathfind movable actors.
+Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/GameAIPro_Chapter23_Crowd_Pathfinding_and_Steering_Using_Flow_Field_Tiles.pdf) and with inspiration from [leifnode](https://leifnode.com/2013/12/flow-field-pathfinding/) and [jdxdev](https://www.jdxdev.com/blog/2020/05/03/flowfields/) this is an attempt to implement the data structures and logic required to generate a Flowfield representation of a world which can be used to pathfind movable actors.
 
 | bevy | bevy_flowfield_tiles_plugin |
 |------|-----------------------------|
@@ -62,7 +62,7 @@ To generate a set of navigation `FlowFields` the game world is divided into Sect
 <details>
 <summary>Click to expand!</summary>
 
-For a 3-dimensional world the `x-z` plane defines the number of Sectors used to represent it with a constant called `SECTOR_RESOLUTION`, currently enforced at `10`. This means that a for a `30x30` world there would be `3x3` Sectors representing it. Each Sector has an associated unqiue ID taken as its position: `(column, row)`.
+For a 3-dimensional world the `x-z` (`x-y` in 2d) plane defines the number of Sectors used to represent it with a constant called `SECTOR_RESOLUTION`, currently enforced at `10`. This means that a for a `30x30` world there would be `3x3` Sectors representing it. Each Sector has an associated unqiue ID taken as its position: `(column, row)`.
 
 <img src="docs/sectors.png" alt="sectors" width="250"/>
 

@@ -1,4 +1,4 @@
-//!
+//! Logic relating to [FlowField] generation
 //!
 
 use std::collections::HashMap;

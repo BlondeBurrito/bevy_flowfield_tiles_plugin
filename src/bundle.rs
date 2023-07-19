@@ -1,10 +1,11 @@
-//!
+//! Defines a bundle which can be spawned as/inserted into an entity which
+//! movable actors can query for pathing data
 //!
 
 use crate::prelude::*;
 use bevy::prelude::*;
 
-/// The length `x` and depth `z` of the map
+/// The length `x` and depth `z` (or `y` in 2d) of the map
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component, Default)]
 pub struct MapDimensions(u32, u32);
