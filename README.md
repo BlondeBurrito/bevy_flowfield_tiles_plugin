@@ -15,7 +15,7 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 | [commit](https://github.com/bevyengine/bevy/commit/8ba9571eedada4f3ff43cdf1402670b7fe7c280d) |  main                        |
 | 0.11 |  0.1 (unreleased) |
 
-<img src="docs/2d_with_steering.gif" alt="sgif" width="500"/>
+<img src="docs/2d_with_steering_cropped.gif" alt="sgif" width="350"/><img src="docs/3d_actor_movement_cropped.gif" alt="3sgif" width="400"/>
 
 # Table of Contents
 
