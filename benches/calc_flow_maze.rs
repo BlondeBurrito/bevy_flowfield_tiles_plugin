@@ -1,6 +1,20 @@
 //! Measure a FlowField generation for a world with a maze of impassable field cells
 //! 
-//! World is 100 sectors by 100 sectors
+//! World is 100 sectors by 100 sectors with a snake-like maze of impassable cost field values running up and down the entire world
+//! 
+//! ```txt
+//!  _____________________________
+//! |__|__|__|xx|__|__|__|xx|__|__|
+//! |__|xx|__|xx|__|xx|__|xx|__|xx|
+//! |__|xx|__|xx|__|xx|__|xx|__|xx|
+//! |__|xx|__|xx|__|xx|__|xx|__|xx|
+//! |__|xx|__|xx|__|xx|__|xx|__|xx|
+//! |__|xx|__|xx|__|xx|__|xx|__|xx|
+//! |__|xx|__|xx|__|xx|__|xx|__|xx|
+//! |__|xx|__|xx|__|xx|__|xx|__|xx|
+//! |__|xx|__|xx|__|xx|__|xx|__|xx|
+//! |__|xx|__|__|__|xx|__|__|__|xx|
+//! ```
 //!
 
 use std::time::Duration;
@@ -15,8 +29,8 @@ fn prepare_fields(
 	map_depth: u32,
 ) -> (SectorPortals, SectorCostFields, MapDimensions, RouteCache) {
 	let map_dimensions = MapDimensions::new(map_length, map_depth);
-	//TODO setup a maze-like costfields
-	let cost_fields = SectorCostFields::new(map_length, map_depth);
+	let csv_dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/bench_costfields/maze/";
+	let cost_fields = SectorCostFields::from_csv_dir(map_length, map_depth, csv_dir);
 	let mut portals = SectorPortals::new(map_dimensions.get_column(), map_dimensions.get_row());
 	// update default portals for cost fields
 	for sector_id in cost_fields.get().keys() {
@@ -40,8 +54,8 @@ fn prepare_fields(
 	let source_field_cell = (9, 0);
 	let source = (source_sector, source_field_cell);
 	// bottom left
-	let target_sector = (0, 99);
-	let target_goal = (0, 9);
+	let target_sector = (99, 99);
+	let target_goal = (9, 9);
 	let target = (target_sector, target_goal);
 
 	// find the route
@@ -137,7 +151,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut group = c.benchmark_group("algorithm_use");
 	group.significance_level(0.05).sample_size(100);
 	let (portals, cost_fields, map_dimensions, route_cache) = prepare_fields(1000, 1000);
-	group.bench_function("calc_flow_sparse", |b| {
+	group.bench_function("calc_flow_maze", |b| {
 		b.iter(|| {
 			flow_maze(
 				black_box(portals.clone()),

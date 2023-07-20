@@ -368,6 +368,7 @@ fn actor_steering(
 
 * `serde` - enables serlialisation on some data types
 * `ron` - enables reading `CostField` from files. NB: fixed-size arrays in `.ron` are written as tuples
+* `csv` - enables creating all of the `CostFields` by reading from a directory of csv files. Note that csv filenames need to follow the sector ID convention of `column_row`, the underscore is important, and the path of the directory should be fully qualified and the files themselves should not contain any headers
 
 # LICENSE
 

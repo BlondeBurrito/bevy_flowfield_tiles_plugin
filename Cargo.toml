@@ -20,6 +20,7 @@ bevy = { version = "0.11", default-features = false, features = [ "ktx2", "zstd"
 petgraph = "0.6"
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
+csv = { version = "1" }
 
 [package]
 name = "bevy_flowfield_tiles_plugin"
@@ -46,10 +47,12 @@ bevy = { workspace = true }
 petgraph = { workspace = true }
 serde = { workspace = true, optional = true}
 ron = { workspace = true, optional = true}
+csv = { workspace = true, optional = true}
 
 [features]
 serde = ["dep:serde"]
 ron = ["serde", "dep:ron"]
+csv = ["serde", "dep:csv"]
 
 [profile.dev]
 opt-level = 1
@@ -76,9 +79,9 @@ harness = false
 # name = "calc_flow_sparse"
 # harness = false
 
-# [[bench]]
-# name = "calc_flow_maze"
-# harness = false
+[[bench]]
+name = "calc_flow_maze"
+harness = false
 
 [[bench]]
 name = "init_bundle"

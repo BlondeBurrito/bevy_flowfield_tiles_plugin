@@ -111,6 +111,38 @@ impl FlowFieldTilesBundle {
 			flow_field_cache: cache,
 		}
 	}
+	/// Create a new instance of [FlowFieldTilesBundle] from a directory containing CSV [CostField] files
+	#[cfg(feature = "csv")]
+	pub fn from_csv(map_length: u32, map_depth: u32, directory: &str) -> Self {
+		let map_dimensions = MapDimensions::new(map_length, map_depth);
+		let cost_fields = SectorCostFields::from_csv_dir(map_length, map_depth, directory.to_string());
+		let mut portals = SectorPortals::new(map_length, map_depth);
+		// update default portals for cost fields
+		for sector_id in cost_fields.get().keys() {
+			portals.update_portals(
+				*sector_id,
+				&cost_fields,
+				map_dimensions.get_column(),
+				map_dimensions.get_row(),
+			);
+		}
+		let graph = PortalGraph::new(
+			&portals,
+			&cost_fields,
+			map_dimensions.get_column(),
+			map_dimensions.get_row(),
+		);
+		let route_cache = RouteCache::default();
+		let cache = FlowFieldCache::default();
+		FlowFieldTilesBundle {
+			sector_cost_fields: cost_fields,
+			sector_portals: portals,
+			portal_graph: graph,
+			map_dimensions,
+			route_cache,
+			flow_field_cache: cache,
+		}
+	}
 }
 
 // #[rustfmt::skip]

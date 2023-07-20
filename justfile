@@ -25,7 +25,10 @@ example NAME:
   cargo run --release --example {{NAME}} --all-features
 # run benchmarks
 bench:
-  cargo bench -q --benches --workspace
+  cargo bench -q --benches --workspace --all-features
+# run a particular benchmark
+bench-one BENCH:
+  cargo bench --benches --workspace --all-features {{BENCH}}
 # run a debug build so the compiler can call out overflow errors etc, rather than making assumptions
 debug:
   cargo build --workspace --all-features
