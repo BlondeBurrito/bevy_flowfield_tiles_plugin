@@ -351,7 +351,7 @@ impl PortalGraph {
 		}
 		None
 	}
-	/// Using a path of portal [NodeIndex]s conver them into a list of sector portal pairings. Note that the first element contains the starting sector with the portal to leave and enter a different sector, the last element contains the goal sector and goal portal cell, and all the other elements are in duos whereby defining the entry and exit points of sectors along the way
+	/// Using a path of portal [NodeIndex]s convert them into a list of sector portal pairings. Note that the first element contains the starting sector with the portal to leave and enter a different sector, the last element contains the goal sector and goal portal cell, and all the other elements are in duos whereby defining the entry and exit points of sectors along the way
 	pub fn convert_index_path_to_sector_portal_cells(
 		&self,
 		portal_path: Vec<NodeIndex>,

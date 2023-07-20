@@ -115,7 +115,8 @@ impl FlowFieldTilesBundle {
 	#[cfg(feature = "csv")]
 	pub fn from_csv(map_length: u32, map_depth: u32, directory: &str) -> Self {
 		let map_dimensions = MapDimensions::new(map_length, map_depth);
-		let cost_fields = SectorCostFields::from_csv_dir(map_length, map_depth, directory.to_string());
+		let cost_fields =
+			SectorCostFields::from_csv_dir(map_length, map_depth, directory.to_string());
 		let mut portals = SectorPortals::new(map_length, map_depth);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {

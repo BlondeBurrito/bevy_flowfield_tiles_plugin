@@ -1,5 +1,5 @@
 //! Measure calculating a route from one sector to another
-//! 
+//!
 //! World is 100 sectors by 100 sectors
 //!
 

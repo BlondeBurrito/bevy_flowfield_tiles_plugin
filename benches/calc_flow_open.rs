@@ -1,5 +1,5 @@
 //! Measure a FlowField generation for a world of uniform CostFields (hence open - open space)
-//! 
+//!
 //! World is 100 sectors by 100 sectors
 //!
 

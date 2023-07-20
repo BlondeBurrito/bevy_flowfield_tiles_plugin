@@ -1,5 +1,5 @@
 //! Measure a FlowField generation for a world with a sparse sprinkling of impassable areas
-//! 
+//!
 //! World is 100 sectors by 100 sectors
 //!
 

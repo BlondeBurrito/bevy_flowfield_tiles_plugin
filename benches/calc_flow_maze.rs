@@ -1,7 +1,7 @@
 //! Measure a FlowField generation for a world with a maze of impassable field cells
-//! 
+//!
 //! World is 100 sectors by 100 sectors with a snake-like maze of impassable cost field values running up and down the entire world
-//! 
+//!
 //! ```txt
 //!  _____________________________
 //! |__|__|__|xx|__|__|__|xx|__|__|
@@ -63,7 +63,9 @@ fn prepare_fields(
 		.find_best_path(source, target, &portals, &cost_fields)
 		.unwrap();
 	let mut path = graph.convert_index_path_to_sector_portal_cells(node_route.1, &portals);
+	println!("Path len: {}", path.len());
 	filter_path(&mut path, target_goal);
+	println!("Path len: {}", path.len());
 	route_cache.insert_route(
 		source_sector,
 		target_sector,
@@ -71,7 +73,6 @@ fn prepare_fields(
 		Duration::default(),
 		path,
 	);
-
 	(portals, cost_fields, map_dimensions, route_cache)
 }
 
@@ -145,6 +146,7 @@ fn flow_maze(
 			};
 		}
 	}
+	// println!("Cache length: {}", flow_cache.get().len());
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {

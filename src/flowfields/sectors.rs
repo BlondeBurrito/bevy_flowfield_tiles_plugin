@@ -52,25 +52,50 @@ impl SectorCostFields {
 	/// From a directory containing a series of CSV files generate the [SectorCostFields]
 	#[cfg(feature = "csv")]
 	pub fn from_csv_dir(map_length: u32, map_depth: u32, directory: String) -> Self {
-		let required_files_count = (map_length * map_depth) as usize / (SECTOR_RESOLUTION * SECTOR_RESOLUTION);
-		let files = std::fs::read_dir(directory).expect("Unable to read csv directory").map(|res| res.map(|e| (e.path().into_os_string().into_string().unwrap(), e.file_name().into_string().unwrap())))
-		.collect::<Result<Vec<_>, std::io::Error>>()
-		.expect("Failed to filter for CSV files");
+		let required_files_count =
+			(map_length * map_depth) as usize / (SECTOR_RESOLUTION * SECTOR_RESOLUTION);
+		let files = std::fs::read_dir(directory)
+			.expect("Unable to read csv directory")
+			.map(|res| {
+				res.map(|e| {
+					(
+						e.path().into_os_string().into_string().unwrap(),
+						e.file_name().into_string().unwrap(),
+					)
+				})
+			})
+			.collect::<Result<Vec<_>, std::io::Error>>()
+			.expect("Failed to filter for CSV files");
 		let mut csvs = Vec::new();
 		for (file_path, file_name) in files {
 			if file_path.ends_with(".csv") {
 				let sector_id_str = file_name.trim_end_matches(".csv").split_once("_").unwrap();
-				let sector_id = (sector_id_str.0.parse::<u32>().expect("Failed to parse sector ID from csv file name"), sector_id_str.1.parse::<u32>().expect("Failed to parse sector ID from csv file name"));
+				let sector_id = (
+					sector_id_str
+						.0
+						.parse::<u32>()
+						.expect("Failed to parse sector ID from csv file name"),
+					sector_id_str
+						.1
+						.parse::<u32>()
+						.expect("Failed to parse sector ID from csv file name"),
+				);
 				csvs.push((file_path, sector_id));
 			}
 		}
 		if csvs.len() != required_files_count {
-			panic!("Found {} CSVs, expected {}", csvs.len(), required_files_count);
+			panic!(
+				"Found {} CSVs, expected {}",
+				csvs.len(),
+				required_files_count
+			);
 		}
 		let mut sector_cost_fields = SectorCostFields::default();
 		for (csv_file, sector_id) in csvs.iter() {
 			let data = std::fs::File::open(csv_file).expect("Failed opening csv");
-			let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_reader(data);
+			let mut rdr = csv::ReaderBuilder::new()
+				.has_headers(false)
+				.from_reader(data);
 			let mut cost_field = CostField::default();
 			for (row, record) in rdr.records().enumerate() {
 				for (column, value) in record.unwrap().iter().enumerate() {

@@ -379,7 +379,7 @@ impl Portals {
 				}
 			}
 			if boundary_ordinals.len() > 1 {
-				panic!("Sector {:?} does not have a neighbour at {:?} while inspecting portal {:?}. This suggest that a portal exists on a sector boundary where it shouldn't, i.e this sector is along an edge of the world and the portal is on a boundary leading to nowhere", sector_id, neighbour_sector_id, portal_id);
+				panic!("Sector {:?} does not have a neighbour at {:?} while inspecting portal {:?}. This suggests that a portal exists on a sector boundary where it shouldn't, i.e this sector is along an edge of the world and the portal is on a boundary leading to nowhere", sector_id, neighbour_sector_id, portal_id);
 			}
 		}
 		let boundary_ordinal = boundary_ordinals.first().unwrap();
