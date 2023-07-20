@@ -107,6 +107,11 @@ path = "examples/visualise_cost_field.rs"
 required-features = ["ron"]
 
 [[example]]
+name = "visualise_portals"
+path = "examples/visualise_portals.rs"
+required-features = ["csv"]
+
+[[example]]
 name = "visualise_integration_field"
 path = "examples/visualise_integration_field.rs"
 required-features = ["ron"]
@@ -130,6 +135,11 @@ required-features = ["ron"]
 name = "2d_with_steering"
 path = "examples/2d_with_steering.rs"
 required-features = ["ron"]
+
+[[example]]
+name = "2d_complex_movement"
+path = "examples/2d_complex_movement.rs"
+required-features = ["csv"]
 
 [[example]]
 name = "2d_multi_actor"

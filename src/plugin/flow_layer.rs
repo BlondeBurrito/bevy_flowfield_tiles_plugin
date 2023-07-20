@@ -1,9 +1,6 @@
 //! Logic relating to [FlowField] generation
 //!
 
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-
 use crate::prelude::*;
 use bevy::prelude::*;
 
@@ -98,28 +95,22 @@ pub fn handle_path_requests(
 /// the route and trim it down
 #[allow(clippy::type_complexity)]
 pub fn filter_path(path: &mut Vec<((u32, u32), (usize, usize))>, target_goal: (usize, usize)) {
-	// original order is from actor to goal, to help filtering we reverse
-	path.reverse(); //TODO this is messy paired with below todo
-				// change target cell from portal to the real goal for the destination
-	path[0].1 = target_goal;
-	// filter out the entry portals of sectors, we only care about the end of each sector and the end goal itself
-	let mut sector_order = Vec::new();
-	let mut map = HashMap::new();
-	for p in path.iter() {
-		if let Entry::Vacant(e) = map.entry(p.0) {
-			e.insert(p.1);
-			sector_order.push(p.0);
-		}
+	let mut path_based_on_portal_exits = Vec::new();
+	// target sector and entry portal where we switch the entry portal cell to the goal
+	let mut end = path.pop().unwrap();
+	end.1 = target_goal;
+	// sector and field of leaving starting sector if source sector and target sector are different
+	// otherwise it was a single element path and we already removed it
+	if !path.is_empty() {
+		let start = path.remove(0);
+		path_based_on_portal_exits.push(start);
 	}
-	// reassemble to only include 1 element for each sector
-	let mut sector_goals = Vec::new();
-	for sector in sector_order.iter() {
-		let (sector_id, portal_id) = map.get_key_value(sector).unwrap();
-		sector_goals.push((*sector_id, *portal_id));
+	// all other elements in the path are in pairs for entering and leaving sectors on the way to the goal
+	for p in path.iter().skip(1).step_by(2) {
+		path_based_on_portal_exits.push(*p);
 	}
-	*path = sector_goals;
-	// reverse again so the route describes moving from actor to goal
-	path.reverse(); //TODO this is messy
+	path_based_on_portal_exits.push(end);
+	*path = path_based_on_portal_exits;
 }
 
 #[cfg(not(tarpaulin_include))]
@@ -262,6 +253,35 @@ mod tests {
 			((1, 1), (5, 9)),
 			((1, 2), (0, 3)),
 			((0, 2), (4, 4)) // gets switch to target_goal
+		];
+
+		assert_eq!(actual, path);
+	}
+
+	#[test]
+	fn filter_graph_route_back_on_itself() {
+		// path in 3x3 sector grid, moving from top right to top right
+		// i.e impassable values mean that the actor must leave its starting sector and
+		// re-enter it from a different portal
+		let mut path: Vec<((u32, u32), (usize, usize))> = vec![
+			((2, 0), (8, 9)), // start sector and exit
+			((2, 1), (8, 0)), // entry portal of next sector
+			((2, 1), (6, 0)), // exit back towards start sector
+			((2, 0), (6, 9)), // entry back into start sector
+			((2, 0), (4, 9)), // leave starting sector again
+			((2, 1), (4, 0)), // entry of neighbour again
+			((2, 1), (2, 0)), // exit back towrards start again
+			((2, 0), (2, 9)), // last entry into original sector
+		];
+		let target_goal = (2, 1);
+
+		filter_path(&mut path, target_goal);
+		let actual = vec![
+			((2, 0), (8, 9)),
+			((2, 1), (6, 0)),
+			((2, 0), (4, 9)),
+			((2, 1), (2, 0)),
+			((2, 0), (2, 1)), // gets switch to target_goal
 		];
 
 		assert_eq!(actual, path);
