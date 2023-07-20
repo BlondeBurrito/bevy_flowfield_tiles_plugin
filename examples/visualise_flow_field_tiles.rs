@@ -3,7 +3,7 @@
 //! For sectors which an actor does not need to traverse they are not generated or rendered
 //!
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use bevy::prelude::*;
 use bevy_flowfield_tiles_plugin::prelude::*;
@@ -55,25 +55,34 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// convert to grid and sector coords
 	let mut path =
 		portal_graph.convert_index_path_to_sector_portal_cells(node_path.1, &sector_portals);
+	let mut path_based_on_portal_exits = Vec::new();
+	// target sector and entry portal where we switch the entry portal cell to the goal
+	let mut end = path.pop().unwrap();
+	end.1 = target_grid_cell;
+	// sector and field of leaving starting sector if source sector and target sector are different
+	// otherwise it was a single element path and we already removed it
+	if !path.is_empty() {
+		let start = path.remove(0);
+		path_based_on_portal_exits.push(start);
+	}
+	// all other elements in the path are in pairs for entering and leaving sectors on the way to the goal
+	for p in path.iter().skip(1).step_by(2) {
+		path_based_on_portal_exits.push(*p);
+	}
+	path_based_on_portal_exits.push(end);
+	path = path_based_on_portal_exits;
 	// original order is from actor to goal, int fields need to be processed the other way around
 	path.reverse();
-	// change target cell from portal to the real goal
-	path[0].1 = target_grid_cell;
-	let mut sector_order = Vec::new();
-	let mut map = HashMap::new();
-	for p in path.iter() {
-		if let std::collections::hash_map::Entry::Vacant(e) = map.entry(p.0) {
-			e.insert(p.1);
-			sector_order.push(p.0);
-		}
-	}
-	let mut sector_goals = Vec::new();
-	for (i, sector) in sector_order.iter().enumerate() {
-		let (sector_id, portal_id) = map.get_key_value(sector).unwrap();
-		if *sector == target_sector {
-			sector_goals.push((*sector_id, vec![*portal_id]));
+	let mut sectors_expanded_goals = Vec::new();
+	for (i, (sector_id, goal)) in path.iter().enumerate() {
+		// first element is always the end target, don't bother with portal expansion
+		if i == 0 {
+			sectors_expanded_goals.push((*sector_id, vec![*goal]));
 		} else {
-			let neighbour_sector_id = sector_order[i - 1];
+			// portals represent the boundary to another sector, a portal can be spread over
+			// multple grid cells, expand the portal to provide multiple goal
+			// targets for moving to another sector
+			let neighbour_sector_id = path[i - 1].0;
 			let g = sector_portals
 				.get()
 				.get(sector_id)
@@ -81,17 +90,17 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				.expand_portal_into_goals(
 					&sector_cost_fields,
 					sector_id,
-					portal_id,
+					goal,
 					&neighbour_sector_id,
 					map_dimensions.get_column(),
 					map_dimensions.get_row(),
 				);
-			sector_goals.push((*sector_id, g));
+			sectors_expanded_goals.push((*sector_id, g));
 		}
 	}
 	// prep int fields
 	let mut sector_int_fields = Vec::new();
-	for (sector_id, goals) in sector_goals.iter() {
+	for (sector_id, goals) in sectors_expanded_goals.iter() {
 		let mut int_field = IntegrationField::new(goals);
 		let cost_field = sector_cost_fields.get().get(sector_id).unwrap();
 		int_field.calculate_field(goals, cost_field);
