@@ -172,8 +172,7 @@ fn user_input(
 /// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
 	for mut pathing in actor_q.iter_mut() {
-		if pathing.target_goal.is_some() {
-			if pathing.portal_route.is_none() {
+		if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
@@ -182,7 +181,6 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 			) {
 				pathing.portal_route = Some(route.clone());
 			}
-		}
 	}
 	}
 }

@@ -220,8 +220,7 @@ fn actor_update_route(
 	route_q: Query<&RouteCache>,
 ) {
 	for mut pathing in actor_a_q.iter_mut() {
-		if pathing.target_goal.is_some() {
-			if pathing.portal_route.is_none() {
+		if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
@@ -230,12 +229,10 @@ fn actor_update_route(
 			) {
 				pathing.portal_route = Some(route.clone());
 			}
-		}
 	}
 	}
 	for mut pathing in actor_b_q.iter_mut() {
-		if pathing.target_goal.is_some() {
-			if pathing.portal_route.is_none() {
+		if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
@@ -244,7 +241,6 @@ fn actor_update_route(
 			) {
 				pathing.portal_route = Some(route.clone());
 			}
-		}
 	}
 	}
 }

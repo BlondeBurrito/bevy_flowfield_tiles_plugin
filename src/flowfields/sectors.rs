@@ -69,7 +69,7 @@ impl SectorCostFields {
 		let mut csvs = Vec::new();
 		for (file_path, file_name) in files {
 			if file_path.ends_with(".csv") {
-				let sector_id_str = file_name.trim_end_matches(".csv").split_once("_").unwrap();
+				let sector_id_str = file_name.trim_end_matches(".csv").split_once('_').unwrap();
 				let sector_id = (
 					sector_id_str
 						.0
