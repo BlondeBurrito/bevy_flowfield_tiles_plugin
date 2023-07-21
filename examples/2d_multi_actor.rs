@@ -173,6 +173,7 @@ fn user_input(
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
 	for mut pathing in actor_q.iter_mut() {
 		if pathing.target_goal.is_some() {
+			if pathing.portal_route.is_none() {
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
@@ -183,6 +184,7 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 			}
 		}
 	}
+	}
 }
 /// Actor speed measured in pixels per fixed tick
 const SPEED: f32 = 64.0;
@@ -190,14 +192,14 @@ const SPEED: f32 = 64.0;
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
 fn actor_steering(
-	mut actor_q: Query<(&mut Transform, &Pathing), With<Actor>>,
+	mut actor_q: Query<(&mut Transform, &mut Pathing), With<Actor>>,
 	flow_cache_q: Query<&FlowFieldCache>,
 ) {
 	let flow_cache = flow_cache_q.get_single().unwrap();
-	for (mut tform, pathing) in actor_q.iter_mut() {
+	for (mut tform, mut pathing) in actor_q.iter_mut() {
 		if pathing.target_goal.is_some() {
 			// lookup the overarching route
-			if let Some(route) = &pathing.portal_route {
+			if let Some(route) = pathing.portal_route.as_mut() {
 				// info!("Route: {:?}", route);
 				// find the current actors postion in grid space
 				let (curr_actor_sector, curr_actor_grid) = get_sector_and_field_id_from_xy(
@@ -207,6 +209,13 @@ fn actor_steering(
 					64.0,
 				)
 				.unwrap();
+				// tirm the actor stored route as it makes progress
+				// this ensures it doesn't use a previous goal from
+				// a sector it has already been through when it needs
+				// to pass through it again as part of a different part of the route
+				if curr_actor_sector != route.first().unwrap().0 {
+					route.remove(0);
+				}
 				// lookup the relevant sector-goal of this sector
 				'routes: for (sector, goal) in route.iter() {
 					if *sector == curr_actor_sector {

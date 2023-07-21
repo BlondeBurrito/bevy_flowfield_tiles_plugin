@@ -406,7 +406,7 @@ pub fn get_sector_id_from_xyz(
 		|| position.z < -((map_z_dimension / 2) as f32)
 		|| position.z > (map_z_dimension / 2) as f32
 	{
-		error!("OOB pos, x {}, y {}", position.x, position.z);
+		error!("OOB pos, x {}, z {}", position.x, position.z);
 		return None;
 	}
 	let x_sector_count = map_x_dimension / SECTOR_RESOLUTION as u32;

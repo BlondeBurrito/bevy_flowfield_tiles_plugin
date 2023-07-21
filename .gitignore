@@ -22,5 +22,5 @@ Cargo.lock
 *.blend1
 
 # python generated cost fields
-assets/bench_costfields/maze/*
-assets/bench_costfields/sparse/*
+# assets/bench_costfields/maze/*
+# assets/bench_costfields/sparse/*

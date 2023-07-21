@@ -65,7 +65,7 @@ fn prepare_fields(
 	let mut path = graph.convert_index_path_to_sector_portal_cells(node_route.1, &portals);
 	println!("Path len: {}", path.len());
 	filter_path(&mut path, target_goal);
-	println!("Path len: {}", path.len());
+	println!("Path len: {}", path.len()); //TODO at 100 first goes back on itself!!!!!!
 	route_cache.insert_route(
 		source_sector,
 		target_sector,
