@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.1.0] - 2023-07-24
 
 ### Bug Fixes
 
@@ -21,10 +21,12 @@ All notable changes to this project will be documented in this file.
 - Mark cached routes and fields as dirty when costfields change
 - Csv to sector costfields support
 - Example visualise portals
+- Prep 0.1
 
 ### Miscellaneous Tasks
 
 - Tidy up warnings
+- Allow publishing
 
 ### Performance
 

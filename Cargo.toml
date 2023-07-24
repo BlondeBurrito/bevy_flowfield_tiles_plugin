@@ -9,7 +9,7 @@ homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
 repository = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
 keywords = ["navigation", "pathfinding", "bevy"]
 categories = ["game-development", "algorithms"]
-exclude = [".github/", "crates/", "assets/", "docs/png/"]
+exclude = [".github/", "crates/", "assets/", "docs/png/", "justfile"]
 
 [workspace]
 members = []
