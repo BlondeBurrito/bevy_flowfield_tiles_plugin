@@ -121,7 +121,8 @@ fn user_input(
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
 				let (source_sector_id, source_grid_cell) =
-					get_sector_and_field_cell_from_xyz(tform.translation, MAP_LENGTH, MAP_DPETH).unwrap();
+					get_sector_and_field_cell_from_xyz(tform.translation, MAP_LENGTH, MAP_DPETH)
+						.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
 					source_sector_id, source_grid_cell
@@ -148,14 +149,14 @@ fn user_input(
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
 	let mut pathing = actor_q.get_single_mut().unwrap();
 	if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-			let route_cache = route_q.get_single().unwrap();
-			if let Some(route) = route_cache.get_route(
-				pathing.source_sector.unwrap(),
-				pathing.target_sector.unwrap(),
-				pathing.target_goal.unwrap(),
-			) {
-				pathing.portal_route = Some(route.clone());
-			}
+		let route_cache = route_q.get_single().unwrap();
+		if let Some(route) = route_cache.get_route(
+			pathing.source_sector.unwrap(),
+			pathing.target_sector.unwrap(),
+			pathing.target_goal.unwrap(),
+		) {
+			pathing.portal_route = Some(route.clone());
+		}
 	}
 }
 /// Actor speed measured in pixels per fixed tick
@@ -176,7 +177,8 @@ fn actor_steering(
 			// info!("Route: {:?}", route);
 			// find the current actors postion in grid space
 			let (curr_actor_sector, curr_actor_grid) =
-				get_sector_and_field_cell_from_xyz(tform.translation, MAP_LENGTH, MAP_DPETH).unwrap();
+				get_sector_and_field_cell_from_xyz(tform.translation, MAP_LENGTH, MAP_DPETH)
+					.unwrap();
 			// tirm the actor stored route as it makes progress
 			// this ensures it doesn't use a previous goal from
 			// a sector it has already been through when it needs

@@ -99,17 +99,24 @@ fn user_input(
 			.map(|ray| ray.origin.truncate())
 		{
 			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) =
-				get_sector_and_field_id_from_xy(world_position, PIXEL_LENGTH, PIXEL_DEPTH, FIELD_SPRITE_DIMENSION)
-			{
+			if let Some((target_sector_id, goal_id)) = get_sector_and_field_id_from_xy(
+				world_position,
+				PIXEL_LENGTH,
+				PIXEL_DEPTH,
+				FIELD_SPRITE_DIMENSION,
+			) {
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_grid_cell) =
-					get_sector_and_field_id_from_xy(tform.translation.truncate(), PIXEL_LENGTH, PIXEL_DEPTH, FIELD_SPRITE_DIMENSION)
-						.unwrap();
+				let (source_sector_id, source_grid_cell) = get_sector_and_field_id_from_xy(
+					tform.translation.truncate(),
+					PIXEL_LENGTH,
+					PIXEL_DEPTH,
+					FIELD_SPRITE_DIMENSION,
+				)
+				.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
 					source_sector_id, source_grid_cell

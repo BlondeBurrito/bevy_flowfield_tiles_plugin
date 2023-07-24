@@ -125,9 +125,12 @@ fn user_input(
 			.map(|ray| ray.origin.truncate())
 		{
 			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) =
-				get_sector_and_field_id_from_xy(world_position, PIXEL_LENGTH, PIXEL_DEPTH, FIELD_SPRITE_DIMENSION)
-			{
+			if let Some((target_sector_id, goal_id)) = get_sector_and_field_id_from_xy(
+				world_position,
+				PIXEL_LENGTH,
+				PIXEL_DEPTH,
+				FIELD_SPRITE_DIMENSION,
+			) {
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
@@ -166,14 +169,14 @@ fn user_input(
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
 	let mut pathing = actor_q.get_single_mut().unwrap();
 	if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-			let route_cache = route_q.get_single().unwrap();
-			if let Some(route) = route_cache.get_route(
-				pathing.source_sector.unwrap(),
-				pathing.target_sector.unwrap(),
-				pathing.target_goal.unwrap(),
-			) {
-				pathing.portal_route = Some(route.clone());
-			}
+		let route_cache = route_q.get_single().unwrap();
+		if let Some(route) = route_cache.get_route(
+			pathing.source_sector.unwrap(),
+			pathing.target_sector.unwrap(),
+			pathing.target_goal.unwrap(),
+		) {
+			pathing.portal_route = Some(route.clone());
+		}
 	}
 }
 /// Actor speed measured in pixels per fixed tick

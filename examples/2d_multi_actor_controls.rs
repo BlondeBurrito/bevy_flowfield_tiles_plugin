@@ -135,9 +135,12 @@ fn user_input(
 			.map(|ray| ray.origin.truncate())
 		{
 			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) =
-				get_sector_and_field_id_from_xy(world_position, PIXEL_LENGTH, PIXEL_DEPTH, FIELD_SPRITE_DIMENSION)
-			{
+			if let Some((target_sector_id, goal_id)) = get_sector_and_field_id_from_xy(
+				world_position,
+				PIXEL_LENGTH,
+				PIXEL_DEPTH,
+				FIELD_SPRITE_DIMENSION,
+			) {
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
@@ -182,9 +185,12 @@ fn user_input(
 			.map(|ray| ray.origin.truncate())
 		{
 			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) =
-				get_sector_and_field_id_from_xy(world_position, PIXEL_LENGTH, PIXEL_DEPTH, FIELD_SPRITE_DIMENSION)
-			{
+			if let Some((target_sector_id, goal_id)) = get_sector_and_field_id_from_xy(
+				world_position,
+				PIXEL_LENGTH,
+				PIXEL_DEPTH,
+				FIELD_SPRITE_DIMENSION,
+			) {
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
@@ -236,7 +242,7 @@ fn actor_update_route(
 			) {
 				pathing.portal_route = Some(route.clone());
 			}
-	}
+		}
 	}
 	for mut pathing in actor_b_q.iter_mut() {
 		if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
@@ -248,7 +254,7 @@ fn actor_update_route(
 			) {
 				pathing.portal_route = Some(route.clone());
 			}
-	}
+		}
 	}
 }
 /// Actor speed measured in pixels per fixed tick
