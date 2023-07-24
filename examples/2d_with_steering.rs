@@ -8,6 +8,13 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 /// Timestep of actor movement system
 const ACTOR_TIMESTEP: f32 = 0.25;
 
+/// Pixel `x` length of the world
+const PIXEL_LENGTH: u32 = 1920;
+/// Pixel `y` depth of the world
+const PIXEL_DEPTH: u32 = 1920;
+/// Dimension of square sprites making up the world
+const FIELD_SPRITE_DIMENSION: f32 = 64.0;
+
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
@@ -60,8 +67,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		for (i, column) in field.get_field().iter().enumerate() {
 			for (j, value) in column.iter().enumerate() {
 				// grid origin is always in the top left
-				let sprite_x = 64.0;
-				let sprite_y = 64.0;
+				let sprite_x = FIELD_SPRITE_DIMENSION;
+				let sprite_y = FIELD_SPRITE_DIMENSION;
 				let sector_offset = get_sector_xy_at_top_left(
 					*sector_id,
 					map_length * sprite_x as u32,
@@ -119,7 +126,7 @@ fn user_input(
 		{
 			info!("World cursor position: {}", world_position);
 			if let Some((target_sector_id, goal_id)) =
-				get_sector_and_field_id_from_xy(world_position, 30 * 64, 30 * 64, 64.0)
+				get_sector_and_field_id_from_xy(world_position, PIXEL_LENGTH, PIXEL_DEPTH, FIELD_SPRITE_DIMENSION)
 			{
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
@@ -128,9 +135,9 @@ fn user_input(
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
 				let (source_sector_id, source_grid_cell) = get_sector_and_field_id_from_xy(
 					tform.translation.truncate(),
-					30 * 64,
-					30 * 64,
-					64.0,
+					PIXEL_LENGTH,
+					PIXEL_DEPTH,
+					FIELD_SPRITE_DIMENSION,
 				)
 				.unwrap();
 				info!(
@@ -188,9 +195,9 @@ fn actor_steering(
 			// find the current actors postion in grid space
 			let (curr_actor_sector, curr_actor_grid) = get_sector_and_field_id_from_xy(
 				tform.translation.truncate(),
-				30 * 64,
-				30 * 64,
-				64.0,
+				PIXEL_LENGTH,
+				PIXEL_DEPTH,
+				FIELD_SPRITE_DIMENSION,
 			)
 			.unwrap();
 			// tirm the actor stored route as it makes progress

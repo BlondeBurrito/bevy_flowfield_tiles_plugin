@@ -7,14 +7,28 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes
 
 - 3d coord conversion to grid space
+- Route filtering allows routes back to starting sector
+- Examples that hook in use new route filtering
+- Improve example steering when pathing needs repeating in a sector
+- Fix generation of the maze benchmark csv files
+
+### Documentation
+
+- Tidy/add module doc comments
 
 ### Features
 
 - Mark cached routes and fields as dirty when costfields change
+- Csv to sector costfields support
+- Example visualise portals
 
 ### Miscellaneous Tasks
 
 - Tidy up warnings
+
+### Performance
+
+- Added initial benchmarks
 
 ### Refactor
 

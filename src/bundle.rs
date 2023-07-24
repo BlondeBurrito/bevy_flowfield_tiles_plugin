@@ -31,6 +31,7 @@ impl MapDimensions {
 	}
 }
 //TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+/// Defines all required components for generating [FlowField] Tiles
 #[derive(Bundle)]
 pub struct FlowFieldTilesBundle {
 	/// [CostField]s of all sectors

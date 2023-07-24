@@ -86,9 +86,9 @@ dev-tools:
   rust-script --install-file-association;
   cargo install --locked cargo-deny
   cargo install cargo-tarpaulin
-# Generate a diagram from a puml file under ./docs
+# Generate a diagram from a puml file under ./docs/png
 diagram NAME:
-  java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" docs/{{NAME}}.puml
-# Generate all puml diagrams under ./docs
+  java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" docs/png/{{NAME}}.puml
+# Generate all puml diagrams under ./docs/png
 diagrams:
-  ForEach ($i in Get-ChildItem -Path "./docs/*.puml") {java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" $i.FullName}
+  ForEach ($i in Get-ChildItem -Path "./docs/png/*.puml") {java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" $i.FullName}

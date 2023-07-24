@@ -10,7 +10,7 @@ use bevy::prelude::*;
 pub struct EventPathRequest {
 	/// The starting sector of the request
 	source_sector: (u32, u32),
-	/// The starting field/grid cell of the statrting sector
+	/// The starting field/grid cell of the starting sector
 	source_field_cell: (usize, usize),
 	/// The sector to try and find a path to
 	target_sector: (u32, u32),
@@ -33,6 +33,8 @@ impl EventPathRequest {
 		}
 	}
 }
+
+/// Process [EventPathRequest] and generate Routes to go into the [RouteCache]
 #[cfg(not(tarpaulin_include))]
 pub fn handle_path_requests(
 	mut events: EventReader<EventPathRequest>,
@@ -112,7 +114,7 @@ pub fn filter_path(path: &mut Vec<((u32, u32), (usize, usize))>, target_goal: (u
 	path_based_on_portal_exits.push(end);
 	*path = path_based_on_portal_exits;
 }
-
+/// Whenever the [RouteCache] is updated generate fields to go in the [FlowFieldCache]
 #[cfg(not(tarpaulin_include))]
 pub fn generate_flow_fields(
 	mut cache_q: Query<
@@ -136,7 +138,7 @@ pub fn generate_flow_fields(
 			path.reverse();
 			let mut sectors_expanded_goals = Vec::new();
 			for (i, (sector_id, goal)) in path.iter().enumerate() {
-				// // only run if a FlowField hasn't been generated
+				// // only run if a FlowField hasn't been generated (BUGGY if enbaled)
 				// if !field_cache.get().contains_key(&(*sector_id, *goal)) {
 				// first element is always the end target, don't bother with portal expansion
 				if i == 0 {
@@ -183,7 +185,7 @@ pub fn generate_flow_fields(
 				{
 					let prev_int_field = &sector_int_fields[i - 1].2;
 					flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
-					//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own
+					//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own?
 					field_cache.insert_field(*sector_id, path[i].1, time.elapsed(), flow_field);
 				} else {
 					error!("Route {:?}", portal_path);
