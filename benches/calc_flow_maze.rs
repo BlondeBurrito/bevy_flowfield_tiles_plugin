@@ -1,6 +1,6 @@
-//! Measure a FlowField generation for a world with a maze of impassable field cells
+//! Measure a FlowField generation for a world with a maze of impassable field cells.
 //!
-//! World is 100 sectors by 100 sectors with a snake-like maze of impassable cost field values running up and down the entire world
+//! World is 100 sectors by 100 sectors with a snake-like maze of impassable cost field values running up and down the entire world - effectively a giant version of examples/2d_complex_movement
 //!
 //! ```txt
 //!  _____________________________
@@ -49,11 +49,11 @@ fn prepare_fields(
 	);
 
 	let mut route_cache = RouteCache::default();
-	// top right
-	let source_sector = (99, 0);
-	let source_field_cell = (9, 0);
-	let source = (source_sector, source_field_cell);
 	// bottom left
+	let source_sector = (0, 99);
+	let source_field_cell = (0, 9);
+	let source = (source_sector, source_field_cell);
+	// bottom right
 	let target_sector = (99, 99);
 	let target_goal = (9, 9);
 	let target = (target_sector, target_goal);
@@ -63,9 +63,9 @@ fn prepare_fields(
 		.find_best_path(source, target, &portals, &cost_fields)
 		.unwrap();
 	let mut path = graph.convert_index_path_to_sector_portal_cells(node_route.1, &portals);
-	println!("Path len: {}", path.len());
+	// println!("Path len: {}", path.len());
 	filter_path(&mut path, target_goal);
-	println!("Path len: {}", path.len()); //TODO at 100 first goes back on itself!!!!!!
+	// println!("Path len: {}", path.len());
 	route_cache.insert_route(
 		source_sector,
 		target_sector,

@@ -24,6 +24,7 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 1. [Design/Process](#designprocess)
 1. [Usage](#usage)
 1. [Features](#features)
+1. [Performance](#performance)
 1. [License](#license)
 
 ## Intro
@@ -155,7 +156,7 @@ From the `PortalGraph` we can get a path of `Portals` to guide the actor over se
 
 In terms of pathfinding the actor will favour flowing "downhill". From the position of the actor and looking at its grid cell neighbours a smalller value in that sectors `IntegrationField` means a more favourable point for reaching the end goal, going from smaller to smaller values, basically a gradient flowing downhill to the destination.
 
-This is the basis of a `FlowField`.
+This informs the basis of a `FlowField`.
 
 As an example for a `30x30` world, goal at `0` with an actor at `A`, an `IntegrationField` set interrogating all sector `Portals` may produce a set of fields looking similar to:
 
@@ -220,6 +221,8 @@ To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) a p
 1. Route Cache - when an actor requests to go somewhere a high-level route is generated from describing the overall series of sector-portals to traverse (`PortalGraph` A*). If a `FlowField` hasn't yet been calculated then an actor can use the `route_cache` as a fallback to gain a generalist direction they should start moving in. Once the `FlowFields` have been built they can swap over to using those more granular paths. Additionally changes to `CostFields` can change portal positions and the real best path, so `FlowFields` are regenerated for the relevant sectors that `CostFields` have modified and during the regeneration steps an actor can once again use the high-level route as the fallback
 
 1. Field Cache - for every sector-to-portal part of a route a `FlowField` is built and stored in the cache. Actors can poll this cache to get the true flow direction to their goal. A Character Controller/Steering Pipeline is responsible for interpreting the values of the `FlowField` to produce movement - while this plugin includes a Steering Pipeline the reality is that every game has it's own quirks and desires for movement so you will most likely want to build your own Pipeline. The real point of this plugin is to encapulsate the data structures and logic to make a `FlowField` which an Actor can then read through it's own implementation.
+
+Note that the data stored in the caches is timestamped - if a record lives longer than 15 minutes then it is purged to reduce size and improve lookup efficiency. When implemnting a steering pipeline/character controller to interpret the `FlowFields` you may need to account for these old routes/paths expiring.
 
 </details>
 
@@ -369,6 +372,13 @@ fn actor_steering(
 * `serde` - enables serlialisation on some data types
 * `ron` - enables reading `CostField` from files. NB: fixed-size arrays in `.ron` are written as tuples
 * `csv` - enables creating all of the `CostFields` by reading from a directory of csv files. Note that csv filenames need to follow the sector ID convention of `column_row`, the underscore is important, and the path of the directory should be fully qualified and the files themselves should not contain any headers
+
+# Performance
+
+Benchmarks are split into two categories:
+
+* Data initialisation - measures setting up CostFields, generating portals and the graph
+* Algorithm use - measures generating a set of FlowFields
 
 # LICENSE
 
