@@ -4,7 +4,7 @@
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/blondeburrito/bevy_flowfield_tiles_plugin/ci.yml)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/blondeburrito/bevy_flowfield_tiles_plugin/code-cov.yml?label=CodeCov>85%)
 
-<img src="docs/emblem.png" alt="e" width="300"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/emblem.png" alt="e" width="300"/>
 
 # bevy_flowfield_tiles_plugin
 
@@ -15,7 +15,7 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 | [commit](https://github.com/bevyengine/bevy/commit/8ba9571eedada4f3ff43cdf1402670b7fe7c280d) |  main                        |
 | 0.11 |  0.1 (unreleased) |
 
-<img src="docs/2d_with_steering_cropped.gif" alt="sgif" width="350"/><img src="docs/3d_actor_movement_cropped.gif" alt="3sgif" width="400"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/2d_with_steering_cropped.gif" alt="sgif" width="350"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/3d_actor_movement_cropped.gif" alt="3sgif" width="400"/>
 
 # Table of Contents
 
@@ -65,7 +65,7 @@ To generate a set of navigation `FlowFields` the game world is divided into Sect
 
 For a 3-dimensional world the `x-z` (`x-y` in 2d) plane defines the number of Sectors used to represent it with a constant called `SECTOR_RESOLUTION`, currently enforced at `10`. This means that a for a `30x30` world there would be `3x3` Sectors representing it. Each Sector has an associated unqiue ID taken as its position: `(column, row)`.
 
-<img src="docs/sectors.png" alt="sectors" width="250"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/sectors.png" alt="sectors" width="250"/>
 
 Likewise for a `300x550` world you'll be looking at `30` columns and `55` rows. The advantage of dividing a world into Sectors (as opposed to treating the whole world as a giant `Flowfield`) is that the work in generating a path can be split into multiple operations and only touch certain sectors. Say for the `300x550` world you do treat it as a single set of fields - when calculating a path you could potentially have to calculate the Flowfield values for `165,000` grid cells. Splitting it into sectors may mean that your path only takes you through 20 sectors, thereby only requiring `2,000` `Flowfield` grid cells to be calculated.
 
@@ -78,7 +78,7 @@ Likewise for a `300x550` world you'll be looking at `30` columns and `55` rows. 
 
 A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the grid. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the grid cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
 
-<img src="docs/cost_field.png" alt="cf" width="370"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/cost_field.png" alt="cf" width="370"/>
 
 At runtime the `CostField` is generated for each Sector with the default value - although with the feature `ron` it is possible to load the fields from disk. See the [Usage](#usage) section below for details on updating the `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to to a higher cost or an impassable `255` when something like a wall is placed or the ground splits into a fissure).
 
@@ -95,13 +95,13 @@ Each Sector has up to 4 boundaries with neighbouring Sectors (fewer when the sec
 
 The following sectors are located away from any edges of the world which means each boundary can have Portals (the purple cells):
 
-<img src="docs/portals.png" alt="portals" width="400" height="500"/><img src="docs/portals_adj.png" alt="portals" width="400" height="500"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/portals.png" alt="portals" width="400" height="500"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/portals_adj.png" alt="portals" width="400" height="500"/>
 
 A Portal is generated at the midpoint of a boundary - in situations where the `CostField` contains `255` costs along the edge then multiple Portals may be generated at the midpoint of each valid pathable segment along the boundary and this is propagated to neighbouring Sectors so that every Portal has a neighbour buddy (as evident in the right hand Sector above, `S(1, 1)` portal `(9, 1)` allows movement into `S(2, 1)` portal `(0, 1)`, even though `S(2, 1)` has a whole boundary that appears completely pathable).
 
 On a larger scale (but still small) and for the simplist `CostField` available, a `2x2` Sector grid produces predictable boundary Portals.
 
-<img src="docs/sectors_portals.png" alt="sector_portals" width="400" height="400"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/sectors_portals.png" alt="sector_portals" width="400" height="400"/>
 
 ### Portal Graph
 
@@ -133,18 +133,18 @@ A series of passes are performed from the goal as an expanding wavefront calcula
 
 This produces a nice diamond-like pattern as the wave expands (the underlying `CostField` is set to `1` here):
 
-<img src="docs/int_field_prop0.png" alt="ifp0" width="300" height="310"/><img src="docs/int_field_prop1.png" alt="ifp1" width="300" height="310"/>
-<img src="docs/int_field_prop2.png" alt="ifp2" width="300" height="310"/><img src="docs/int_field_prop3.png" alt="ifp3" width="300" height="310"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop0.png" alt="ifp0" width="300" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop1.png" alt="ifp1" width="300" height="310"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop2.png" alt="ifp2" width="300" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop3.png" alt="ifp3" width="300" height="310"/>
 
 Now a dimaond-like wave isn't exactly realistic in a world of dynamic movement so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave expanding over the grid space.
 
 When it comes to `CostField` containing impassable markers, `255` as black boxes, they are ignored so the wave flows around those areas:
 
-<img src="docs/int_field_prop_impassable.png" alt="ifpi" width="300" height="310"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop_impassable.png" alt="ifpi" width="300" height="310"/>
 
 And when your `CostField` is using a range of values to indicate different areas to traverse, such as a steep hill:
 
-<img src="docs/cost_field_hill.png" alt="cfh" width="300" height="310"/><img src="docs/int_field_prop_hill.png" alt="ifph" width="300" height="310"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/cost_field_hill.png" alt="cfh" width="300" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop_hill.png" alt="ifph" width="300" height="310"/>
 
 So this encourages the pathing algorithm around obstacles and expensive areas in your world!
 
@@ -152,7 +152,7 @@ This covers calculating the `IntegrationField` for a single sector containing th
 
 From the `PortalGraph` we can get a path of `Portals` to guide the actor over several sectors to the desired sector, extending the above the `IntegrationField` of the goal sector has been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade) to produce a series of `IntegrationFields` for the chaining Sectors describing the flow movement.
 
-<img src="docs/int_field_sector_to_sector_0.png" alt="ifsts0" width="260" height="310"/><img src="docs/int_field_sector_to_sector_1.png" alt="ifsts1" width="260" height="310"/><img src="docs/int_field_sector_to_sector_2.png" alt="ifsts2" width="260" height="310"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_0.png" alt="ifsts0" width="260" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_1.png" alt="ifsts1" width="260" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_2.png" alt="ifsts2" width="260" height="310"/>
 
 In terms of pathfinding the actor will favour flowing "downhill". From the position of the actor and looking at its grid cell neighbours a smalller value in that sectors `IntegrationField` means a more favourable point for reaching the end goal, going from smaller to smaller values, basically a gradient flowing downhill to the destination.
 
@@ -160,13 +160,13 @@ This informs the basis of a `FlowField`.
 
 As an example for a `30x30` world, goal at `0` with an actor at `A`, an `IntegrationField` set interrogating all sector `Portals` may produce a set of fields looking similar to:
 
-<img src="docs/int_field_prop_big_example.png" alt="ifpbe" width="75%"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop_big_example.png" alt="ifpbe" width="75%"/>
 
 Notice the cool waves that propagate out from the goal!
 
 Generating the fields for this path programmatically leads to:
 
-<img src="docs/generated_int_fields.png" alt="gif" width="75%"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/generated_int_fields.png" alt="gif" width="75%"/>
 
 Notice that we don't bother generating the fields for sectors the actor doesn't need to path through. Also a Portal represents the midpoint of a traversable sector boundary, when generating the field we expand the portal to cover its entire segment - this increases efficiency so that an actor can more directly approach its goal rather than zig-zagging to points.
 
@@ -205,7 +205,7 @@ So a grid cell in the `FlowField` with a value of `0b0001_0110` means the actor 
 
 Using the `IntegrationFields` generated before, with an actor in the top right trying to reach the bottom left, we now generate the `FlowFields`:
 
-<img src="docs/generated_flow_fields.png" alt="gff"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/generated_flow_fields.png" alt="gff"/>
 
 The thinner porition of each cell icon indicates the flow direction. The actor runs along the flow lines leading to the goal.
 
@@ -259,7 +259,7 @@ In your own simulation you may well be using custom schedules or stages to contr
 
 ## Initialising Data
 
-Spawn the entity configured to your world size (looking through the examples will help explain this section too).
+Next it' time to spawn the bundle entity configured to your world size (looking through the examples will help explain this section too).
 
 In 3d length refers to the `x` dimension and depth refers to the `z` dimension. Each dimension should be exactly divisible by `10`.
 
@@ -276,19 +276,45 @@ Next you need to seed your `CostFields` to reflect the make up of your world, th
 
 ## Path Request
 
+Using some example components to track and label an Actor:
+
+```rust
+#[derive(Component)]
+struct Actor;
+#[derive(Default, Component)]
+struct Pathing {
+    source_sector: Option<(u32, u32)>,
+    source_grid_cell: Option<(usize, usize)>,
+    target_sector: Option<(u32, u32)>,
+    target_goal: Option<(usize, usize)>,
+    portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
+}
+```
+
 By taking an actors Transform and some position in space you queue field generation by sending an `EventPathRequest` event:
 
 ```rust
+const PIXEL_LENGTH: u32 = 1920;
+const PIXEL_DEPTH: u32 = 1920;
+const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 fn some_system(mut event: EventWriter<EventPathRequest>, ***some other params***) {
+    // obtain `world_position` from cursor or other input device
     if let Some((target_sector_id, goal_id)) =
-        get_sector_and_field_id_from_xy(world_position, 640, 640, 64.0)
+        get_sector_and_field_id_from_xy(
+            world_position,
+            PIXEL_LENGTH,
+            PIXEL_DEPTH,
+            FIELD_SPRITE_DIMENSION
+        )
     {
+        // actor position in the world
         if let Some((source_sector_id, source_grid_cell)) = get_sector_and_field_id_from_xy(
                 tform.translation.truncate(),
-                640,
-                640,
-                64.0
+                PIXEL_LENGTH,
+                PIXEL_DEPTH,
+                FIELD_SPRITE_DIMENSION
             ) {
+            // ask for route generation going from source to target
             event.send(EventPathRequest::new(
                 source_sector_id,
                 source_grid_cell,
@@ -307,7 +333,7 @@ Note this example is very basic as it only handles a single actor, in an applica
 ```rust
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
     let mut pathing = actor_q.get_single_mut().unwrap();
-    if let Some(_) = pathing.target_goal {
+    if pathing.target_goal.is_some() {
         let route_cache = route_q.get_single().unwrap();
         if let Some(route) = route_cache.get_route(
             pathing.source_sector.unwrap(),
@@ -325,6 +351,10 @@ And once the `FlowFields` have been built they can query the `FlowFieldCache` in
 Note this example is very basic as it only handles a single actor, in an application you'd devise your own handling system:
 
 ```rust
+const PIXEL_LENGTH: u32 = 1920;
+const PIXEL_DEPTH: u32 = 1920;
+const FIELD_SPRITE_DIMENSION: f32 = 64.0;
+const ACTOR_SPEED: f32 = 64.0;
 fn actor_steering(
     mut actor_q: Query<(&mut Transform, &Pathing), With<Actor>>,
     flow_cache_q: Query<&FlowFieldCache>,
@@ -338,9 +368,9 @@ fn actor_steering(
             // find the current actors postion in grid space
             let (curr_actor_sector, curr_actor_grid) = get_sector_and_field_id_from_xy(
                 tform.translation.truncate(),
-                30 * 64,
-                30 * 64,
-                64.0,
+                PIXEL_LENGTH,
+                PIXEL_DEPTH,
+                FIELD_SPRITE_DIMENSION,
             )
             .unwrap();
             // lookup the relevant sector-goal of this sector
@@ -351,7 +381,7 @@ fn actor_steering(
                         // based on actor grid cell find the directional vector it should move in
                         let cell_value = field.get_grid_value(curr_actor_grid.0, curr_actor_grid.1);
                         let dir = get_2d_direction_unit_vector_from_bits(cell_value);
-                        let velocity = dir * SPEED;
+                        let velocity = dir * ACTOR_SPEED;
                         // move the actor based on the velocity
                         tform.translation += velocity.extend(0.0);
                     }
@@ -363,6 +393,10 @@ fn actor_steering(
 }
 ```
 
+NB: generated FlowFields and Routes expire from their caches after 15 minutes, your steering pipeline may need to send a new `EventPathRequest` if one gets expired that an actor was relying on.
+
+NB: when a CostField is modified Portals and the PortalGraph and updated and any Routes or FlowFields involving the modified Sector CostField are removed. This means an actor would need a way of knowing (implicitly or explicitly) that it needs to have a new Route made via an `EventPathRequest`. Hopefully auto regeneration of these routes can be solved to take the burden away from the actors, see [issue](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/8).
+
 ## Actor Sizes
 
 [TODO](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/2)
@@ -371,7 +405,7 @@ fn actor_steering(
 
 * `serde` - enables serlialisation on some data types
 * `ron` - enables reading `CostField` from files. NB: fixed-size arrays in `.ron` are written as tuples
-* `csv` - enables creating all of the `CostFields` by reading from a directory of csv files. Note that csv filenames need to follow the sector ID convention of `column_row`, the underscore is important, and the path of the directory should be fully qualified and the files themselves should not contain any headers
+* `csv` - enables creating all of the `CostFields` by reading from a directory of csv files. Note that csv filenames need to follow the sector ID convention of `column_row.csv`, the underscore is important, and the path of the directory should be fully qualified and the files themselves should not contain any headers
 
 # Performance
 

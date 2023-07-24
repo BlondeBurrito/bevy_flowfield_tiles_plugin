@@ -9,14 +9,14 @@ homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
 repository = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
 keywords = ["navigation", "pathfinding", "bevy"]
 categories = ["game-development", "algorithms"]
-exclude = [".github/", "crates/", "assets/"]
+exclude = [".github/", "crates/", "assets/", "docs/png/"]
 
 [workspace]
 members = []
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.11", default-features = false, features = [ "ktx2", "zstd" ] }
+bevy = { version = "0.11", default-features = false }
 petgraph = "0.6"
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
