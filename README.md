@@ -231,6 +231,8 @@ Note that the data stored in the caches is timestamped - if a record lives longe
 
 # Usage
 
+NB: the user interface to this needs a little polish but the `examples/` should get folks up and running
+
 Update your `Cargo.toml`:
 
 ```toml
@@ -395,7 +397,7 @@ fn actor_steering(
 
 NB: generated FlowFields and Routes expire from their caches after 15 minutes, your steering pipeline may need to send a new `EventPathRequest` if one gets expired that an actor was relying on.
 
-NB: when a CostField is modified Portals and the PortalGraph and updated and any Routes or FlowFields involving the modified Sector CostField are removed. This means an actor would need a way of knowing (implicitly or explicitly) that it needs to have a new Route made via an `EventPathRequest`. Hopefully auto regeneration of these routes can be solved to take the burden away from the actors, see [issue](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/8).
+NB: when a CostField is modified Portals and the PortalGraph are updated and any Routes or FlowFields involving the modified Sector CostField are removed. This means an actor would need a way of knowing (implicitly or explicitly) that it needs to have a new Route made via an `EventPathRequest`. Hopefully auto regeneration of these routes can be solved to take the burden away from the actors, see [issue](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/8).
 
 ## Actor Sizes
 
