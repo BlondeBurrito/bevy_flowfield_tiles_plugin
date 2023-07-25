@@ -28,7 +28,7 @@ fn main() {
 }
 /// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
 #[derive(Component)]
-struct GridLabel(usize, usize);
+struct FieldCellLabel(usize, usize);
 /// Labels the actor to enable getting its [Transform] easily
 #[derive(Component)]
 struct Actor;
@@ -37,11 +37,11 @@ struct Actor;
 #[allow(clippy::missing_docs_in_private_items)]
 #[derive(Default, Component)]
 struct Pathing {
-	source_sector: Option<(u32, u32)>,
-	source_grid_cell: Option<(usize, usize)>,
-	target_sector: Option<(u32, u32)>,
-	target_goal: Option<(usize, usize)>,
-	portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
+	source_sector: Option<SectorID>,
+	source_field_cell: Option<FieldCell>,
+	target_sector: Option<SectorID>,
+	target_goal: Option<FieldCell>,
+	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 }
 /// Init bundle and setup world and actor
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
@@ -69,7 +69,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				transform: Transform::from_xyz(x, y, 0.0),
 				..default()
 			})
-			.insert(GridLabel(i, j));
+			.insert(FieldCellLabel(i, j));
 		}
 	}
 	// create the controllable actor
@@ -110,7 +110,7 @@ fn user_input(
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_grid_cell) = get_sector_and_field_id_from_xy(
+				let (source_sector_id, source_field_cell) = get_sector_and_field_id_from_xy(
 					tform.translation.truncate(),
 					PIXEL_LENGTH,
 					PIXEL_DEPTH,
@@ -119,17 +119,17 @@ fn user_input(
 				.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
-					source_sector_id, source_grid_cell
+					source_sector_id, source_field_cell
 				);
 				event.send(EventPathRequest::new(
 					source_sector_id,
-					source_grid_cell,
+					source_field_cell,
 					target_sector_id,
 					goal_id,
 				));
 				// update the actor pathing
 				pathing.source_sector = Some(source_sector_id);
-				pathing.source_grid_cell = Some(source_grid_cell);
+				pathing.source_field_cell = Some(source_field_cell);
 				pathing.target_sector = Some(target_sector_id);
 				pathing.target_goal = Some(goal_id);
 			} else {
@@ -157,7 +157,7 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 fn update_sprite_visuals_based_on_actor(
 	actor_q: Query<&Pathing, With<Actor>>,
 	flowfield_q: Query<&FlowFieldCache>,
-	mut grid_q: Query<(&mut Handle<Image>, &GridLabel)>,
+	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
 	let pathing = actor_q.get_single().unwrap();
@@ -165,8 +165,8 @@ fn update_sprite_visuals_based_on_actor(
 	if let Some(route) = &pathing.portal_route {
 		let op_flowfield = cache.get_field(route[0].0, route[0].1);
 		if let Some(flowfield) = op_flowfield {
-			for (mut handle, grid_label) in grid_q.iter_mut() {
-				let flow_value = flowfield.get_grid_value(grid_label.0, grid_label.1);
+			for (mut handle, field_cell_label) in field_cell_q.iter_mut() {
+				let flow_value = flowfield.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
 				let icon = get_ord_icon(flow_value);
 				let new_handle: Handle<Image> = asset_server.load(icon);
 				*handle = new_handle;

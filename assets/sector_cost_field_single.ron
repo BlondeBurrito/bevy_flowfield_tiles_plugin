@@ -1,6 +1,6 @@
 SectorCostFields(
 	{
-		(0, 0): CostField(
+		SectorID((0, 0)): CostField(
 			(	// row 0..9
 				(1, 1, 1, 1, 1, 1, 1, 1, 1, 1), // column 0
 				(1, 1, 1, 1, 1, 255, 255, 255, 1, 1), // column 1

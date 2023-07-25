@@ -1,6 +1,6 @@
 //! The CostField contains a 2D array of 8-bit values. The values correspond to the cost of that
-//! grid in the array. A value of 1 is the default, a value of 255 is a special case that idicates
-//! that the grid cell is strictly forbidden from being used in a pathing calculation (effectively
+//! cell in the array. A value of 1 is the default, a value of 255 is a special case that idicates
+//! that the field cell is strictly forbidden from being used in a pathing calculation (effectively
 //! saying there is a wall or cliff/impassable terrain there). Any other value indicates a harder
 //! cost of movement which could be from a slope or marshland or others.
 //!
@@ -60,27 +60,27 @@ impl Field<u8> for CostField {
 	fn get_field(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
-	/// Retrieve a grid cell value
-	fn get_grid_value(&self, column: usize, row: usize) -> u8 {
-		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot get a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+	/// Retrieve a field cell value
+	fn get_field_cell_value(&self, field_cell: FieldCell) -> u8 {
+		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
+			panic!("Cannot get a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
-		self.0[column][row]
+		self.0[field_cell.get_column()][field_cell.get_row()]
 	}
-	/// Set a grid cell to a value
-	fn set_grid_value(&mut self, value: u8, column: usize, row: usize) {
-		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot set a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+	/// Set a field cell to a value
+	fn set_field_cell_value(&mut self, value: u8, field_cell: FieldCell) {
+		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
+			panic!("Cannot set a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
-		self.0[column][row] = value;
+		self.0[field_cell.get_column()][field_cell.get_row()] = value;
 	}
 }
 impl CostField {
 	/// Tests whether two portals can see each other within a sector (one might be boxed in by impassable cost field values), additionally returns the number of steps taken to find a route between the two - this can be used as an edge weight
 	pub fn can_internal_portal_pair_see_each_other(
 		&self,
-		source: (usize, usize),
-		target: (usize, usize),
+		source: FieldCell,
+		target: FieldCell,
 	) -> (bool, i32) {
 		// instance of corner portals overlapping from cramped world
 		if source == target {
@@ -92,9 +92,9 @@ impl CostField {
 		let is_routable = process_neighbours(target, queue, visited, self, 0);
 		/// Recursively process the cells to see if there's a path
 		fn process_neighbours(
-			target: (usize, usize),
-			queue: Vec<(usize, usize)>,
-			mut visited: HashSet<(usize, usize)>,
+			target: FieldCell,
+			queue: Vec<FieldCell>,
+			mut visited: HashSet<FieldCell>,
 			cost_field: &CostField,
 			mut steps_taken: i32,
 		) -> (bool, i32) {
@@ -109,11 +109,11 @@ impl CostField {
 					if *n == target {
 						return (true, steps_taken);
 					}
-					let cell_cost = cost_field.get_grid_value(n.0, n.1);
+					let cell_cost = cost_field.get_field_cell_value(*n);
 					// ignore impassable cells
-					if cell_cost != 255 && !visited.contains(&(n.0, n.1)) {
+					if cell_cost != 255 && !visited.contains(n) {
 						// keep exploring
-						next_neighbours.push((n.0, n.1));
+						next_neighbours.push(*n);
 					}
 				}
 			}
@@ -144,8 +144,9 @@ mod tests {
 	#[test]
 	fn get_cost_field_value() {
 		let mut cost_field = CostField::default();
-		cost_field.set_grid_value(255, 9, 9);
-		let result = cost_field.get_grid_value(9, 9);
+		let field_cell = FieldCell::new(9, 9);
+		cost_field.set_field_cell_value(255, field_cell);
+		let result = cost_field.get_field_cell_value(field_cell);
 		let actual: u8 = 255;
 		assert_eq!(actual, result);
 	}
@@ -169,12 +170,12 @@ mod tests {
 		// |__|__|__|__|__|x_|__|__|__|__|
 		// |__|__|__|__|__|x_|P_|__|__|__|
 		let mut cost_field = CostField::default();
-		cost_field.set_grid_value(255, 5, 9);
-		cost_field.set_grid_value(255, 5, 8);
-		cost_field.set_grid_value(255, 5, 7);
-		cost_field.set_grid_value(255, 6, 7);
-		let source = (0, 4);
-		let target = (6, 9);
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(6, 7));
+		let source = FieldCell::new(0, 4);
+		let target = FieldCell::new(6, 9);
 
 		let result = cost_field.can_internal_portal_pair_see_each_other(source, target);
 
@@ -195,15 +196,15 @@ mod tests {
 		// |__|__|__|__|__|x_|__|x_|__|__|
 		// |__|__|__|__|__|x_|P_|x_|__|__|
 		let mut cost_field = CostField::default();
-		cost_field.set_grid_value(255, 5, 9);
-		cost_field.set_grid_value(255, 5, 8);
-		cost_field.set_grid_value(255, 5, 7);
-		cost_field.set_grid_value(255, 6, 7);
-		cost_field.set_grid_value(255, 7, 7);
-		cost_field.set_grid_value(255, 7, 8);
-		cost_field.set_grid_value(255, 7, 9);
-		let source = (0, 4);
-		let target = (6, 9);
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(6, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 9));
+		let source = FieldCell::new(0, 4);
+		let target = FieldCell::new(6, 9);
 
 		let result = cost_field.can_internal_portal_pair_see_each_other(source, target);
 

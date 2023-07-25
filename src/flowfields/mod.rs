@@ -12,8 +12,8 @@
 //! * FlowField - a 2D array built from the `IntegrationField` which decribes how an actor should move (flow) across the world
 //! * FlowField Cache - a means of storing `FlowFields` allowing multiple actors to use and reuse them
 //! * Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for discovery of Sectors/field cells at various points within the algorithm
-//! * Grid cell - an element of a 2D array
-//! * Goal - the target grid cell an actor needs to path to
+//! * Field cell - an element of a 2D array
+//! * Goal - the target field cell an actor needs to path to
 //! * Portal goal - a target point within a sector that allows an actor to transition to another sector, thus bringing it closer towards/to the goal
 //!
 //! ## Sector
@@ -22,7 +22,7 @@
 //!
 //! ## CostField
 //!
-//! A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the grid. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the grid cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
+//! A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the field. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the field cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
 //!
 //!
 //! ## Portals
@@ -37,18 +37,18 @@
 //! * For each sector create `edges` (pathable routes) to and from each Portal `node` - effectively create internal walkable routes of each sector
 //! * Create `edges` across the Portal `node` on all sector boundaries (walkable route from one sector to another)
 //!
-//! This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostField` is changed this triggers the regeneration of the sector Portals for the region that `CostField` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `nodes` and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D arrays but the graph is effectively 1D - it's a big long list of `nodes`. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `nodes` (like an A* result) you can find the location of each Portal in the grids.
+//! This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostField` is changed this triggers the regeneration of the sector Portals for the region that `CostField` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `nodes` and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D arrays but the graph is effectively 1D - it's a big long list of `nodes`. To handle identifying a graph `node` from a Sector and field field cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a field cell you can find its `node` and from a list of `nodes` (like an A* result) you can find the location of each Portal in the fields.
 //!
 //! ## IntegrationField
 //!
 //! An `IntegrationField` is an `MxN` 2D array of 16-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target. It's an ephemeral field, as in it gets built for a required sector and then consumed by the `FlowField` calculation.
 //!
-//! When a new route needs to be processed the field values are set to `u16::MAX` and the grid cell containing the goal is set to `0`.
+//! When a new route needs to be processed the field values are set to `u16::MAX` and the field cell containing the goal is set to `0`.
 //!
 //! A series of passes are performed from the goal as an expanding wavefront calculating the field values:
 //!
 //! * The valid ordinal neighbours of the goal are determined (North, East, South, West - when not against a sector/world boundary)
-//! * For each ordinal grid cell lookup their `CostField` value
+//! * For each ordinal field cell lookup their `CostField` value
 //! * Add the `CostField` cost to the `IntegrationFields` cost of the current cell (at the beginning this is the goal int cost `0`)
 //! * Propagate to the next neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their cumulative integration cost, and repeat until the entire field is done
 //!

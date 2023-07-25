@@ -16,7 +16,7 @@ use petgraph::{
 
 use crate::prelude::*;
 
-use super::portals::{PortalNode, Portals};
+use super::portals::Portals;
 
 /// Each sector contains a series of Portals. A [StableGraph] allows a route to be calculated from one
 /// sector to another via the portal boundaries.
@@ -32,13 +32,14 @@ use super::portals::{PortalNode, Portals};
 pub struct PortalGraph {
 	/// The graph for storing nodes and edges
 	graph: StableGraph<u32, i32, petgraph::Directed>,
-	/// The `graph` cannot store [PortalNode]s directly instead it records entries with a [NodeIndex].
-	/// Based on the vectors of each sector in [SectorPortals] we create a means of storing
-	/// [NodeIndex] in an identical structure to [Portals]. This allows a [PortalNode] to be
+	/// The `graph` cannot store portal [FieldCell]s directly instead it
+	/// records entries with a [NodeIndex]. Based on the vectors of each sector
+	/// in [SectorPortals] we create a means of storing [NodeIndex] in an
+	/// identical structure to [Portals]. This allows a portal [FieldCell] to be
 	/// mapped to a [NodeIndex] and vice versa.
 	///
 	/// The keys of the map correspond to the unique IDs of Sectors and the values are an [Ordinal] list structure which should be identical in structure for each sectors [Portals]
-	node_index_translation: BTreeMap<(u32, u32), [Vec<NodeIndex>; 4]>,
+	node_index_translation: BTreeMap<SectorID, [Vec<NodeIndex>; 4]>,
 }
 //TODO need a means of chekcing graph capacity, if it's near usize, usize then rebuild it from scrtach to reset size
 impl PortalGraph {
@@ -62,8 +63,8 @@ impl PortalGraph {
 		}
 		self
 	}
-	/// For the given Sector [Portals] add a node to the graph for each [PortalNode]
-	fn build_sector_nodes(&mut self, sector_id: &(u32, u32), portals: &Portals) -> &mut Self {
+	/// For the given Sector [Portals] add a node to the graph for each portal [FieldCell]
+	fn build_sector_nodes(&mut self, sector_id: &SectorID, portals: &Portals) -> &mut Self {
 		let graph = &mut self.graph;
 		let translator = &mut self.node_index_translation;
 		// initialise the sector within the translator
@@ -106,7 +107,7 @@ impl PortalGraph {
 	/// Create graph edges between each portal of the Sector
 	fn build_internal_sector_edges(
 		&mut self,
-		sector_id: &(u32, u32),
+		sector_id: &SectorID,
 		portals: &Portals,
 		cost_field: &CostField,
 	) -> &mut Self {
@@ -119,10 +120,7 @@ impl PortalGraph {
 			.iter()
 			.flatten()
 			.cloned()
-			.collect::<Vec<PortalNode>>()
-			.iter()
-			.map(|&x| x.get_column_row())
-			.collect::<Vec<(usize, usize)>>();
+			.collect::<Vec<FieldCell>>();
 		// create pairings of portals that can reach each other
 		let mut visible_pairs_with_cost = Vec::new();
 		for (i, source) in all_sector_portals.iter().enumerate() {
@@ -138,7 +136,7 @@ impl PortalGraph {
 				}
 			}
 		}
-		// convert the grid cell positions to [NodeIndex]
+		// convert the field cell positions to [NodeIndex]
 		let mut node_indices_to_edge = Vec::new();
 		for (pair, cost) in visible_pairs_with_cost.iter() {
 			let source_index = find_index_from_single_portal_and_portal_cell(
@@ -170,11 +168,11 @@ impl PortalGraph {
 		}
 		self
 	}
-	/// Create edges along the boundary of the chosen Sector [PortalNode]s to its neighbouring
-	/// sector boundary [PortalNode]s
+	/// Create edges along the boundary of the chosen Sector portal [FieldCell]s to its neighbouring
+	/// sector boundary portal [FieldCell]s
 	fn build_external_sector_edges(
 		&mut self,
-		sector_id: &(u32, u32),
+		sector_id: &SectorID,
 		map_x_dimension: u32,
 		map_z_dimension: u32,
 	) -> &mut Self {
@@ -240,7 +238,7 @@ impl PortalGraph {
 	/// # This must run after any updates to a [Portals]!
 	pub fn update_graph(
 		&mut self,
-		changed_sector: (u32, u32),
+		changed_sector: SectorID,
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
 		map_x_dimension: u32,
@@ -328,8 +326,8 @@ impl PortalGraph {
 	}
 	pub fn find_path_between_sector_portals(
 		&self,
-		source: ((u32, u32), (usize, usize)),
-		target: ((u32, u32), (usize, usize)),
+		source: (SectorID, FieldCell),
+		target: (SectorID, FieldCell),
 		sector_portals: &SectorPortals,
 	) -> Option<(i32, Vec<NodeIndex>)> {
 		if let Some(source_index) = self.find_index_from_sector_portals_and_portal_cell(
@@ -343,8 +341,8 @@ impl PortalGraph {
 				&target.1,
 			) {
 				let estimate_cost = {
-					(target.0 .0 as i32 - source.0 .0 as i32).pow(2)
-						+ (target.0 .1 as i32 - source.0 .1 as i32).pow(2)
+					(target.0.get_column() as i32 - source.0.get_column() as i32).pow(2)
+						+ (target.0.get_row() as i32 - source.0.get_row() as i32).pow(2)
 				};
 				return self.find_path_of_portals(source_index, target_index, estimate_cost);
 			}
@@ -356,7 +354,7 @@ impl PortalGraph {
 		&self,
 		portal_path: Vec<NodeIndex>,
 		sector_portals: &SectorPortals,
-	) -> Vec<((u32, u32), (usize, usize))> {
+	) -> Vec<(SectorID, FieldCell)> {
 		let mut path = Vec::new();
 		for node in portal_path.iter() {
 			let (sector_id, cell_id) = self
@@ -366,17 +364,17 @@ impl PortalGraph {
 		}
 		path
 	}
-	/// From any grid cell at a `source` sector find any pathable portals witihn that sector and generate a path from each portal to the target. Compare the results and return the path with the best cost associated with it
+	/// From any field cell at a `source` sector find any pathable portals witihn that sector and generate a path from each portal to the target. Compare the results and return the path with the best cost associated with it
 	pub fn find_best_path(
 		&self,
-		source: ((u32, u32), (usize, usize)),
-		target: ((u32, u32), (usize, usize)),
+		source: (SectorID, FieldCell),
+		target: (SectorID, FieldCell),
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
 	) -> Option<(i32, Vec<NodeIndex>)> {
 		// find portals reachable by the source actor position
 		let source_sector_id = source.0;
-		let source_grid_cell = source.1;
+		let source_field_cell = source.1;
 		let mut source_portals = Vec::new();
 		let portals = sector_portals.get().get(&source_sector_id).unwrap();
 		for ordinal in portals.get().iter() {
@@ -384,18 +382,18 @@ impl PortalGraph {
 				let cost_field = sector_cost_fields.get().get(&source_sector_id).unwrap();
 				if cost_field
 					.can_internal_portal_pair_see_each_other(
-						source_grid_cell,
-						cell.get_column_row(),
+						source_field_cell,
+						*cell,
 					)
 					.0
 				{
-					source_portals.push(cell.get_column_row());
+					source_portals.push(*cell);
 				}
 			}
 		}
 		// find portals that can reach the target/goal
 		let target_sector_id = target.0;
-		let target_grid_cell = target.1;
+		let target_field_cell = target.1;
 		let mut target_portals = Vec::new();
 		let portals = sector_portals.get().get(&target_sector_id).unwrap();
 		for ordinal in portals.get().iter() {
@@ -403,12 +401,12 @@ impl PortalGraph {
 				let cost_field = sector_cost_fields.get().get(&target_sector_id).unwrap();
 				if cost_field
 					.can_internal_portal_pair_see_each_other(
-						target_grid_cell,
-						cell.get_column_row(),
+						target_field_cell,
+						*cell,
 					)
 					.0
 				{
-					target_portals.push(cell.get_column_row());
+					target_portals.push(*cell);
 				}
 			}
 		}
@@ -438,7 +436,7 @@ impl PortalGraph {
 	}
 	// /// Iterate over the "translator" (`self.node_index_translation`) and search for a portal's `search_index`
 	// /// ([NodeIndex]), if found return the `sector_id` it is located in
-	// fn find_sector_id_from_graph_index(&self, search_index: &NodeIndex) -> Option<(u32, u32)> {
+	// fn find_sector_id_from_graph_index(&self, search_index: &NodeIndex) -> Option<SectorID> {
 	// 	let translator = &self.node_index_translation;
 	// 	for (sector_id, node_ordinals) in translator.iter() {
 	// 		for nodes in node_ordinals.iter() {
@@ -451,21 +449,20 @@ impl PortalGraph {
 	// 	}
 	// 	None
 	// }
-	/// Iterate over the "translator" (`self.node_index_translation`) and search for a portal node of
-	/// `search_index` and identify the sector it resides in and the cell grid
+	/// Iterate over the "translator" (`self.node_index_translation`) and search for a field cell of
+	/// `search_index` and identify the sector it resides in and the cell
 	/// position of it within that sector
 	fn find_portal_sector_id_and_cell_position_from_graph_index(
 		&self,
 		sector_portals: &SectorPortals,
 		search_index: &NodeIndex,
-	) -> Option<((u32, u32), (usize, usize))> {
+	) -> Option<(SectorID, FieldCell)> {
 		let translator = &self.node_index_translation;
 		for (sector_id, node_ordinals) in translator.iter() {
 			for (i, nodes) in node_ordinals.iter().enumerate() {
 				for (j, n) in nodes.iter().enumerate() {
 					if *search_index == *n {
-						let cell = sector_portals.get().get(sector_id).unwrap().get()[i][j]
-							.get_column_row();
+						let cell = sector_portals.get().get(sector_id).unwrap().get()[i][j];
 						return Some((*sector_id, cell));
 					}
 				}
@@ -477,8 +474,8 @@ impl PortalGraph {
 	fn find_index_from_sector_portals_and_portal_cell(
 		&self,
 		sector_portals: &SectorPortals,
-		sector_id: &(u32, u32),
-		portal_cell: &(usize, usize),
+		sector_id: &SectorID,
+		portal_cell: &FieldCell,
 	) -> Option<NodeIndex> {
 		let translator = &self.node_index_translation;
 		// locate the indices within sector_portals which can be used to access the
@@ -492,19 +489,19 @@ impl PortalGraph {
 			.enumerate()
 		{
 			for (j, portal) in ordinals.iter().enumerate() {
-				if portal.get_column_row() == *portal_cell {
+				if *portal == *portal_cell {
 					return Some(translator.get(sector_id).unwrap()[i][j]);
 				}
 			}
 		}
 		None
 	}
-	// /// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular grid portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
+	// /// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular field portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
 	// fn find_index_from_single_portal_and_portal_cell(
 	// 	&self,
 	// 	portals: &Portals,
-	// 	sector_id: &(u32, u32),
-	// 	portal_cell: &(usize, usize),
+	// 	sector_id: &SectorID,
+	// 	portal_cell: &FieldCell,
 	// ) -> Option<NodeIndex> {
 	// 	let translator = &self.node_index_translation;
 	// 	// locate the indices within sector_portals which can be used to access the
@@ -520,18 +517,18 @@ impl PortalGraph {
 	// }
 }
 
-/// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular grid portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
+/// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular field portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
 fn find_index_from_single_portal_and_portal_cell(
-	translator: &BTreeMap<(u32, u32), [Vec<NodeIndex>; 4]>,
+	translator: &BTreeMap<SectorID, [Vec<NodeIndex>; 4]>,
 	portals: &Portals,
-	sector_id: &(u32, u32),
-	portal_cell: &(usize, usize),
+	sector_id: &SectorID,
+	portal_cell: &FieldCell,
 ) -> Option<NodeIndex> {
 	// locate the indices within sector_portals which can be used to access the
 	// right elements of the translator
 	for (i, ordinals) in portals.get().iter().enumerate() {
 		for (j, portal) in ordinals.iter().enumerate() {
-			if portal.get_column_row() == *portal_cell {
+			if *portal == *portal_cell {
 				return Some(translator.get(sector_id).unwrap()[i][j]);
 			}
 		}
@@ -699,9 +696,9 @@ use super::*;
 		// |_________|_________|_________|
 
 		// update the top-left CostFields and calculate new portals
-		let mutated_sector_id = (0, 0);
+		let mutated_sector_id = SectorID::new(0, 0);
 		let field = sector_cost_fields.get_mut().get_mut(&mutated_sector_id).unwrap();
-		field.set_grid_value(255, 4, 9);
+		field.set_field_cell_value(255, FieldCell::new(4, 9));
 		sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, map_x_dimension, map_z_dimension);
 
 		// This produces a new representation with an extra portal, `x` denotes the impassable point
@@ -747,7 +744,7 @@ use super::*;
 	// 	// update the top-left CostFields and calculate new portals
 	// 	let mutated_sector_id = (0, 0);
 	// 	let field = sector_cost_fields.get_mut().get_mut(&mutated_sector_id).unwrap();
-	// 	field.set_grid_value(255, 4, 9);
+	// 	field.set_field_cell_value(255, 4, 9);
 	// 	sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, map_x_dimension, map_z_dimension);
 
 	// 	// build the graph
@@ -802,11 +799,11 @@ use super::*;
 		// |_________|_________|_________|
 
 		// form of ((sector_id), (portal_cell_id))
-		let source = ((0, 0), (4, 9));
-		let target = ((0, 2), (4, 0));
+		let source = (SectorID::new(0, 0), FieldCell::new(4, 9));
+		let target = (SectorID::new(0, 2), FieldCell::new(4, 0));
 		let portal_path = portal_graph.find_path_between_sector_portals(source, target, &sector_portals);
 		let path = portal_graph.convert_index_path_to_sector_portal_cells(portal_path.unwrap().1, &sector_portals);
-		let actual = vec![((0, 0), (4, 9)), ((0, 1), (4, 0)), ((0, 1), (4, 9)), ((0, 2), (4, 0))];
+		let actual = vec![(SectorID::new(0, 0), FieldCell::new(4, 9)), (SectorID::new(0, 1), FieldCell::new(4, 0)), (SectorID::new(0, 1), FieldCell::new(4, 9)), (SectorID::new(0, 2), FieldCell::new(4, 0))];
 		
 		assert_eq!(actual, path);
 	}

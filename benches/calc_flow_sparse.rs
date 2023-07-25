@@ -36,12 +36,12 @@ fn prepare_fields(
 
 	let mut route_cache = RouteCache::default();
 	// top right
-	let source_sector = (99, 0);
-	let source_field_cell = (9, 0);
+	let source_sector = SectorID::new(99, 0);
+	let source_field_cell = FieldCell::new(9, 0);
 	let source = (source_sector, source_field_cell);
 	// bottom left
-	let target_sector = (0, 99);
-	let target_goal = (0, 9);
+	let target_sector = SectorID::new(0, 99);
+	let target_goal = FieldCell::new(0, 9);
 	let target = (target_sector, target_goal);
 
 	// find the route
@@ -84,7 +84,7 @@ fn flow_sparse(
 				sectors_expanded_goals.push((*sector_id, vec![*goal]));
 			} else {
 				// portals represent the boundary to another sector, a portal can be spread over
-				// multple grid cells, expand the portal to provide multiple goal
+				// multple field cells, expand the portal to provide multiple goal
 				// targets for moving to another sector
 				let neighbour_sector_id = path[i - 1].0;
 				let g = portals

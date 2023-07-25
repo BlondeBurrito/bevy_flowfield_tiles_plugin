@@ -47,8 +47,8 @@ For larger and larger environemnts with an increasing number of pathing actors i
 * FlowField - a 2D array built from the `IntegrationField` which decribes how an actor should move (flow) across the world
 * FlowField Cache - a means of storing `FlowFields` allowing multiple actors to use and reuse them
 * Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for discovery of Sectors/field cells at various points within the algorithm
-* Grid cell - an element of a 2D array
-* Goal - the target grid cell an actor needs to path to
+* Field cell - an element of a 2D array
+* Goal - the target field cell an actor needs to path to
 * Portal goal - a target point within a sector that allows an actor to transition to another sector, thus bringing it closer towards/to the goal
 
 # Design/Process
@@ -67,7 +67,7 @@ For a 3-dimensional world the `x-z` (`x-y` in 2d) plane defines the number of Se
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/sectors.png" alt="sectors" width="250"/>
 
-Likewise for a `300x550` world you'll be looking at `30` columns and `55` rows. The advantage of dividing a world into Sectors (as opposed to treating the whole world as a giant `Flowfield`) is that the work in generating a path can be split into multiple operations and only touch certain sectors. Say for the `300x550` world you do treat it as a single set of fields - when calculating a path you could potentially have to calculate the Flowfield values for `165,000` grid cells. Splitting it into sectors may mean that your path only takes you through 20 sectors, thereby only requiring `2,000` `Flowfield` grid cells to be calculated.
+Likewise for a `300x550` world you'll be looking at `30` columns and `55` rows. The advantage of dividing a world into Sectors (as opposed to treating the whole world as a giant `Flowfield`) is that the work in generating a path can be split into multiple operations and only touch certain sectors. Say for the `300x550` world you do treat it as a single set of fields - when calculating a path you could potentially have to calculate the Flowfield values for `165,000` field cells. Splitting it into sectors may mean that your path only takes you through 20 sectors, thereby only requiring `2,000` `Flowfield` field cells to be calculated.
 
 </details>
 
@@ -76,7 +76,7 @@ Likewise for a `300x550` world you'll be looking at `30` columns and `55` rows. 
 <details>
 <summary>Click to expand!</summary>
 
-A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the grid. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the grid cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
+A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the field. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the field cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/cost_field.png" alt="cf" width="370"/>
 
@@ -111,7 +111,7 @@ For finding a path from one Sector to another at a Portal level all Sector Porta
 2. For each sector create `edges` (pathable routes) to and from each Portal `node` - effectively create internal walkable routes of each sector
 3. Create `edges` across the Portal `node` on all sector boundaries (walkable route from one sector to another)
 
-This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostField` is changed this triggers the regeneration of the sector Portals for the region that `CostField` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `nodes` and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D arrays but the graph is effectively 1D - it's a big long list of `nodes`. To handle identifying a graph `node` from a Sector and field grid cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a grid cell you can find its `node` and from a list of `nodes` (like an A* result) you can find the location of each Portal in the grids.
+This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostField` is changed this triggers the regeneration of the sector Portals for the region that `CostField` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `nodes` and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D arrays but the graph is effectively 1D - it's a big long list of `nodes`. To handle identifying a graph `node` from a Sector and field field cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a field cell you can find its `node` and from a list of `nodes` (like an A* result) you can find the location of each Portal in the fields.
 
 </details>
 
@@ -122,12 +122,12 @@ This allows the graph to be queried with a `source` sector and a `target` sector
 
 An `IntegrationField` is an `MxN` 2D array of 16-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target. It's an ephemeral field, as in it gets built for a required sector and then consumed by the `FlowField` calculation.
 
-When a new route needs to be processed the field values are set to `u16::MAX` and the grid cell containing the goal is set to `0`.
+When a new route needs to be processed the field values are set to `u16::MAX` and the field cell containing the goal is set to `0`.
 
 A series of passes are performed from the goal as an expanding wavefront calculating the field values:
 
 1. The valid ordinal neighbours of the goal are determined (North, East, South, West - when not against a sector/world boundary)
-2. For each ordinal grid cell lookup their `CostField` value
+2. For each ordinal field cell lookup their `CostField` value
 3. Add the `CostField` cost to the `IntegrationFields` cost of the current cell (at the beginning this is the goal int cost `0`)
 4. Propagate to the next neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their cumulative integration cost, and repeat until the entire field is done
 
@@ -136,7 +136,7 @@ This produces a nice diamond-like pattern as the wave expands (the underlying `C
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop0.png" alt="ifp0" width="300" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop1.png" alt="ifp1" width="300" height="310"/>
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop2.png" alt="ifp2" width="300" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop3.png" alt="ifp3" width="300" height="310"/>
 
-Now a dimaond-like wave isn't exactly realistic in a world of dynamic movement so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave expanding over the grid space.
+Now a dimaond-like wave isn't exactly realistic in a world of dynamic movement so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave expanding over the field space.
 
 When it comes to `CostField` containing impassable markers, `255` as black boxes, they are ignored so the wave flows around those areas:
 
@@ -154,7 +154,7 @@ From the `PortalGraph` we can get a path of `Portals` to guide the actor over se
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_0.png" alt="ifsts0" width="260" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_1.png" alt="ifsts1" width="260" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_2.png" alt="ifsts2" width="260" height="310"/>
 
-In terms of pathfinding the actor will favour flowing "downhill". From the position of the actor and looking at its grid cell neighbours a smalller value in that sectors `IntegrationField` means a more favourable point for reaching the end goal, going from smaller to smaller values, basically a gradient flowing downhill to the destination.
+In terms of pathfinding the actor will favour flowing "downhill". From the position of the actor and looking at its field cell neighbours a smalller value in that sectors `IntegrationField` means a more favourable point for reaching the end goal, going from smaller to smaller values, basically a gradient flowing downhill to the destination.
 
 This informs the basis of a `FlowField`.
 
@@ -201,7 +201,7 @@ The assistant flags are defined as:
 * `0b0100_0000` - indicates the goal
 * `0b1000_0000` - indicates a portal goal leading to the next sector
 
-So a grid cell in the `FlowField` with a value of `0b0001_0110` means the actor should flow in the South-East direction. In terms of use don't worry about understanding these bit values too much, the [Usage](#usage) section shows the helpers for interpreting the values of the `FlowField` to steer an actor.
+So a field cell in the `FlowField` with a value of `0b0001_0110` means the actor should flow in the South-East direction. In terms of use don't worry about understanding these bit values too much, the [Usage](#usage) section shows the helpers for interpreting the values of the `FlowField` to steer an actor.
 
 Using the `IntegrationFields` generated before, with an actor in the top right trying to reach the bottom left, we now generate the `FlowFields`:
 
@@ -274,7 +274,7 @@ In 2d the dimensions can be configured in different ways:
     cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth));
 ```
 
-Next you need to seed your `CostFields` to reflect the make up of your world, this can be done programmatically (in 3d you might fire a series of raycasts and based on collider collisions flip a `CostField` grid cell to a higher number via `EventUpdateCostfieldsCell`) or you can load predetermined values from disk.
+Next you need to seed your `CostFields` to reflect the make up of your world, this can be done programmatically (in 3d you might fire a series of raycasts and based on collider collisions flip a `CostField` field cell to a higher number via `EventUpdateCostfieldsCell`) or you can load predetermined values from disk.
 
 ## Path Request
 
@@ -285,11 +285,11 @@ Using some example components to track and label an Actor:
 struct Actor;
 #[derive(Default, Component)]
 struct Pathing {
-    source_sector: Option<(u32, u32)>,
-    source_grid_cell: Option<(usize, usize)>,
-    target_sector: Option<(u32, u32)>,
-    target_goal: Option<(usize, usize)>,
-    portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
+    source_sector: Option<SectorID>,
+    source_field_cell: Option<FieldCell>,
+    target_sector: Option<SectorID>,
+    target_goal: Option<FieldCell>,
+    portal_route: Option<Vec<(SectorID, FieldCell)>>,
 }
 ```
 
@@ -310,7 +310,7 @@ fn some_system(mut event: EventWriter<EventPathRequest>, ***some other params***
         )
     {
         // actor position in the world
-        if let Some((source_sector_id, source_grid_cell)) = get_sector_and_field_id_from_xy(
+        if let Some((source_sector_id, source_field_cell)) = get_sector_and_field_id_from_xy(
                 tform.translation.truncate(),
                 PIXEL_LENGTH,
                 PIXEL_DEPTH,
@@ -319,7 +319,7 @@ fn some_system(mut event: EventWriter<EventPathRequest>, ***some other params***
             // ask for route generation going from source to target
             event.send(EventPathRequest::new(
                 source_sector_id,
-                source_grid_cell,
+                source_field_cell,
                 target_sector_id,
                 goal_id,
             ));
@@ -367,8 +367,8 @@ fn actor_steering(
     if pathing.target_goal.is_some() {
         // lookup the overarching route
         if let Some(route) = &pathing.portal_route {
-            // find the current actors postion in grid space
-            let (curr_actor_sector, curr_actor_grid) = get_sector_and_field_id_from_xy(
+            // find the current actors postion in field space
+            let (curr_actor_sector, curr_actor_field_cell) = get_sector_and_field_id_from_xy(
                 tform.translation.truncate(),
                 PIXEL_LENGTH,
                 PIXEL_DEPTH,
@@ -380,8 +380,8 @@ fn actor_steering(
                 if *sector == curr_actor_sector {
                     // get the flow field
                     if let Some(field) = flow_cache.get_field(*sector, *goal) {
-                        // based on actor grid cell find the directional vector it should move in
-                        let cell_value = field.get_grid_value(curr_actor_grid.0, curr_actor_grid.1);
+                        // based on actor field cell find the directional vector it should move in
+                        let cell_value = field.get_field_value(curr_actor_field_cell.0, curr_actor_field_cell.1);
                         let dir = get_2d_direction_unit_vector_from_bits(cell_value);
                         let velocity = dir * ACTOR_SPEED;
                         // move the actor based on the velocity

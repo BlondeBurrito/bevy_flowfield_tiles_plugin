@@ -29,6 +29,24 @@ bench:
 # run a particular benchmark
 bench-one BENCH:
   cargo bench --benches --workspace --all-features {{BENCH}}
+# save each benchmark, this should be run on the main branch for comparing with your own branch
+bench-save-main:
+  cargo bench -q --bench calc_route --workspace --all-features -- --save-baseline main_calc_route
+  cargo bench -q --bench calc_flow_open --workspace --all-features -- --save-baseline main_calc_flow_open
+  cargo bench -q --bench calc_flow_maze --workspace --all-features -- --save-baseline main_calc_flow_maze
+  cargo bench -q --bench init_bundle --workspace --all-features -- --save-baseline main_init_bundle
+  cargo bench -q --bench init_cost_fields --workspace --all-features -- --save-baseline main_init_cost_fields
+  cargo bench -q --bench init_portals --workspace --all-features -- --save-baseline main_init_portals
+  cargo bench -q --bench init_portal_graph --workspace --all-features -- --save-baseline main_init_portal_graph
+# compare each benchmark against a saved bench taken from main
+bench-compare:
+  cargo bench -q --bench calc_route --workspace --all-features -- --baseline main_calc_route
+  cargo bench -q --bench calc_flow_open --workspace --all-features -- --baseline main_calc_flow_open
+  cargo bench -q --bench calc_flow_maze --workspace --all-features -- --baseline main_calc_flow_maze
+  cargo bench -q --bench init_bundle --workspace --all-features -- --baseline main_init_bundle
+  cargo bench -q --bench init_cost_fields --workspace --all-features -- --baseline main_init_cost_fields
+  cargo bench -q --bench init_portals --workspace --all-features -- --baseline main_init_portals
+  cargo bench -q --bench init_portal_graph --workspace --all-features -- --baseline main_init_portal_graph
 # run a debug build so the compiler can call out overflow errors etc, rather than making assumptions
 debug:
   cargo build --workspace --all-features

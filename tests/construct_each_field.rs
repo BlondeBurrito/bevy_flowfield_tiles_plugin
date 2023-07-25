@@ -29,26 +29,26 @@ fn field_on_field() {
 		map_dimensions.get_row(),
 	);
 	//
-	let source_sector = (2, 0);
-	let source_grid_cell = (7, 3);
-	let target_sector = (0, 2);
-	let target_grid_cell = (0, 6);
+	let source_sector = SectorID::new(2, 0);
+	let source_field_cell = FieldCell::new(7, 3);
+	let target_sector = SectorID::new(0, 2);
+	let target_field_cell = FieldCell::new(0, 6);
 	// path from actor to goal sectors
 	let node_path = portal_graph
 		.find_best_path(
-			(source_sector, source_grid_cell),
-			(target_sector, target_grid_cell),
+			(source_sector, source_field_cell),
+			(target_sector, target_field_cell),
 			&sector_portals,
 			&sector_cost_fields,
 		)
 		.unwrap();
-	// convert to grid and sector coords
+	// convert to field cell and sector coords
 	let mut path =
 		portal_graph.convert_index_path_to_sector_portal_cells(node_path.1, &sector_portals);
 	// original order is from actor to goal, int fields need to be processed the other way around
 	path.reverse();
 	// change target cell from portal to the real goal
-	path[0].1 = target_grid_cell;
+	path[0].1 = target_field_cell;
 	let mut sector_order = Vec::new();
 	let mut map = HashMap::new();
 	for p in path.iter() {

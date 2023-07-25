@@ -22,17 +22,17 @@ const BITS_SOUTH_EAST: u8 = 0b0000_0110;
 const BITS_SOUTH_WEST: u8 = 0b0000_1100;
 /// Bit to indicate a north-westerly direction
 const BITS_NORTH_WEST: u8 = 0b0000_1001;
-/// Bit to indicate an impassable grid
+/// Bit to indicate an impassable field
 const BITS_ZERO: u8 = 0b0000_0000;
-/// Default grid cell value of a new [FlowField]
+/// Default field cell value of a new [FlowField]
 const BITS_DEFAULT: u8 = 0b0000_1111;
-/// Flags a pathable grid cell
+/// Flags a pathable field cell
 const BITS_PATHABLE: u8 = 0b0001_0000;
-/// Flags a grid cell that has line-of-sight to the goal
+/// Flags a field cell that has line-of-sight to the goal
 const BITS_HAS_LOS: u8 = 0b0010_0000;
-/// Flags a grid cell as being the goal
+/// Flags a field cell as being the goal
 const BITS_GOAL: u8 = 0b0100_0000;
-/// Flags a grid cell as being a portal to another sector
+/// Flags a field cell as being a portal to another sector
 const BITS_PORTAL_GOAL: u8 = 0b1000_0000;
 
 /// Convert an [Ordinal] to a bit representation
@@ -64,26 +64,26 @@ impl Field<u8> for FlowField {
 	fn get_field(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
-	/// Retrieve a grid cell value
-	fn get_grid_value(&self, column: usize, row: usize) -> u8 {
-		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot get a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+	/// Retrieve a field cell value
+	fn get_field_cell_value(&self, field_cell: FieldCell) -> u8 {
+		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
+			panic!("Cannot get a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
-		self.0[column][row]
+		self.0[field_cell.get_column()][field_cell.get_row()]
 	}
-	/// Set a grid cell to a value
-	fn set_grid_value(&mut self, value: u8, column: usize, row: usize) {
-		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot set a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+	/// Set a field cell to a value
+	fn set_field_cell_value(&mut self, value: u8, field_cell: FieldCell) {
+		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
+			panic!("Cannot set a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
-		self.0[column][row] = value;
+		self.0[field_cell.get_column()][field_cell.get_row()] = value;
 	}
 }
 impl FlowField {
 	/// Calculate the [FlowField] from an [IntegrationField], additionally for a sector in a chain of sectors along a path this will peak into the previous sectors [IntegrationField] to apply a directional optimisation to this sector's [FlowField]
 	pub fn calculate(
 		&mut self,
-		goals: &[(usize, usize)],
+		goals: &[FieldCell],
 		previous_sector_ord_int: Option<(Ordinal, &IntegrationField)>,
 		integration_field: &IntegrationField,
 	) {
@@ -107,41 +107,41 @@ impl FlowField {
 					let mut value = 0;
 					value |= BITS_PORTAL_GOAL;
 					value |= ordinal_bits;
-					self.set_grid_value(value, goal.0, goal.1);
+					self.set_field_cell_value(value, *goal);
 				} //TODO this sould never ever be none...
 			}
 		} else {
 			// set goal cells
-			self.set_grid_value(BITS_GOAL, goals[0].0, goals[0].1);
+			self.set_field_cell_value(BITS_GOAL, goals[0]);
 		}
 
 		for (i, column) in integration_field.get_field().iter().enumerate() {
 			for (j, _row) in column.iter().enumerate() {
-				if self.get_grid_value(i, j) == BITS_DEFAULT {
-					let current_cost = integration_field.get_grid_value(i, j);
+				if self.get_field_cell_value(FieldCell::new(i, j)) == BITS_DEFAULT {
+					let current_cost = integration_field.get_field_cell_value(FieldCell::new(i, j));
 					// mark impassable //TODO maybe skip? waste of time perhaps
 					if current_cost == u16::MAX {
-						self.set_grid_value(BITS_ZERO, i, j);
+						self.set_field_cell_value(BITS_ZERO, FieldCell::new(i, j));
 					} else if current_cost != 0 {
 						// skip goals of zero
 						// store the cheapest node
 						let mut cheapest_value = u16::MAX;
 						let mut cheapest_neighbour = None;
-						let neighbours = Ordinal::get_all_cell_neighbours((i, j));
+						let neighbours = Ordinal::get_all_cell_neighbours(FieldCell::new(i, j));
 						for n in neighbours.iter() {
-							let neighbour_cost = integration_field.get_grid_value(n.0, n.1);
+							let neighbour_cost = integration_field.get_field_cell_value(*n);
 							if neighbour_cost < cheapest_value {
 								cheapest_value = neighbour_cost;
 								cheapest_neighbour = Some(n);
 							}
 						}
 						if let Some(target) = cheapest_neighbour {
-							let ord = Ordinal::cell_to_cell_direction(*target, (i, j));
+							let ord = Ordinal::cell_to_cell_direction(*target, FieldCell::new(i, j));
 							let bit_ord = convert_ordinal_to_bits_dir(ord);
 							let mut value = 0;
 							value |= bit_ord;
 							value |= BITS_PATHABLE;
-							self.set_grid_value(value, i, j);
+							self.set_field_cell_value(value, FieldCell::new(i, j));
 						} //TODO this should never ever be none...
 					}
 				}
@@ -151,7 +151,7 @@ impl FlowField {
 }
 /// Used by a [FlowField] calculation that needs to peek into the previous sectors [IntegrationField] to align portal goal directional bits to the most optimal integration costs
 fn lookup_portal_goal_neighbour_costs_in_previous_sector(
-	portal_goal: &(usize, usize),
+	portal_goal: &FieldCell,
 	previous_integration_field: &IntegrationField,
 	sector_ordinal: Ordinal,
 ) -> Vec<(Ordinal, u16)> {
@@ -159,72 +159,72 @@ fn lookup_portal_goal_neighbour_costs_in_previous_sector(
 	match sector_ordinal {
 		Ordinal::North => {
 			// orthogonal adjacent cost
-			let adj_pos = (portal_goal.0, 9);
+			let adj_pos = (portal_goal.get_column(), 9);
 			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 			adjacent_neighbours.push((Ordinal::North, adj_cost));
 			// try and get a cost left
-			if portal_goal.0 > 0 {
-				let adj_pos = (portal_goal.0 - 1, 9);
+			if portal_goal.get_column() > 0 {
+				let adj_pos = (portal_goal.get_column() - 1, 9);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
 			}
 			// try and get a cost right
-			if portal_goal.0 < FIELD_RESOLUTION - 1 {
-				let adj_pos = (portal_goal.0 + 1, 9);
+			if portal_goal.get_column() < FIELD_RESOLUTION - 1 {
+				let adj_pos = (portal_goal.get_column() + 1, 9);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::NorthEast, adj_cost));
 			}
 		}
 		Ordinal::East => {
 			// orthogonal adjacent cost
-			let adj_pos = (0, portal_goal.1);
+			let adj_pos = (0, portal_goal.get_row());
 			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 			adjacent_neighbours.push((Ordinal::East, adj_cost));
 			// try and get a cost above
-			if portal_goal.1 > 0 {
-				let adj_pos = (0, portal_goal.1 - 1);
+			if portal_goal.get_row() > 0 {
+				let adj_pos = (0, portal_goal.get_row() - 1);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::NorthEast, adj_cost));
 			}
 			// try and get a cost below
-			if portal_goal.1 < FIELD_RESOLUTION - 1 {
-				let adj_pos = (0, portal_goal.1 + 1);
+			if portal_goal.get_row() < FIELD_RESOLUTION - 1 {
+				let adj_pos = (0, portal_goal.get_row() + 1);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
 			}
 		}
 		Ordinal::South => {
 			// orthogonal adjacent cost
-			let adj_pos = (portal_goal.0, 0);
+			let adj_pos = (portal_goal.get_column(), 0);
 			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 			adjacent_neighbours.push((Ordinal::South, adj_cost));
 			// try and get a cost left
-			if portal_goal.0 > 0 {
-				let adj_pos = (portal_goal.0 - 1, 0);
+			if portal_goal.get_column() > 0 {
+				let adj_pos = (portal_goal.get_column() - 1, 0);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
 			}
 			// try and get a cost right
-			if portal_goal.0 < FIELD_RESOLUTION - 1 {
-				let adj_pos = (portal_goal.0 + 1, 0);
+			if portal_goal.get_column() < FIELD_RESOLUTION - 1 {
+				let adj_pos = (portal_goal.get_column() + 1, 0);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
 			}
 		}
 		Ordinal::West => {
 			// orthogonal adjacent cost
-			let adj_pos = (9, portal_goal.1);
+			let adj_pos = (9, portal_goal.get_row());
 			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 			adjacent_neighbours.push((Ordinal::West, adj_cost));
 			// try and get a cost above
-			if portal_goal.1 > 0 {
-				let adj_pos = (9, portal_goal.1 - 1);
+			if portal_goal.get_row() > 0 {
+				let adj_pos = (9, portal_goal.get_row() - 1);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
 			}
 			// try and get a cost below
-			if portal_goal.1 < FIELD_RESOLUTION - 1 {
-				let adj_pos = (9, portal_goal.1 + 1);
+			if portal_goal.get_row() < FIELD_RESOLUTION - 1 {
+				let adj_pos = (9, portal_goal.get_row() + 1);
 				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
 			}
@@ -275,7 +275,7 @@ pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
 		_ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
-/// Reading the directional bits of a [FlowField] grid cell obtain a unit
+/// Reading the directional bits of a [FlowField] field cell obtain a unit
 /// vector in 2d space of the direction
 pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
 	let dir_filter = 0b0000_1111;
@@ -293,7 +293,7 @@ pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
 		_ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
-/// Reading the directional bits of a [FlowField] grid cell obtain a unit
+/// Reading the directional bits of a [FlowField] field cell obtain a unit
 /// vector in 3d space of the direction across the x-z plane
 pub fn get_3d_direction_unit_vector_from_bits(cell_value: u8) -> Vec3 {
 	let dir_filter = 0b0000_1111;
@@ -319,7 +319,7 @@ mod tests {
 	#[test]
 	fn default_init() {
 		let flow_field = FlowField::default();
-		let v = flow_field.get_grid_value(0, 0);
+		let v = flow_field.get_field_cell_value(FieldCell::new(0, 0));
 		assert_eq!(BITS_DEFAULT, v);
 	}
 	#[test]
@@ -328,16 +328,16 @@ mod tests {
 		// int field pair pointing towards goal in orthognal west direction
 		let ordinal_to_previous_sector = Ordinal::South;
 		let goals = vec![
-			(0, 9),
-			(1, 9),
-			(2, 9),
-			(3, 9),
-			(4, 9),
-			(5, 9),
-			(6, 9),
-			(7, 9),
-			(8, 9),
-			(9, 9),
+			FieldCell::new(0, 9),
+			FieldCell::new(1, 9),
+			FieldCell::new(2, 9),
+			FieldCell::new(3, 9),
+			FieldCell::new(4, 9),
+			FieldCell::new(5, 9),
+			FieldCell::new(6, 9),
+			FieldCell::new(7, 9),
+			FieldCell::new(8, 9),
+			FieldCell::new(9, 9),
 		];
 		let mut previous_int_field = IntegrationField::new(&goals);
 		previous_int_field.calculate_field(&goals, &cost_field);
@@ -366,16 +366,16 @@ mod tests {
 		// int field pair pointing towards goal in orthognal west direction
 		let ordinal_to_previous_sector = Ordinal::West;
 		let goals = vec![
-			(0, 0),
-			(0, 1),
-			(0, 2),
-			(0, 3),
-			(0, 4),
-			(0, 5),
-			(0, 6),
-			(0, 7),
-			(0, 8),
-			(0, 9),
+			FieldCell::new(0, 0),
+			FieldCell::new(0, 1),
+			FieldCell::new(0, 2),
+			FieldCell::new(0, 3),
+			FieldCell::new(0, 4),
+			FieldCell::new(0, 5),
+			FieldCell::new(0, 6),
+			FieldCell::new(0, 7),
+			FieldCell::new(0, 8),
+			FieldCell::new(0, 9),
 		];
 		let mut previous_int_field = IntegrationField::new(&goals);
 		previous_int_field.calculate_field(&goals, &cost_field);
