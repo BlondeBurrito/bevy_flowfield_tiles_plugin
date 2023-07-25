@@ -99,7 +99,7 @@ fn flow_maze(
 				sectors_expanded_goals.push((*sector_id, vec![*goal]));
 			} else {
 				// portals represent the boundary to another sector, a portal can be spread over
-				// multple grid cells, expand the portal to provide multiple goal
+				// multple field cells, expand the portal to provide multiple goal
 				// targets for moving to another sector
 				let neighbour_sector_id = path[i - 1].0;
 				let g = portals

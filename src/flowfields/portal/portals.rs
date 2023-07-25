@@ -153,9 +153,9 @@ impl Portals {
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for i in column_range {
-						let field_cost = cost_field.get_grid_value(FieldCell::new(i, fixed_row));
+						let field_cost = cost_field.get_field_cell_value(FieldCell::new(i, fixed_row));
 						let adjacent_field_cost =
-							adjoining_cost_field.get_grid_value(FieldCell::new(i, FIELD_RESOLUTION - 1));
+							adjoining_cost_field.get_field_cell_value(FieldCell::new(i, FIELD_RESOLUTION - 1));
 						if field_cost != 255 && adjacent_field_cost != 255 {
 							// a pathable point along the edge so we record it to be
 							// published later as a FieldCell
@@ -200,8 +200,8 @@ impl Portals {
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for j in row_range {
-						let field_cost = cost_field.get_grid_value(FieldCell::new(fixed_column, j));
-						let adjacent_field_cost = adjoining_cost_field.get_grid_value(FieldCell::new(0, j));
+						let field_cost = cost_field.get_field_cell_value(FieldCell::new(fixed_column, j));
+						let adjacent_field_cost = adjoining_cost_field.get_field_cell_value(FieldCell::new(0, j));
 						if field_cost != 255 && adjacent_field_cost != 255 {
 							// a pathable point along the edge so we record it to be
 							// published later as a FieldCell
@@ -246,8 +246,8 @@ impl Portals {
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for i in column_range {
-						let field_cost = cost_field.get_grid_value(FieldCell::new(i, fixed_row));
-						let adjacent_field_cost = adjoining_cost_field.get_grid_value(FieldCell::new(i, 0));
+						let field_cost = cost_field.get_field_cell_value(FieldCell::new(i, fixed_row));
+						let adjacent_field_cost = adjoining_cost_field.get_field_cell_value(FieldCell::new(i, 0));
 						if field_cost != 255 && adjacent_field_cost != 255 {
 							// a pathable point along the edge so we record it to be
 							// published later as a FieldCell
@@ -292,9 +292,9 @@ impl Portals {
 					// walk along the side of the field
 					let mut neighbouring_pathable = Vec::new();
 					for j in row_range {
-						let field_cost = cost_field.get_grid_value(FieldCell::new(fixed_column, j));
+						let field_cost = cost_field.get_field_cell_value(FieldCell::new(fixed_column, j));
 						let adjacent_field_cost =
-							adjoining_cost_field.get_grid_value(FieldCell::new(FIELD_RESOLUTION - 1, j));
+							adjoining_cost_field.get_field_cell_value(FieldCell::new(FIELD_RESOLUTION - 1, j));
 						if field_cost != 255 && adjacent_field_cost != 255 {
 							// a pathable point along the edge so we record it to be
 							// published later as a FieldCell
@@ -337,7 +337,7 @@ impl Portals {
 			};
 		}
 	}
-	/// A [FieldCell] represents the midpoint of a segment along a boundary, for smooth pathfinding any grid cell along the segemnt should be a viable goal node when calculating an [IntegrationField]. This takes inspects the `portal_id` within the given `sector_id` and build a list of field gridc cells which comprise the true dimension of the portal
+	/// A [FieldCell] represents the midpoint of a segment along a boundary, for smooth pathfinding any field cell along the segemnt should be a viable goal node when calculating an [IntegrationField]. This takes inspects the `portal_id` within the given `sector_id` and build a list of field cells which comprise the true dimension of the portal
 	pub fn expand_portal_into_goals(
 		&self,
 		sector_cost_fields: &SectorCostFields,
@@ -348,7 +348,7 @@ impl Portals {
 		map_z_dimension: u32,
 	) -> Vec<FieldCell> {
 		// find the bounudary the portal sit along
-		let mut boundary_ordinals = get_boundary_ordinal_from_grid_cell(portal_id);
+		let mut boundary_ordinals = get_boundary_ordinal_from_field_cell(portal_id);
 		// if it's in a corner then it could apply to two boundaries, narrow it down so we know which boundary to walk
 		if boundary_ordinals.len() > 1 {
 			let valid_ordinals_for_this_sector: Vec<(Ordinal, SectorID)> =
@@ -382,9 +382,9 @@ impl Portals {
 				'left: while portal_id.get_column().checked_sub(step).is_some() {
 					let left = FieldCell::new(portal_id.get_column() - step, portal_id.get_row());
 					// check whether cell or adjoining cell is impassable
-					let left_cost = this_cost_field.get_grid_value(FieldCell::new(left.get_column(), left.get_row()));
+					let left_cost = this_cost_field.get_field_cell_value(FieldCell::new(left.get_column(), left.get_row()));
 					let neighbour_cost =
-						adjoining_cost_field.get_grid_value(FieldCell::new(left.get_column(), FIELD_RESOLUTION - 1));
+						adjoining_cost_field.get_field_cell_value(FieldCell::new(left.get_column(), FIELD_RESOLUTION - 1));
 					if left_cost != 255 && neighbour_cost != 255 {
 						goals.push(left);
 						step += 1;
@@ -398,9 +398,9 @@ impl Portals {
 				'right: while portal_id.get_column() + step < FIELD_RESOLUTION {
 					let right = FieldCell::new(portal_id.get_column() + step, portal_id.get_row());
 					// check whether cell or adjoining cell is impassable
-					let right_cost = this_cost_field.get_grid_value(right);
+					let right_cost = this_cost_field.get_field_cell_value(right);
 					let neighbour_cost =
-						adjoining_cost_field.get_grid_value(FieldCell::new(right.get_column(), FIELD_RESOLUTION - 1));
+						adjoining_cost_field.get_field_cell_value(FieldCell::new(right.get_column(), FIELD_RESOLUTION - 1));
 					if right_cost != 255 && neighbour_cost != 255 {
 						goals.push(right);
 						step += 1;
@@ -416,8 +416,8 @@ impl Portals {
 				'up: while portal_id.get_row().checked_sub(step).is_some() {
 					let up = FieldCell::new(portal_id.get_column(), portal_id.get_row() - step);
 					// check whether cell or adjoining cell is impassable
-					let up_cost = this_cost_field.get_grid_value(up);
-					let neighbour_cost = adjoining_cost_field.get_grid_value(FieldCell::new(0, up.get_row()));
+					let up_cost = this_cost_field.get_field_cell_value(up);
+					let neighbour_cost = adjoining_cost_field.get_field_cell_value(FieldCell::new(0, up.get_row()));
 					if up_cost != 255 && neighbour_cost != 255 {
 						goals.push(up);
 						step += 1;
@@ -431,8 +431,8 @@ impl Portals {
 				'down: while portal_id.get_row() + step < FIELD_RESOLUTION {
 					let down = FieldCell::new(portal_id.get_column(), portal_id.get_row() + step);
 					// check whether cell or adjoining cell is impassable
-					let right_cost = this_cost_field.get_grid_value(down);
-					let neighbour_cost = adjoining_cost_field.get_grid_value(FieldCell::new(0, down.get_row()));
+					let right_cost = this_cost_field.get_field_cell_value(down);
+					let neighbour_cost = adjoining_cost_field.get_field_cell_value(FieldCell::new(0, down.get_row()));
 					if right_cost != 255 && neighbour_cost != 255 {
 						goals.push(down);
 						step += 1;
@@ -448,8 +448,8 @@ impl Portals {
 				'left: while portal_id.get_column().checked_sub(step).is_some() {
 					let left = FieldCell::new(portal_id.get_column() - step, portal_id.get_row());
 					// check whether cell or adjoining cell is impassable
-					let left_cost = this_cost_field.get_grid_value(left);
-					let neighbour_cost = adjoining_cost_field.get_grid_value(FieldCell::new(left.get_column(), 0));
+					let left_cost = this_cost_field.get_field_cell_value(left);
+					let neighbour_cost = adjoining_cost_field.get_field_cell_value(FieldCell::new(left.get_column(), 0));
 					if left_cost != 255 && neighbour_cost != 255 {
 						goals.push(left);
 						step += 1;
@@ -463,8 +463,8 @@ impl Portals {
 				'right: while portal_id.get_column() + step < FIELD_RESOLUTION {
 					let right = FieldCell::new(portal_id.get_column() + step, portal_id.get_row());
 					// check whether cell or adjoining cell is impassable
-					let right_cost = this_cost_field.get_grid_value(right);
-					let neighbour_cost = adjoining_cost_field.get_grid_value(FieldCell::new(right.get_column(), 0));
+					let right_cost = this_cost_field.get_field_cell_value(right);
+					let neighbour_cost = adjoining_cost_field.get_field_cell_value(FieldCell::new(right.get_column(), 0));
 					if right_cost != 255 && neighbour_cost != 255 {
 						goals.push(right);
 						step += 1;
@@ -480,9 +480,9 @@ impl Portals {
 				'up: while portal_id.get_row().checked_sub(step).is_some() {
 					let up = FieldCell::new(portal_id.get_column(), portal_id.get_row() - step);
 					// check whether cell or adjoining cell is impassable
-					let up_cost = this_cost_field.get_grid_value(up);
+					let up_cost = this_cost_field.get_field_cell_value(up);
 					let neighbour_cost =
-						adjoining_cost_field.get_grid_value(FieldCell::new(FIELD_RESOLUTION - 1, up.get_row()));
+						adjoining_cost_field.get_field_cell_value(FieldCell::new(FIELD_RESOLUTION - 1, up.get_row()));
 					if up_cost != 255 && neighbour_cost != 255 {
 						goals.push(up);
 						step += 1;
@@ -496,9 +496,9 @@ impl Portals {
 				'down: while portal_id.get_row() + step < FIELD_RESOLUTION {
 					let down = FieldCell::new(portal_id.get_column(), portal_id.get_row() + step);
 					// check whether cell or adjoining cell is impassable
-					let right_cost = this_cost_field.get_grid_value(down);
+					let right_cost = this_cost_field.get_field_cell_value(down);
 					let neighbour_cost =
-						adjoining_cost_field.get_grid_value(FieldCell::new(FIELD_RESOLUTION - 1, down.get_row()));
+						adjoining_cost_field.get_field_cell_value(FieldCell::new(FIELD_RESOLUTION - 1, down.get_row()));
 					if right_cost != 255 && neighbour_cost != 255 {
 						goals.push(down);
 						step += 1;
@@ -529,8 +529,8 @@ use super::*;
 		let sector_id = SectorID::new(0, 0);
 		let cost_field = sector_cost_fields.get_mut().get_mut(&sector_id).unwrap();
 		// switch some fields to impassable
-		cost_field.set_grid_value(255, FieldCell::new(9, 5));
-		cost_field.set_grid_value(255, FieldCell::new(0, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(9, 5));
+		cost_field.set_field_cell_value(255, FieldCell::new(0, 9));
 		let mut portals = Portals::default();
 		portals.recalculate_portals(&sector_cost_fields, &sector_id, 30, 30);
 		let northern_side_portal_count = 0;
@@ -548,8 +548,8 @@ use super::*;
 		let sector_id = SectorID::new(1, 0);
 		let cost_field = sector_cost_fields.get_mut().get_mut(&sector_id).unwrap();
 		// switch some fields to impassable
-		cost_field.set_grid_value(255, FieldCell::new(9, 5));
-		cost_field.set_grid_value(255, FieldCell::new(0, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(9, 5));
+		cost_field.set_field_cell_value(255, FieldCell::new(0, 9));
 		let mut portals = Portals::default();
 		portals.recalculate_portals(&sector_cost_fields, &sector_id, 30, 30);
 		let northern_side_portal_count = 0;
@@ -567,8 +567,8 @@ use super::*;
 		let sector_id = SectorID::new(1, 1);
 		let cost_field = sector_cost_fields.get_mut().get_mut(&sector_id).unwrap();
 		// switch some fields to impassable
-		cost_field.set_grid_value(255, FieldCell::new(9, 5));
-		cost_field.set_grid_value(255, FieldCell::new(0, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(9, 5));
+		cost_field.set_field_cell_value(255, FieldCell::new(0, 9));
 		let mut portals = Portals::default();
 		portals.recalculate_portals(&sector_cost_fields, &sector_id, 30, 30);
 		let northern_side_portal_count = 1;
@@ -586,10 +586,10 @@ use super::*;
 		let sector_id = SectorID::new(1, 2);
 		let cost_field = sector_cost_fields.get_mut().get_mut(&sector_id).unwrap();
 		// switch some fields to impassable
-		cost_field.set_grid_value(255, FieldCell::new(4, 0));
-		cost_field.set_grid_value(255, FieldCell::new(6, 0));
-		cost_field.set_grid_value(255, FieldCell::new(9, 5));
-		cost_field.set_grid_value(255, FieldCell::new(0, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(4, 0));
+		cost_field.set_field_cell_value(255, FieldCell::new(6, 0));
+		cost_field.set_field_cell_value(255, FieldCell::new(9, 5));
+		cost_field.set_field_cell_value(255, FieldCell::new(0, 9));
 		let mut portals = Portals::default();
 		portals.recalculate_portals(&sector_cost_fields, &sector_id, 30, 30);
 		let northern_side_portal_count = 3;
@@ -636,7 +636,7 @@ use super::*;
 		// update the top-left CostFields and calculate new portals
 		let mutated_sector_id = SectorID::new(0, 0);
 		let field = sector_cost_fields.get_mut().get_mut(&mutated_sector_id).unwrap();
-		field.set_grid_value(255, FieldCell::new(4, 9));
+		field.set_field_cell_value(255, FieldCell::new(4, 9));
 		sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, map_x_dimension, map_z_dimension);
 
 		let post_first = sector_portals.get_mut().get_mut(&mutated_sector_id).unwrap().clone();
@@ -765,7 +765,7 @@ use super::*;
 		let map_x_dimension = 30;
 		let map_z_dimension = 30;
 		let mut sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
-		sector_cost_fields.get_mut().get_mut(&sector_id).unwrap().set_grid_value(255, FieldCell::new(3, 0));
+		sector_cost_fields.get_mut().get_mut(&sector_id).unwrap().set_field_cell_value(255, FieldCell::new(3, 0));
 
 		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
 		// build portals
@@ -788,7 +788,7 @@ use super::*;
 		let map_x_dimension = 30;
 		let map_z_dimension = 30;
 		let mut sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
-		sector_cost_fields.get_mut().get_mut(&neighbour_sector_id).unwrap().set_grid_value(255, FieldCell::new(3, 9));
+		sector_cost_fields.get_mut().get_mut(&neighbour_sector_id).unwrap().set_field_cell_value(255, FieldCell::new(3, 9));
 
 		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
 		// build portals

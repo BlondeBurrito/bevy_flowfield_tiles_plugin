@@ -9,7 +9,7 @@ pub const SECTOR_RESOLUTION: usize = 10;
 /// Defines the dimenions of all field arrays
 pub const FIELD_RESOLUTION: usize = 10;
 
-/// Convenience way of accessing the 4 sides of a sector in [crate::prelude::Portals], the 4 sides of a grid cell in [crate::prelude::IntegrationField] and the 8 directions
+/// Convenience way of accessing the 4 sides of a sector in [crate::prelude::Portals], the 4 sides of a field cell in [crate::prelude::IntegrationField] and the 8 directions
 /// of movement in [crate::prelude::flow_field::FlowField]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -27,7 +27,7 @@ pub enum Ordinal {
 }
 
 impl Ordinal {
-	/// Based on a grid cells `(column, row)` position find its neighbours based on FIELD_RESOLUTION limits (up to 4)
+	/// Based on a field cells `(column, row)` position find its neighbours based on FIELD_RESOLUTION limits (up to 4)
 	pub fn get_orthogonal_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
 		let mut neighbours = Vec::new();
 		if cell_id.get_row() > 0 {
@@ -44,7 +44,7 @@ impl Ordinal {
 		}
 		neighbours
 	}
-	/// Based on a grid cells `(column, row)` position find all possible neighbours inclduing diagonal directions
+	/// Based on a field cells `(column, row)` position find all possible neighbours inclduing diagonal directions
 	pub fn get_all_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
 		let mut neighbours = Vec::new();
 		if cell_id.get_row() > 0 {
@@ -228,28 +228,28 @@ impl Ordinal {
 mod tests {
 	use super::*;
 	#[test]
-	fn ordinal_grid_cell_neighbours() {
+	fn ordinal_field_cell_neighbours() {
 		let cell_id = FieldCell::new(0, 0);
 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
 		let actual = vec![FieldCell::new(1, 0), FieldCell::new(0, 1)];
 		assert_eq!(actual, result);
 	}
 	#[test]
-	fn ordinal_grid_cell_neighbours2() {
+	fn ordinal_field_cell_neighbours2() {
 		let cell_id = FieldCell::new(9, 9);
 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
 		let actual = vec![FieldCell::new(9, 8), FieldCell::new(8, 9)];
 		assert_eq!(actual, result);
 	}
 	#[test]
-	fn ordinal_grid_cell_neighbours3() {
+	fn ordinal_field_cell_neighbours3() {
 		let cell_id = FieldCell::new(4, 4);
 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
 		let actual = vec![FieldCell::new(4, 3), FieldCell::new(5, 4), FieldCell::new(4, 5), FieldCell::new(3, 4)];
 		assert_eq!(actual, result);
 	}
 	#[test]
-	fn ordinal_grid_cell_neighbours4() {
+	fn ordinal_field_cell_neighbours4() {
 		let cell_id = FieldCell::new(5, 0);
 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
 		let actual = vec![FieldCell::new(6, 0), FieldCell::new(5, 1), FieldCell::new(4, 0)];

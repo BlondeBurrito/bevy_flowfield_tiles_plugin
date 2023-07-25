@@ -33,7 +33,7 @@ struct SectorLabel(u32, u32);
 
 /// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
 #[derive(Component)]
-struct GridLabel(usize, usize);
+struct FieldCellLabel(usize, usize);
 
 /// Labels the actor to enable getting its [Transform] easily
 #[derive(Component)]
@@ -45,7 +45,7 @@ struct Actor;
 #[derive(Default, Component)]
 struct Pathing {
 	source_sector: Option<SectorID>,
-	source_grid_cell: Option<FieldCell>,
+	source_field_cell: Option<FieldCell>,
 	target_sector: Option<SectorID>,
 	target_goal: Option<FieldCell>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
@@ -82,7 +82,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					transform: Transform::from_xyz(x, y, 0.0),
 					..default()
 				})
-				.insert(GridLabel(i, j))
+				.insert(FieldCellLabel(i, j))
 				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
 			}
 		}
@@ -134,7 +134,7 @@ fn user_input(
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_grid_cell) = get_sector_and_field_id_from_xy(
+				let (source_sector_id, source_field_cell) = get_sector_and_field_id_from_xy(
 					tform.translation.truncate(),
 					PIXEL_LENGTH,
 					PIXEL_DEPTH,
@@ -143,17 +143,17 @@ fn user_input(
 				.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
-					source_sector_id, source_grid_cell
+					source_sector_id, source_field_cell
 				);
 				event.send(EventPathRequest::new(
 					source_sector_id,
-					source_grid_cell,
+					source_field_cell,
 					target_sector_id,
 					goal_id,
 				));
 				// update the actor pathing
 				pathing.source_sector = Some(source_sector_id);
-				pathing.source_grid_cell = Some(source_grid_cell);
+				pathing.source_field_cell = Some(source_field_cell);
 				pathing.target_sector = Some(target_sector_id);
 				pathing.target_goal = Some(goal_id);
 				pathing.portal_route = None;
@@ -194,7 +194,7 @@ fn actor_steering(
 		if let Some(route) = pathing.portal_route.as_mut() {
 			// info!("Route: {:?}", route);
 			// find the current actors postion in grid space
-			let (curr_actor_sector, curr_actor_grid) = get_sector_and_field_id_from_xy(
+			let (curr_actor_sector, curr_actor_field_cell) = get_sector_and_field_id_from_xy(
 				tform.translation.truncate(),
 				PIXEL_LENGTH,
 				PIXEL_DEPTH,
@@ -213,10 +213,10 @@ fn actor_steering(
 				if *sector == curr_actor_sector {
 					// get the flow field
 					if let Some(field) = flow_cache.get_field(*sector, *goal) {
-						// based on actor grid cell find the directional vector it should move in
-						let cell_value = field.get_grid_value(curr_actor_grid);
+						// based on actor field cell find the directional vector it should move in
+						let cell_value = field.get_field_cell_value(curr_actor_field_cell);
 						let dir = get_2d_direction_unit_vector_from_bits(cell_value);
-						// info!("In sector {:?}, in grid cell {:?}", sector, curr_actor_grid);
+						// info!("In sector {:?}, in field cell {:?}", sector, curr_actor_field_cell);
 						// info!("Direction to move: {}", dir);
 						let velocity = dir * SPEED;
 						// move the actor based on the velocity
@@ -244,7 +244,7 @@ fn update_sprite_visuals_based_on_actor(
 	actor_q: Query<&Pathing, With<Actor>>,
 	flowfield_q: Query<&FlowFieldCache>,
 	costfield_q: Query<&SectorCostFields>,
-	mut grid_q: Query<(&mut Handle<Image>, &GridLabel, &SectorLabel)>,
+	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel, &SectorLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
 	let f_cache = flowfield_q.get_single().unwrap();
@@ -255,7 +255,7 @@ fn update_sprite_visuals_based_on_actor(
 		for (s, g) in route.iter() {
 			route_map.insert(*s, *g);
 		}
-		for (mut handle, grid_label, sector_label) in grid_q.iter_mut() {
+		for (mut handle, field_cell_label, sector_label) in field_cell_q.iter_mut() {
 			// look for the value in the route_map if it's part of the flow, otherwise use the cost field
 			if route_map.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
 				let goal = route_map
@@ -264,7 +264,7 @@ fn update_sprite_visuals_based_on_actor(
 				if let Some(flowfield) =
 					f_cache.get_field(SectorID::new(sector_label.0, sector_label.1), *goal)
 				{
-					let flow_value = flowfield.get_grid_value(FieldCell::new(grid_label.0, grid_label.1));
+					let flow_value = flowfield.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
 					let icon = get_ord_icon(flow_value);
 					let new_handle: Handle<Image> = asset_server.load(icon);
 					*handle = new_handle;
@@ -274,7 +274,7 @@ fn update_sprite_visuals_based_on_actor(
 					.get()
 					.get(&SectorID::new(sector_label.0, sector_label.1))
 					.unwrap()
-					.get_grid_value(FieldCell::new(grid_label.0, grid_label.1));
+					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
 				let icon = get_basic_icon(value);
 				let new_handle: Handle<Image> = asset_server.load(icon);
 				*handle = new_handle;

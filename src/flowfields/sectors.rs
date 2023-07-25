@@ -121,7 +121,7 @@ impl SectorCostFields {
 			for (row, record) in rdr.records().enumerate() {
 				for (column, value) in record.unwrap().iter().enumerate() {
 					let value_u8: u8 = value.parse().expect("CSV expects u8 values");
-					cost_field.set_grid_value(value_u8, FieldCell::new(column, row));
+					cost_field.set_field_cell_value(value_u8, FieldCell::new(column, row));
 				}
 			}
 			sector_cost_fields.get_mut().insert(*sector_id, cost_field);
@@ -319,7 +319,7 @@ pub fn get_ordinal_and_ids_of_neighbouring_sectors(
 }
 
 /// From the position of a `cell_id`, if it sits along a boundary, return the [Ordinal] of that boundary. Note that if the `cell_id` is in a field corner then it'll have two boundaries. Note that if the `cell_id` is not in fact along a boundary then this will panic
-pub fn get_boundary_ordinal_from_grid_cell(cell_id: &FieldCell) -> Vec<Ordinal> {
+pub fn get_boundary_ordinal_from_field_cell(cell_id: &FieldCell) -> Vec<Ordinal> {
 	let mut boundaries = Vec::new();
 	if cell_id.get_row() == 0 {
 		boundaries.push(Ordinal::North);

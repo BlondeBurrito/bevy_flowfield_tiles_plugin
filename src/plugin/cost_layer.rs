@@ -11,9 +11,9 @@ use bevy::prelude::*;
 pub struct EventUpdateCostfieldsCell {
 	/// FieldCell to update
 	cell: FieldCell,
-	/// The sector the field/grid cell resides in
+	/// The sector the field cell resides in
 	sector: SectorID,
-	/// The value the field/grid cell should be assigned
+	/// The value the field cell should be assigned
 	cell_value: u8,
 }
 
@@ -48,13 +48,13 @@ pub fn process_costfields_updates(
 	mut event_portal_rebuild: EventWriter<EventRebuildSectorPortals>,
 ) {
 	for event in events.iter() {
-		let grid_cell = event.get_cell();
+		let field_cell = event.get_cell();
 		let sector_id = event.get_sector();
 		let cost = event.get_cost_value();
 		for mut costfields in costfields_q.iter_mut() {
 			for (sector, field) in costfields.get_mut().iter_mut() {
 				if *sector == sector_id {
-					field.set_grid_value(cost, grid_cell);
+					field.set_field_cell_value(cost, field_cell);
 					event_portal_rebuild.send(EventRebuildSectorPortals::new(sector_id));
 				}
 			}
@@ -209,7 +209,7 @@ pub fn clean_cache(
 		}
 		// // send events to regenerate routes
 		// for metadata in to_purge.iter() {
-		// 	//TODO someway of getting the orignal source_grid_cell instead of (5,5) assumption
+		// 	//TODO someway of getting the orignal source_field_cell instead of (5,5) assumption
 		// 	event_path_request.send(EventPathRequest::new(
 		// 		metadata.get_source_sector(),
 		// 		(5, 5),

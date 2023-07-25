@@ -22,17 +22,17 @@ const BITS_SOUTH_EAST: u8 = 0b0000_0110;
 const BITS_SOUTH_WEST: u8 = 0b0000_1100;
 /// Bit to indicate a north-westerly direction
 const BITS_NORTH_WEST: u8 = 0b0000_1001;
-/// Bit to indicate an impassable grid
+/// Bit to indicate an impassable field
 const BITS_ZERO: u8 = 0b0000_0000;
-/// Default grid cell value of a new [FlowField]
+/// Default field cell value of a new [FlowField]
 const BITS_DEFAULT: u8 = 0b0000_1111;
-/// Flags a pathable grid cell
+/// Flags a pathable field cell
 const BITS_PATHABLE: u8 = 0b0001_0000;
-/// Flags a grid cell that has line-of-sight to the goal
+/// Flags a field cell that has line-of-sight to the goal
 const BITS_HAS_LOS: u8 = 0b0010_0000;
-/// Flags a grid cell as being the goal
+/// Flags a field cell as being the goal
 const BITS_GOAL: u8 = 0b0100_0000;
-/// Flags a grid cell as being a portal to another sector
+/// Flags a field cell as being a portal to another sector
 const BITS_PORTAL_GOAL: u8 = 0b1000_0000;
 
 /// Convert an [Ordinal] to a bit representation
@@ -65,16 +65,16 @@ impl Field<u8> for FlowField {
 		&self.0
 	}
 	/// Retrieve a field cell value
-	fn get_grid_value(&self, field_cell: FieldCell) -> u8 {
+	fn get_field_cell_value(&self, field_cell: FieldCell) -> u8 {
 		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot get a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
+			panic!("Cannot get a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
 		self.0[field_cell.get_column()][field_cell.get_row()]
 	}
 	/// Set a field cell to a value
-	fn set_grid_value(&mut self, value: u8, field_cell: FieldCell) {
+	fn set_field_cell_value(&mut self, value: u8, field_cell: FieldCell) {
 		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot set a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
+			panic!("Cannot set a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
 		self.0[field_cell.get_column()][field_cell.get_row()] = value;
 	}
@@ -107,21 +107,21 @@ impl FlowField {
 					let mut value = 0;
 					value |= BITS_PORTAL_GOAL;
 					value |= ordinal_bits;
-					self.set_grid_value(value, *goal);
+					self.set_field_cell_value(value, *goal);
 				} //TODO this sould never ever be none...
 			}
 		} else {
 			// set goal cells
-			self.set_grid_value(BITS_GOAL, goals[0]);
+			self.set_field_cell_value(BITS_GOAL, goals[0]);
 		}
 
 		for (i, column) in integration_field.get_field().iter().enumerate() {
 			for (j, _row) in column.iter().enumerate() {
-				if self.get_grid_value(FieldCell::new(i, j)) == BITS_DEFAULT {
-					let current_cost = integration_field.get_grid_value(FieldCell::new(i, j));
+				if self.get_field_cell_value(FieldCell::new(i, j)) == BITS_DEFAULT {
+					let current_cost = integration_field.get_field_cell_value(FieldCell::new(i, j));
 					// mark impassable //TODO maybe skip? waste of time perhaps
 					if current_cost == u16::MAX {
-						self.set_grid_value(BITS_ZERO, FieldCell::new(i, j));
+						self.set_field_cell_value(BITS_ZERO, FieldCell::new(i, j));
 					} else if current_cost != 0 {
 						// skip goals of zero
 						// store the cheapest node
@@ -129,7 +129,7 @@ impl FlowField {
 						let mut cheapest_neighbour = None;
 						let neighbours = Ordinal::get_all_cell_neighbours(FieldCell::new(i, j));
 						for n in neighbours.iter() {
-							let neighbour_cost = integration_field.get_grid_value(*n);
+							let neighbour_cost = integration_field.get_field_cell_value(*n);
 							if neighbour_cost < cheapest_value {
 								cheapest_value = neighbour_cost;
 								cheapest_neighbour = Some(n);
@@ -141,7 +141,7 @@ impl FlowField {
 							let mut value = 0;
 							value |= bit_ord;
 							value |= BITS_PATHABLE;
-							self.set_grid_value(value, FieldCell::new(i, j));
+							self.set_field_cell_value(value, FieldCell::new(i, j));
 						} //TODO this should never ever be none...
 					}
 				}
@@ -275,7 +275,7 @@ pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
 		_ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
-/// Reading the directional bits of a [FlowField] grid cell obtain a unit
+/// Reading the directional bits of a [FlowField] field cell obtain a unit
 /// vector in 2d space of the direction
 pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
 	let dir_filter = 0b0000_1111;
@@ -293,7 +293,7 @@ pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
 		_ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
-/// Reading the directional bits of a [FlowField] grid cell obtain a unit
+/// Reading the directional bits of a [FlowField] field cell obtain a unit
 /// vector in 3d space of the direction across the x-z plane
 pub fn get_3d_direction_unit_vector_from_bits(cell_value: u8) -> Vec3 {
 	let dir_filter = 0b0000_1111;
@@ -319,7 +319,7 @@ mod tests {
 	#[test]
 	fn default_init() {
 		let flow_field = FlowField::default();
-		let v = flow_field.get_grid_value(FieldCell::new(0, 0));
+		let v = flow_field.get_field_cell_value(FieldCell::new(0, 0));
 		assert_eq!(BITS_DEFAULT, v);
 	}
 	#[test]

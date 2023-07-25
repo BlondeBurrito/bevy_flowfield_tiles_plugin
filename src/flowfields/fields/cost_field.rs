@@ -1,6 +1,6 @@
 //! The CostField contains a 2D array of 8-bit values. The values correspond to the cost of that
-//! grid in the array. A value of 1 is the default, a value of 255 is a special case that idicates
-//! that the grid cell is strictly forbidden from being used in a pathing calculation (effectively
+//! cell in the array. A value of 1 is the default, a value of 255 is a special case that idicates
+//! that the field cell is strictly forbidden from being used in a pathing calculation (effectively
 //! saying there is a wall or cliff/impassable terrain there). Any other value indicates a harder
 //! cost of movement which could be from a slope or marshland or others.
 //!
@@ -60,17 +60,17 @@ impl Field<u8> for CostField {
 	fn get_field(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
-	/// Retrieve a grid cell value
-	fn get_grid_value(&self, field_cell: FieldCell) -> u8 {
+	/// Retrieve a field cell value
+	fn get_field_cell_value(&self, field_cell: FieldCell) -> u8 {
 		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot get a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
+			panic!("Cannot get a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
 		self.0[field_cell.get_column()][field_cell.get_row()]
 	}
-	/// Set a grid cell to a value
-	fn set_grid_value(&mut self, value: u8, field_cell: FieldCell) {
+	/// Set a field cell to a value
+	fn set_field_cell_value(&mut self, value: u8, field_cell: FieldCell) {
 		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot set a CostField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
+			panic!("Cannot set a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
 		self.0[field_cell.get_column()][field_cell.get_row()] = value;
 	}
@@ -109,7 +109,7 @@ impl CostField {
 					if *n == target {
 						return (true, steps_taken);
 					}
-					let cell_cost = cost_field.get_grid_value(*n);
+					let cell_cost = cost_field.get_field_cell_value(*n);
 					// ignore impassable cells
 					if cell_cost != 255 && !visited.contains(n) {
 						// keep exploring
@@ -145,8 +145,8 @@ mod tests {
 	fn get_cost_field_value() {
 		let mut cost_field = CostField::default();
 		let field_cell = FieldCell::new(9, 9);
-		cost_field.set_grid_value(255, field_cell);
-		let result = cost_field.get_grid_value(field_cell);
+		cost_field.set_field_cell_value(255, field_cell);
+		let result = cost_field.get_field_cell_value(field_cell);
 		let actual: u8 = 255;
 		assert_eq!(actual, result);
 	}
@@ -170,10 +170,10 @@ mod tests {
 		// |__|__|__|__|__|x_|__|__|__|__|
 		// |__|__|__|__|__|x_|P_|__|__|__|
 		let mut cost_field = CostField::default();
-		cost_field.set_grid_value(255, FieldCell::new(5, 9));
-		cost_field.set_grid_value(255, FieldCell::new(5, 8));
-		cost_field.set_grid_value(255, FieldCell::new(5, 7));
-		cost_field.set_grid_value(255, FieldCell::new(6, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(6, 7));
 		let source = FieldCell::new(0, 4);
 		let target = FieldCell::new(6, 9);
 
@@ -196,13 +196,13 @@ mod tests {
 		// |__|__|__|__|__|x_|__|x_|__|__|
 		// |__|__|__|__|__|x_|P_|x_|__|__|
 		let mut cost_field = CostField::default();
-		cost_field.set_grid_value(255, FieldCell::new(5, 9));
-		cost_field.set_grid_value(255, FieldCell::new(5, 8));
-		cost_field.set_grid_value(255, FieldCell::new(5, 7));
-		cost_field.set_grid_value(255, FieldCell::new(6, 7));
-		cost_field.set_grid_value(255, FieldCell::new(7, 7));
-		cost_field.set_grid_value(255, FieldCell::new(7, 8));
-		cost_field.set_grid_value(255, FieldCell::new(7, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(6, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 9));
 		let source = FieldCell::new(0, 4);
 		let target = FieldCell::new(6, 9);
 

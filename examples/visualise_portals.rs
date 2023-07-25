@@ -21,7 +21,7 @@ struct SectorLabel(u32, u32);
 
 /// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
 #[derive(Component)]
-struct GridLabel(usize, usize);
+struct FieldCellLabel(usize, usize);
 
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
@@ -54,7 +54,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					transform: Transform::from_xyz(x, y, 0.0),
 					..default()
 				})
-				.insert(GridLabel(i, j))
+				.insert(FieldCellLabel(i, j))
 				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
 			}
 		}
@@ -71,7 +71,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 /// Spawn navigation related entities
 fn show_portals(
 	portals_q: Query<&SectorPortals>,
-	mut grid_q: Query<(&mut Handle<Image>, &GridLabel, &SectorLabel)>,
+	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel, &SectorLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
 	let sector_portals = portals_q.get_single().unwrap().get();
@@ -87,13 +87,13 @@ fn show_portals(
 		sector_portal_ids.insert(*sector, portal_ids);
 	}
 	// switch grid sprites to indicate portals
-	for (mut handle, grid_label, sector_label) in grid_q.iter_mut() {
+	for (mut handle, field_cell_label, sector_label) in field_cell_q.iter_mut() {
 		// lookup the sector and grid
 		if sector_portal_ids.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
 			let value = sector_portal_ids
 				.get(&SectorID::new(sector_label.0, sector_label.1))
 				.unwrap();
-			if value.contains(&(grid_label.0, grid_label.1)) {
+			if value.contains(&(field_cell_label.0, field_cell_label.1)) {
 				let new_handle: Handle<Image> = asset_server.load("ordinal_icons/portals.png");
 				*handle = new_handle;
 			}

@@ -10,11 +10,11 @@ use bevy::prelude::*;
 pub struct EventPathRequest {
 	/// The starting sector of the request
 	source_sector: SectorID,
-	/// The starting field/grid cell of the starting sector
+	/// The starting field cell of the starting sector
 	source_field_cell: FieldCell,
 	/// The sector to try and find a path to
 	target_sector: SectorID,
-	/// The field/grid cell in the target sector to find a path to
+	/// The field cell in the target sector to find a path to
 	target_goal: FieldCell,
 }
 
@@ -95,7 +95,6 @@ pub fn handle_path_requests(
 /// for an actors entry and when for an actors exit, we only need to know
 /// about the elements which an actor would use to exit the sector so we filter
 /// the route and trim it down
-#[allow(clippy::type_complexity)]
 pub fn filter_path(path: &mut Vec<(SectorID, FieldCell)>, target_goal: FieldCell) {
 	let mut path_based_on_portal_exits = Vec::new();
 	// target sector and entry portal where we switch the entry portal cell to the goal
@@ -145,7 +144,7 @@ pub fn generate_flow_fields(
 					sectors_expanded_goals.push((*sector_id, vec![*goal]));
 				} else {
 					// portals represent the boundary to another sector, a portal can be spread over
-					// multple grid cells, expand the portal to provide multiple goal
+					// multple field cells, expand the portal to provide multiple goal
 					// targets for moving to another sector
 					let neighbour_sector_id = path[i - 1].0;
 					let g = sector_portals

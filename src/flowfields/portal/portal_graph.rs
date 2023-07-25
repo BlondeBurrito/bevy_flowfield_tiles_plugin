@@ -136,7 +136,7 @@ impl PortalGraph {
 				}
 			}
 		}
-		// convert the grid cell positions to [NodeIndex]
+		// convert the field cell positions to [NodeIndex]
 		let mut node_indices_to_edge = Vec::new();
 		for (pair, cost) in visible_pairs_with_cost.iter() {
 			let source_index = find_index_from_single_portal_and_portal_cell(
@@ -364,7 +364,7 @@ impl PortalGraph {
 		}
 		path
 	}
-	/// From any grid cell at a `source` sector find any pathable portals witihn that sector and generate a path from each portal to the target. Compare the results and return the path with the best cost associated with it
+	/// From any field cell at a `source` sector find any pathable portals witihn that sector and generate a path from each portal to the target. Compare the results and return the path with the best cost associated with it
 	pub fn find_best_path(
 		&self,
 		source: (SectorID, FieldCell),
@@ -374,7 +374,7 @@ impl PortalGraph {
 	) -> Option<(i32, Vec<NodeIndex>)> {
 		// find portals reachable by the source actor position
 		let source_sector_id = source.0;
-		let source_grid_cell = source.1;
+		let source_field_cell = source.1;
 		let mut source_portals = Vec::new();
 		let portals = sector_portals.get().get(&source_sector_id).unwrap();
 		for ordinal in portals.get().iter() {
@@ -382,7 +382,7 @@ impl PortalGraph {
 				let cost_field = sector_cost_fields.get().get(&source_sector_id).unwrap();
 				if cost_field
 					.can_internal_portal_pair_see_each_other(
-						source_grid_cell,
+						source_field_cell,
 						*cell,
 					)
 					.0
@@ -393,7 +393,7 @@ impl PortalGraph {
 		}
 		// find portals that can reach the target/goal
 		let target_sector_id = target.0;
-		let target_grid_cell = target.1;
+		let target_field_cell = target.1;
 		let mut target_portals = Vec::new();
 		let portals = sector_portals.get().get(&target_sector_id).unwrap();
 		for ordinal in portals.get().iter() {
@@ -401,7 +401,7 @@ impl PortalGraph {
 				let cost_field = sector_cost_fields.get().get(&target_sector_id).unwrap();
 				if cost_field
 					.can_internal_portal_pair_see_each_other(
-						target_grid_cell,
+						target_field_cell,
 						*cell,
 					)
 					.0
@@ -449,8 +449,8 @@ impl PortalGraph {
 	// 	}
 	// 	None
 	// }
-	/// Iterate over the "translator" (`self.node_index_translation`) and search for a portal node of
-	/// `search_index` and identify the sector it resides in and the cell grid
+	/// Iterate over the "translator" (`self.node_index_translation`) and search for a field cell of
+	/// `search_index` and identify the sector it resides in and the cell
 	/// position of it within that sector
 	fn find_portal_sector_id_and_cell_position_from_graph_index(
 		&self,
@@ -496,7 +496,7 @@ impl PortalGraph {
 		}
 		None
 	}
-	// /// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular grid portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
+	// /// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular field portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
 	// fn find_index_from_single_portal_and_portal_cell(
 	// 	&self,
 	// 	portals: &Portals,
@@ -517,7 +517,7 @@ impl PortalGraph {
 	// }
 }
 
-/// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular grid portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
+/// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular field portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
 fn find_index_from_single_portal_and_portal_cell(
 	translator: &BTreeMap<SectorID, [Vec<NodeIndex>; 4]>,
 	portals: &Portals,
@@ -698,7 +698,7 @@ use super::*;
 		// update the top-left CostFields and calculate new portals
 		let mutated_sector_id = SectorID::new(0, 0);
 		let field = sector_cost_fields.get_mut().get_mut(&mutated_sector_id).unwrap();
-		field.set_grid_value(255, FieldCell::new(4, 9));
+		field.set_field_cell_value(255, FieldCell::new(4, 9));
 		sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, map_x_dimension, map_z_dimension);
 
 		// This produces a new representation with an extra portal, `x` denotes the impassable point
@@ -744,7 +744,7 @@ use super::*;
 	// 	// update the top-left CostFields and calculate new portals
 	// 	let mutated_sector_id = (0, 0);
 	// 	let field = sector_cost_fields.get_mut().get_mut(&mutated_sector_id).unwrap();
-	// 	field.set_grid_value(255, 4, 9);
+	// 	field.set_field_cell_value(255, 4, 9);
 	// 	sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, map_x_dimension, map_z_dimension);
 
 	// 	// build the graph

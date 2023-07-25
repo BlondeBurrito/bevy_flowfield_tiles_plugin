@@ -40,25 +40,25 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	);
 	//
 	let source_sector = SectorID::new(2, 0);
-	let source_grid_cell = FieldCell::new(7, 3);
+	let source_field_cell = FieldCell::new(7, 3);
 	let target_sector = SectorID::new(0, 2);
-	let target_grid_cell = FieldCell::new(0, 6);
+	let target_field_cell = FieldCell::new(0, 6);
 	// path from actor to goal sectors
 	let node_path = portal_graph
 		.find_best_path(
-			(source_sector, source_grid_cell),
-			(target_sector, target_grid_cell),
+			(source_sector, source_field_cell),
+			(target_sector, target_field_cell),
 			&sector_portals,
 			&sector_cost_fields,
 		)
 		.unwrap();
-	// convert to grid and sector coords
+	// convert to field cell and sector coords
 	let mut path =
 		portal_graph.convert_index_path_to_sector_portal_cells(node_path.1, &sector_portals);
 	let mut path_based_on_portal_exits = Vec::new();
 	// target sector and entry portal where we switch the entry portal cell to the goal
 	let mut end = path.pop().unwrap();
-	end.1 = target_grid_cell;
+	end.1 = target_field_cell;
 	// sector and field of leaving starting sector if source sector and target sector are different
 	// otherwise it was a single element path and we already removed it
 	if !path.is_empty() {
@@ -80,7 +80,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			sectors_expanded_goals.push((*sector_id, vec![*goal]));
 		} else {
 			// portals represent the boundary to another sector, a portal can be spread over
-			// multple grid cells, expand the portal to provide multiple goal
+			// multple field cells, expand the portal to provide multiple goal
 			// targets for moving to another sector
 			let neighbour_sector_id = path[i - 1].0;
 			let g = sector_portals
