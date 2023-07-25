@@ -16,19 +16,44 @@ pub trait Field<T> {
 	/// Get a reference to the field array
 	fn get_field(&self) -> &[[T; FIELD_RESOLUTION]; FIELD_RESOLUTION];
 	/// Retrieve a grid cell value
-	fn get_grid_value(&self, column: usize, row: usize) -> T;
+	fn get_grid_value(&self, field_cell: FieldCell) -> T;
 	/// Set a grid cell to a value
-	fn set_grid_value(&mut self, value: T, column: usize, row: usize);
+	fn set_grid_value(&mut self, value: T, field_cell: FieldCell);
 }
+
+/// ID of a cell within a field
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
+pub struct FieldCell((usize, usize));
+
+impl FieldCell {
+	/// Create a new instance of [FieldCell]
+	pub fn new(column: usize, row: usize) -> Self {
+		FieldCell((column, row))
+	}
+	/// Get the sector `(column, row)` tuple
+	pub fn get_column_row(&self) -> (usize, usize) {
+		self.0
+	}
+	/// Get the sector column
+	pub fn get_column(&self) -> usize {
+		self.0 .0
+	}
+	/// Get the sector row
+	pub fn get_row(&self) -> usize {
+		self.0 .1
+	}
+}
+
 /// Describes the properties of a route
 #[derive(Clone, Copy, Debug)]
 pub struct RouteMetadata {
 	/// Starting sector of the route
-	source_sector: (u32, u32),
+	source_sector: SectorID,
 	/// Sector to find a route to
-	target_sector: (u32, u32),
+	target_sector: SectorID,
 	/// Field/grid cell of the goal in the target sector
-	target_goal: (usize, usize),
+	target_goal: FieldCell,
 	//? If a game is running for 136 years bad things will start happening here
 	/// Marks the route based on time elapsed since app start, used to enable automatic cleardown of long lived routes that are probably not needed anymore
 	time_generated: Duration,
@@ -61,15 +86,15 @@ impl PartialOrd for RouteMetadata {
 
 impl RouteMetadata {
 	/// Get the source sector
-	pub fn get_source_sector(&self) -> (u32, u32) {
+	pub fn get_source_sector(&self) -> SectorID {
 		self.source_sector
 	}
 	/// Get the target sector
-	pub fn get_target_sector(&self) -> (u32, u32) {
+	pub fn get_target_sector(&self) -> SectorID {
 		self.target_sector
 	}
 	/// Get the goal
-	pub fn get_target_goal(&self) -> (usize, usize) {
+	pub fn get_target_goal(&self) -> FieldCell {
 		self.target_goal
 	}
 	/// Get when the route was generated
@@ -80,27 +105,27 @@ impl RouteMetadata {
 /// Each key makes use of custom Ord and Eq implementations based on comparing `(source_id, target_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
 #[allow(clippy::type_complexity)]
 #[derive(Component, Default, Clone)]
-pub struct RouteCache(BTreeMap<RouteMetadata, Vec<((u32, u32), (usize, usize))>>);
+pub struct RouteCache(BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>>);
 
 impl RouteCache {
 	/// Get the map of routes
 	#[allow(clippy::type_complexity)]
-	pub fn get(&self) -> &BTreeMap<RouteMetadata, Vec<((u32, u32), (usize, usize))>> {
+	pub fn get(&self) -> &BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
 		&self.0
 	}
 	/// Get a mutable reference to the map of routes
 	#[allow(clippy::type_complexity)]
-	pub fn get_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Vec<((u32, u32), (usize, usize))>> {
+	pub fn get_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
 		&mut self.0
 	}
 	/// Get a high-level sector to sector route. Returns [None] if it doesn't exist
 	#[allow(clippy::type_complexity)]
 	pub fn get_route(
 		&self,
-		source_sector: (u32, u32),
-		target_sector: (u32, u32),
-		goal_id: (usize, usize),
-	) -> Option<&Vec<((u32, u32), (usize, usize))>> {
+		source_sector: SectorID,
+		target_sector: SectorID,
+		goal_id: FieldCell,
+	) -> Option<&Vec<(SectorID, FieldCell)>> {
 		let route_data = RouteMetadata {
 			source_sector,
 			target_sector,
@@ -114,11 +139,11 @@ impl RouteCache {
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`
 	pub fn insert_route(
 		&mut self,
-		source_sector: (u32, u32),
-		target_sector: (u32, u32),
-		goal_id: (usize, usize),
+		source_sector: SectorID,
+		target_sector: SectorID,
+		goal_id: FieldCell,
 		elapsed_duration: Duration,
-		route: Vec<((u32, u32), (usize, usize))>,
+		route: Vec<(SectorID, FieldCell)>,
 	) {
 		let route_data = RouteMetadata {
 			source_sector,
@@ -137,9 +162,9 @@ impl RouteCache {
 #[derive(Clone, Copy)]
 pub struct FlowFieldMetadata {
 	/// The sector of the corresponding [FlowField]
-	sector_id: (u32, u32),
+	sector_id: SectorID,
 	/// Portal goal or true target goal of the sector
-	goal_id: (usize, usize),
+	goal_id: FieldCell,
 	//? If a game is running for 136 years bad things will start happening here
 	/// Marks the field based on time elapsed since app start, used to enable automatic cleardown of long lived fields that are probably not needed anymore
 	time_generated: Duration,
@@ -155,11 +180,11 @@ impl Eq for FlowFieldMetadata {}
 
 impl FlowFieldMetadata {
 	/// Get the sector
-	pub fn get_sector_id(&self) -> (u32, u32) {
+	pub fn get_sector_id(&self) -> SectorID {
 		self.sector_id
 	}
 	/// Get the goal
-	pub fn get_goal_id(&self) -> (usize, usize) {
+	pub fn get_goal_id(&self) -> FieldCell {
 		self.goal_id
 	}
 	/// Get when the field was generated
@@ -196,7 +221,7 @@ impl FlowFieldCache {
 		&mut self.0
 	}
 	/// Get a [FlowField] based on the `sector_id` and `goal_id`. Returns [None] if the cache doesn't contain a record
-	pub fn get_field(&self, sector_id: (u32, u32), goal_id: (usize, usize)) -> Option<&FlowField> {
+	pub fn get_field(&self, sector_id: SectorID, goal_id: FieldCell) -> Option<&FlowField> {
 		let flow_meta = FlowFieldMetadata {
 			sector_id,
 			goal_id,
@@ -207,8 +232,8 @@ impl FlowFieldCache {
 	/// Insert a [FlowField] into the cache with a sector-goal ID
 	pub fn insert_field(
 		&mut self,
-		sector_id: (u32, u32),
-		goal_id: (usize, usize),
+		sector_id: SectorID,
+		goal_id: FieldCell,
 		elapsed_duration: Duration,
 		field: FlowField,
 	) {

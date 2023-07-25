@@ -285,11 +285,11 @@ Using some example components to track and label an Actor:
 struct Actor;
 #[derive(Default, Component)]
 struct Pathing {
-    source_sector: Option<(u32, u32)>,
-    source_grid_cell: Option<(usize, usize)>,
-    target_sector: Option<(u32, u32)>,
-    target_goal: Option<(usize, usize)>,
-    portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
+    source_sector: Option<SectorID>,
+    source_grid_cell: Option<FieldCell>,
+    target_sector: Option<SectorID>,
+    target_goal: Option<FieldCell>,
+    portal_route: Option<Vec<(SectorID, FieldCell)>>,
 }
 ```
 

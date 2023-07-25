@@ -9,21 +9,21 @@ use bevy::prelude::*;
 #[derive(Event)]
 pub struct EventPathRequest {
 	/// The starting sector of the request
-	source_sector: (u32, u32),
+	source_sector: SectorID,
 	/// The starting field/grid cell of the starting sector
-	source_field_cell: (usize, usize),
+	source_field_cell: FieldCell,
 	/// The sector to try and find a path to
-	target_sector: (u32, u32),
+	target_sector: SectorID,
 	/// The field/grid cell in the target sector to find a path to
-	target_goal: (usize, usize),
+	target_goal: FieldCell,
 }
 
 impl EventPathRequest {
 	pub fn new(
-		source_sector: (u32, u32),
-		source_field_cell: (usize, usize),
-		target_sector: (u32, u32),
-		target_goal: (usize, usize),
+		source_sector: SectorID,
+		source_field_cell: FieldCell,
+		target_sector: SectorID,
+		target_goal: FieldCell,
 	) -> Self {
 		EventPathRequest {
 			source_sector,
@@ -96,7 +96,7 @@ pub fn handle_path_requests(
 /// about the elements which an actor would use to exit the sector so we filter
 /// the route and trim it down
 #[allow(clippy::type_complexity)]
-pub fn filter_path(path: &mut Vec<((u32, u32), (usize, usize))>, target_goal: (usize, usize)) {
+pub fn filter_path(path: &mut Vec<(SectorID, FieldCell)>, target_goal: FieldCell) {
 	let mut path_based_on_portal_exits = Vec::new();
 	// target sector and entry portal where we switch the entry portal cell to the goal
 	let mut end = path.pop().unwrap();
@@ -236,25 +236,25 @@ mod tests {
 	#[test]
 	fn filter_graph_route() {
 		// path in 3x3 sector grid, moving from top right to bottom left
-		let mut path: Vec<((u32, u32), (usize, usize))> = vec![
-			((2, 0), (0, 4)), // start sector and exit
-			((1, 0), (9, 4)), // entry portal of next sector
-			((1, 0), (3, 9)), // exit portal of next sector
-			((1, 1), (3, 0)), // entry portal of next sector
-			((1, 1), (5, 9)), // exit portal of next sector
-			((1, 2), (5, 0)), // entry portal of next sector
-			((1, 2), (0, 3)), // exit portal of next sector
-			((0, 2), (9, 3)) // goal sector and entry portal
+		let mut path: Vec<(SectorID, FieldCell)> = vec![
+			(SectorID::new(2, 0), FieldCell::new(0, 4)), // start sector and exit
+			(SectorID::new(1, 0), FieldCell::new(9, 4)), // entry portal of next sector
+			(SectorID::new(1, 0), FieldCell::new(3, 9)), // exit portal of next sector
+			(SectorID::new(1, 1), FieldCell::new(3, 0)), // entry portal of next sector
+			(SectorID::new(1, 1), FieldCell::new(5, 9)), // exit portal of next sector
+			(SectorID::new(1, 2), FieldCell::new(5, 0)), // entry portal of next sector
+			(SectorID::new(1, 2), FieldCell::new(0, 3)), // exit portal of next sector
+			(SectorID::new(0, 2), FieldCell::new(9, 3)) // goal sector and entry portal
 		];
-		let target_goal = (4, 4);
+		let target_goal = FieldCell::new(4, 4);
 
 		filter_path(&mut path, target_goal);
 		let actual = vec![
-			((2, 0), (0, 4)),
-			((1, 0), (3, 9)),
-			((1, 1), (5, 9)),
-			((1, 2), (0, 3)),
-			((0, 2), (4, 4)) // gets switch to target_goal
+			(SectorID::new(2, 0), FieldCell::new(0, 4)),
+			(SectorID::new(1, 0), FieldCell::new(3, 9)),
+			(SectorID::new(1, 1), FieldCell::new(5, 9)),
+			(SectorID::new(1, 2), FieldCell::new(0, 3)),
+			(SectorID::new(0, 2), FieldCell::new(4, 4)) // gets switch to target_goal
 		];
 
 		assert_eq!(actual, path);
@@ -265,25 +265,25 @@ mod tests {
 		// path in 3x3 sector grid, moving from top right to top right
 		// i.e impassable values mean that the actor must leave its starting sector and
 		// re-enter it from a different portal
-		let mut path: Vec<((u32, u32), (usize, usize))> = vec![
-			((2, 0), (8, 9)), // start sector and exit
-			((2, 1), (8, 0)), // entry portal of next sector
-			((2, 1), (6, 0)), // exit back towards start sector
-			((2, 0), (6, 9)), // entry back into start sector
-			((2, 0), (4, 9)), // leave starting sector again
-			((2, 1), (4, 0)), // entry of neighbour again
-			((2, 1), (2, 0)), // exit back towrards start again
-			((2, 0), (2, 9)), // last entry into original sector
+		let mut path: Vec<(SectorID, FieldCell)> = vec![
+			(SectorID::new(2, 0), FieldCell::new(8, 9)), // start sector and exit
+			(SectorID::new(2, 1), FieldCell::new(8, 0)), // entry portal of next sector
+			(SectorID::new(2, 1), FieldCell::new(6, 0)), // exit back towards start sector
+			(SectorID::new(2, 0), FieldCell::new(6, 9)), // entry back into start sector
+			(SectorID::new(2, 0), FieldCell::new(4, 9)), // leave starting sector again
+			(SectorID::new(2, 1), FieldCell::new(4, 0)), // entry of neighbour again
+			(SectorID::new(2, 1), FieldCell::new(2, 0)), // exit back towrards start again
+			(SectorID::new(2, 0), FieldCell::new(2, 9)), // last entry into original sector
 		];
-		let target_goal = (2, 1);
+		let target_goal = FieldCell::new(2, 1);
 
 		filter_path(&mut path, target_goal);
 		let actual = vec![
-			((2, 0), (8, 9)),
-			((2, 1), (6, 0)),
-			((2, 0), (4, 9)),
-			((2, 1), (2, 0)),
-			((2, 0), (2, 1)), // gets switch to target_goal
+			(SectorID::new(2, 0), FieldCell::new(8, 9)),
+			(SectorID::new(2, 1), FieldCell::new(6, 0)),
+			(SectorID::new(2, 0), FieldCell::new(4, 9)),
+			(SectorID::new(2, 1), FieldCell::new(2, 0)),
+			(SectorID::new(2, 0), FieldCell::new(2, 1)), // gets switch to target_goal
 		];
 
 		assert_eq!(actual, path);

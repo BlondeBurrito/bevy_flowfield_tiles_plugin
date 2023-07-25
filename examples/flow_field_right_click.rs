@@ -37,11 +37,11 @@ struct Actor;
 #[allow(clippy::missing_docs_in_private_items)]
 #[derive(Default, Component)]
 struct Pathing {
-	source_sector: Option<(u32, u32)>,
-	source_grid_cell: Option<(usize, usize)>,
-	target_sector: Option<(u32, u32)>,
-	target_goal: Option<(usize, usize)>,
-	portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
+	source_sector: Option<SectorID>,
+	source_grid_cell: Option<FieldCell>,
+	target_sector: Option<SectorID>,
+	target_goal: Option<FieldCell>,
+	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 }
 /// Init bundle and setup world and actor
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
@@ -166,7 +166,7 @@ fn update_sprite_visuals_based_on_actor(
 		let op_flowfield = cache.get_field(route[0].0, route[0].1);
 		if let Some(flowfield) = op_flowfield {
 			for (mut handle, grid_label) in grid_q.iter_mut() {
-				let flow_value = flowfield.get_grid_value(grid_label.0, grid_label.1);
+				let flow_value = flowfield.get_grid_value(FieldCell::new(grid_label.0, grid_label.1));
 				let icon = get_ord_icon(flow_value);
 				let new_handle: Handle<Image> = asset_server.load(icon);
 				*handle = new_handle;

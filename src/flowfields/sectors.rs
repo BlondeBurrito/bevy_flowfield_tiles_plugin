@@ -6,9 +6,30 @@ use std::collections::BTreeMap;
 
 use crate::prelude::*;
 use bevy::prelude::*;
-//TODO: is this needed?
-/// Shared behaviour of a sector
-trait Sector {}
+
+/// Unique ID of a sector
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
+pub struct SectorID((u32, u32));
+
+impl SectorID {
+	/// Create a new instance of [SectorID]
+	pub fn new(column: u32, row: u32) -> Self {
+		SectorID((column, row))
+	}
+	/// Get the sector `(column, row)` tuple
+	pub fn get(&self) -> (u32, u32) {
+		self.0
+	}
+	/// Get the sector column
+	pub fn get_column(&self) -> u32 {
+		self.0 .0
+	}
+	/// Get the sector row
+	pub fn get_row(&self) -> u32 {
+		self.0 .1
+	}
+}
 
 /// Keys represent unique sector IDs and are in the format of `(column, row)`
 /// when considering a grid of sectors across the map. The sectors begin in the
@@ -16,7 +37,7 @@ trait Sector {}
 /// and values are the [CostField] associated with that sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component, Clone, Default)]
-pub struct SectorCostFields(BTreeMap<(u32, u32), CostField>);
+pub struct SectorCostFields(BTreeMap<SectorID, CostField>);
 
 impl SectorCostFields {
 	/// Create a new instance of [SectorCostFields] based on the map dimensions containing [CostField]
@@ -26,17 +47,17 @@ impl SectorCostFields {
 		let row_count = map_z_dimension / SECTOR_RESOLUTION as u32;
 		for m in 0..column_count {
 			for n in 0..row_count {
-				map.insert((m, n), CostField::default());
+				map.insert(SectorID::new(m, n), CostField::default());
 			}
 		}
 		SectorCostFields(map)
 	}
 	/// Get a reference to the map of sectors and [CostField]
-	pub fn get(&self) -> &BTreeMap<(u32, u32), CostField> {
+	pub fn get(&self) -> &BTreeMap<SectorID, CostField> {
 		&self.0
 	}
 	/// Get a mutable reference to the map of sectors and [CostField]
-	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), CostField> {
+	pub fn get_mut(&mut self) -> &mut BTreeMap<SectorID, CostField> {
 		&mut self.0
 	}
 	/// From a `ron` file generate the [SectorCostFields]
@@ -70,7 +91,7 @@ impl SectorCostFields {
 		for (file_path, file_name) in files {
 			if file_path.ends_with(".csv") {
 				let sector_id_str = file_name.trim_end_matches(".csv").split_once('_').unwrap();
-				let sector_id = (
+				let sector_id = SectorID::new(
 					sector_id_str
 						.0
 						.parse::<u32>()
@@ -100,7 +121,7 @@ impl SectorCostFields {
 			for (row, record) in rdr.records().enumerate() {
 				for (column, value) in record.unwrap().iter().enumerate() {
 					let value_u8: u8 = value.parse().expect("CSV expects u8 values");
-					cost_field.set_grid_value(value_u8, column, row);
+					cost_field.set_grid_value(value_u8, FieldCell::new(column, row));
 				}
 			}
 			sector_cost_fields.get_mut().insert(*sector_id, cost_field);
@@ -114,7 +135,7 @@ impl SectorCostFields {
 /// and values are the [Portals] associated with that sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component, Clone)]
-pub struct SectorPortals(BTreeMap<(u32, u32), Portals>);
+pub struct SectorPortals(BTreeMap<SectorID, Portals>);
 
 impl SectorPortals {
 	/// Create a new instance of [SectorPortals] with default [Portals]
@@ -124,24 +145,24 @@ impl SectorPortals {
 		let row_count = map_z_dimension / SECTOR_RESOLUTION as u32;
 		for m in 0..column_count {
 			for n in 0..row_count {
-				map.insert((m, n), Portals::default());
+				map.insert(SectorID::new(m, n), Portals::default());
 			}
 		}
 		SectorPortals(map)
 	}
 	/// Get a reference the map of [Portals]
-	pub fn get(&self) -> &BTreeMap<(u32, u32), Portals> {
+	pub fn get(&self) -> &BTreeMap<SectorID, Portals> {
 		&self.0
 	}
 	/// Get a mutable reference the map of [Portals]
-	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), Portals> {
+	pub fn get_mut(&mut self) -> &mut BTreeMap<SectorID, Portals> {
 		&mut self.0
 	}
 	/// Whenever a [CostField] is updated the [Portals] for that sector and neighbouring sectors
 	/// need to be recalculated
 	pub fn update_portals(
 		&mut self,
-		changed_cost_field_id: (u32, u32),
+		changed_cost_field_id: SectorID,
 		sector_cost_fields: &SectorCostFields,
 		map_x_dimension: u32,
 		map_z_dimension: u32,
@@ -169,7 +190,7 @@ impl SectorPortals {
 // /// and values are the [IntegrationField] associated with that sector
 // #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 // #[derive(Component)]
-// pub struct SectorIntegrationFields(BTreeMap<(u32, u32), IntegrationField>);
+// pub struct SectorIntegrationFields(BTreeMap<SectorID, IntegrationField>);
 
 // impl SectorIntegrationFields {
 // 	/// Create a new instance of [SectorIntegrationFields] based on the map dimensions containing [IntegrationField]
@@ -185,11 +206,11 @@ impl SectorPortals {
 // 		SectorIntegrationFields(map)
 // 	}
 // 	/// Get a reference to the map of sectors and [IntegrationField]
-// 	pub fn get(&self) -> &BTreeMap<(u32, u32), IntegrationField> {
+// 	pub fn get(&self) -> &BTreeMap<SectorID, IntegrationField> {
 // 		&self.0
 // 	}
 // 	/// Get a mutable reference to the map of sectors and [IntegrationField]
-// 	pub fn get_mut(&mut self) -> &mut BTreeMap<(u32, u32), IntegrationField> {
+// 	pub fn get_mut(&mut self) -> &mut BTreeMap<SectorID, IntegrationField> {
 // 		&mut self.0
 // 	}
 // }
@@ -197,10 +218,10 @@ impl SectorPortals {
 /// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
 /// of the map retrieve the IDs neighbouring sectors
 pub fn get_ids_of_neighbouring_sectors(
-	sector_id: &(u32, u32),
+	sector_id: &SectorID,
 	map_x_dimension: u32,
 	map_z_dimension: u32,
-) -> Vec<(u32, u32)> {
+) -> Vec<SectorID> {
 	//top left                     // top right
 	// has 2 valid neighbours      // has two valid neighbours
 	// ___________                 // ___________
@@ -249,10 +270,10 @@ pub fn get_ids_of_neighbouring_sectors(
 /// of the map retrieve the IDs neighbouring sectors and the [Ordinal] direction from the
 /// current sector that that sector is found in
 pub fn get_ordinal_and_ids_of_neighbouring_sectors(
-	sector_id: &(u32, u32),
+	sector_id: &SectorID,
 	map_x_dimension: u32,
 	map_z_dimension: u32,
-) -> Vec<(Ordinal, (u32, u32))> {
+) -> Vec<(Ordinal, SectorID)> {
 	//top left                     // top right
 	// has 2 valid neighbours      // has two valid neighbours
 	// ___________                 // ___________
@@ -298,24 +319,24 @@ pub fn get_ordinal_and_ids_of_neighbouring_sectors(
 }
 
 /// From the position of a `cell_id`, if it sits along a boundary, return the [Ordinal] of that boundary. Note that if the `cell_id` is in a field corner then it'll have two boundaries. Note that if the `cell_id` is not in fact along a boundary then this will panic
-pub fn get_boundary_ordinal_from_grid_cell(cell_id: &(usize, usize)) -> Vec<Ordinal> {
+pub fn get_boundary_ordinal_from_grid_cell(cell_id: &FieldCell) -> Vec<Ordinal> {
 	let mut boundaries = Vec::new();
-	if cell_id.1 == 0 {
+	if cell_id.get_row() == 0 {
 		boundaries.push(Ordinal::North);
 	}
-	if cell_id.0 == FIELD_RESOLUTION - 1 {
+	if cell_id.get_column() == FIELD_RESOLUTION - 1 {
 		boundaries.push(Ordinal::East);
 	}
-	if cell_id.1 == FIELD_RESOLUTION - 1 {
+	if cell_id.get_row() == FIELD_RESOLUTION - 1 {
 		boundaries.push(Ordinal::South);
 	}
-	if cell_id.0 == 0 {
+	if cell_id.get_column() == 0 {
 		boundaries.push(Ordinal::West);
 	}
 	if !boundaries.is_empty() {
 		boundaries
 	} else {
-		panic!("Grid cell {:?} does not sit along the boundary", cell_id);
+		panic!("{:?} does not sit along the boundary", cell_id);
 	}
 }
 /// From a position in 2D `x, y` space with an origin at `(0, 0)` and the
@@ -327,7 +348,7 @@ pub fn get_sector_id_from_xy(
 	x_dimension_pixels: u32,
 	y_dimension_pixels: u32,
 	pixel_scale: f32,
-) -> Option<(u32, u32)> {
+) -> Option<SectorID> {
 	if position.x < -((x_dimension_pixels / 2) as f32)
 		|| position.x > (x_dimension_pixels / 2) as f32
 		|| position.y < -((y_dimension_pixels / 2) as f32)
@@ -356,11 +377,11 @@ pub fn get_sector_id_from_xy(
 	if row >= y_sector_count {
 		row = y_sector_count - 1;
 	}
-	Some((column, row))
+	Some(SectorID::new(column, row))
 }
 /// Get the `(x,y)` coordinates of the top left corner of a sector in real space
 pub fn get_sector_xy_at_top_left(
-	sector_id: (u32, u32),
+	sector_id: SectorID,
 	map_x_dimension: u32,
 	map_y_dimension: u32,
 	pixel_scale: f32,
@@ -368,10 +389,10 @@ pub fn get_sector_xy_at_top_left(
 	// x sector-grid origin begins in the negative
 	let x_origin = -(map_x_dimension as f32) / 2.0;
 	let sprite_length_of_sector = pixel_scale * SECTOR_RESOLUTION as f32;
-	let x = x_origin + sector_id.0 as f32 * sprite_length_of_sector;
+	let x = x_origin + sector_id.get_column() as f32 * sprite_length_of_sector;
 	// y sector grid origin begins in the positive
 	let y_origin = map_y_dimension as f32 / 2.0;
-	let y = y_origin - sector_id.1 as f32 * sprite_length_of_sector;
+	let y = y_origin - sector_id.get_row() as f32 * sprite_length_of_sector;
 	Vec2::new(x, y)
 }
 /// From a 2d position get the sector and field cell it resides in
@@ -380,7 +401,7 @@ pub fn get_sector_and_field_id_from_xy(
 	map_x_dimension: u32,
 	map_y_dimension: u32,
 	pixel_scale: f32,
-) -> Option<((u32, u32), (usize, usize))> {
+) -> Option<(SectorID, FieldCell)> {
 	if let Some(sector_id) =
 		get_sector_id_from_xy(position, map_x_dimension, map_y_dimension, pixel_scale)
 	{
@@ -388,7 +409,7 @@ pub fn get_sector_and_field_id_from_xy(
 			get_sector_xy_at_top_left(sector_id, map_x_dimension, map_y_dimension, pixel_scale);
 		let field_id_0 = ((position.x - sector_corner_origin.x) / pixel_scale).floor() as usize;
 		let field_id_1 = ((-position.y + sector_corner_origin.y) / pixel_scale).floor() as usize;
-		let field_id = (field_id_0, field_id_1);
+		let field_id = FieldCell::new(field_id_0, field_id_1);
 		return Some((sector_id, field_id));
 	}
 	None
@@ -400,7 +421,7 @@ pub fn get_sector_id_from_xyz(
 	position: Vec3,
 	map_x_dimension: u32,
 	map_z_dimension: u32,
-) -> Option<(u32, u32)> {
+) -> Option<SectorID> {
 	if position.x < -((map_x_dimension / 2) as f32)
 		|| position.x > (map_x_dimension / 2) as f32
 		|| position.z < -((map_z_dimension / 2) as f32)
@@ -429,21 +450,21 @@ pub fn get_sector_id_from_xyz(
 	if row >= z_sector_count {
 		row = z_sector_count - 1;
 	}
-	Some((column, row))
+	Some(SectorID::new(column, row))
 }
 
 /// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
 pub fn get_sector_xyz_at_top_left(
-	sector_id: (u32, u32),
+	sector_id: SectorID,
 	map_x_dimension: u32,
 	map_z_dimension: u32,
 ) -> Vec3 {
 	// x sector-grid origin begins in the negative
 	let x_origin = -(map_x_dimension as f32) / 2.0;
-	let x = x_origin + sector_id.0 as f32 * SECTOR_RESOLUTION as f32;
+	let x = x_origin + sector_id.get_column() as f32 * SECTOR_RESOLUTION as f32;
 	// z sector grid origin begins in the negative
 	let z_origin = -(map_z_dimension as f32) / 2.0;
-	let z = z_origin + sector_id.1 as f32 * SECTOR_RESOLUTION as f32;
+	let z = z_origin + sector_id.get_row() as f32 * SECTOR_RESOLUTION as f32;
 	Vec3::new(x, 0.0, z)
 }
 
@@ -452,13 +473,13 @@ pub fn get_sector_and_field_cell_from_xyz(
 	position: Vec3,
 	map_x_dimension: u32,
 	map_z_dimension: u32,
-) -> Option<((u32, u32), (usize, usize))> {
+) -> Option<(SectorID, FieldCell)> {
 	if let Some(sector_id) = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension) {
 		let sector_corner_origin =
 			get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
 		let field_id_0 = (position.x - sector_corner_origin.x).floor() as usize;
 		let field_id_1 = (position.z - sector_corner_origin.z).floor() as usize;
-		let field_id = (field_id_0, field_id_1);
+		let field_id = FieldCell::new(field_id_0, field_id_1);
 		return Some((sector_id, field_id));
 	}
 	None
@@ -466,7 +487,7 @@ pub fn get_sector_and_field_cell_from_xyz(
 // //TODO fix and test me
 // /// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
 // pub fn get_xyz_sector_centre_from_sector_id(
-// 	sector_id: (u32, u32),
+// 	sector_id: SectorID,
 // 	map_x_dimension: u32,
 // 	map_z_dimension: u32,
 // ) -> Vec3 {
@@ -479,8 +500,8 @@ pub fn get_sector_and_field_cell_from_xyz(
 // //TODO fix and test me
 // /// Calculate the real world `x, y, z` coordinates at the cetnre of a field cell within a sector based on map dimensions
 // pub fn get_xyz_from_field_cell_within_sector(
-// 	sector_id: (u32, u32),
-// 	field_id: (usize, usize),
+// 	sector_id: SectorID,
+// 	field_id: FieldCell,
 // 	map_x_dimension: u32,
 // 	map_z_dimension: u32,
 // ) -> Vec3 {
@@ -502,7 +523,7 @@ mod tests {
 		let map_z_dimension = 20;
 		let position = Vec3::new(-5.0, 0.0, -5.0);
 		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension).unwrap();
-		let actual: (u32, u32) = (0, 0);
+		let actual: SectorID = SectorID::new(0, 0);
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -511,7 +532,7 @@ mod tests {
 		let map_z_dimension = 20;
 		let position = Vec3::new(5.0, 0.0, -5.0);
 		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension).unwrap();
-		let actual: (u32, u32) = (1, 0);
+		let actual: SectorID = SectorID::new(1, 0);
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -520,7 +541,7 @@ mod tests {
 		let map_z_dimension = 20;
 		let position = Vec3::new(5.0, 0.0, 5.0);
 		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension).unwrap();
-		let actual: (u32, u32) = (1, 1);
+		let actual: SectorID = SectorID::new(1, 1);
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -529,57 +550,78 @@ mod tests {
 		let map_z_dimension = 20;
 		let position = Vec3::new(-5.0, 0.0, 5.0);
 		let result = get_sector_id_from_xyz(position, map_x_dimension, map_z_dimension).unwrap();
-		let actual: (u32, u32) = (0, 1);
+		let actual: SectorID = SectorID::new(0, 1);
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_northern_sector_neighbours() {
-		let sector_id = (4, 0);
+		let sector_id = SectorID::new(4, 0);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ids_of_neighbouring_sectors(&sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![(5, 0), (4, 1), (3, 0)];
+		let actual = vec![
+			SectorID::new(5, 0),
+			SectorID::new(4, 1),
+			SectorID::new(3, 0),
+		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_eastern_sector_neighbours() {
-		let sector_id = (19, 3);
+		let sector_id = SectorID::new(19, 3);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ids_of_neighbouring_sectors(&sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![(19, 2), (19, 4), (18, 3)];
+		let actual = vec![
+			SectorID::new(19, 2),
+			SectorID::new(19, 4),
+			SectorID::new(18, 3),
+		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_southern_sector_neighbours() {
-		let sector_id = (5, 19);
+		let sector_id = SectorID::new(5, 19);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ids_of_neighbouring_sectors(&sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![(5, 18), (6, 19), (4, 19)];
+		let actual = vec![
+			SectorID::new(5, 18),
+			SectorID::new(6, 19),
+			SectorID::new(4, 19),
+		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_western_sector_neighbours() {
-		let sector_id = (0, 5);
+		let sector_id = SectorID::new(0, 5);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ids_of_neighbouring_sectors(&sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![(0, 4), (1, 5), (0, 6)];
+		let actual = vec![
+			SectorID::new(0, 4),
+			SectorID::new(1, 5),
+			SectorID::new(0, 6),
+		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_centre_sector_neighbours() {
-		let sector_id = (5, 7);
+		let sector_id = SectorID::new(5, 7);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ids_of_neighbouring_sectors(&sector_id, map_x_dimension, map_z_dimension);
-		let actual = vec![(5, 6), (6, 7), (5, 8), (4, 7)];
+		let actual = vec![
+			SectorID::new(5, 6),
+			SectorID::new(6, 7),
+			SectorID::new(5, 8),
+			SectorID::new(4, 7),
+		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_northern_sector_neighbours_with_drection() {
-		let sector_id = (4, 0);
+		let sector_id = SectorID::new(4, 0);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ordinal_and_ids_of_neighbouring_sectors(
@@ -588,15 +630,15 @@ mod tests {
 			map_z_dimension,
 		);
 		let actual = vec![
-			(Ordinal::East, (5, 0)),
-			(Ordinal::South, (4, 1)),
-			(Ordinal::West, (3, 0)),
+			(Ordinal::East, SectorID::new(5, 0)),
+			(Ordinal::South, SectorID::new(4, 1)),
+			(Ordinal::West, SectorID::new(3, 0)),
 		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_eastern_sector_neighbours_with_drection() {
-		let sector_id = (19, 3);
+		let sector_id = SectorID::new(19, 3);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ordinal_and_ids_of_neighbouring_sectors(
@@ -605,15 +647,15 @@ mod tests {
 			map_z_dimension,
 		);
 		let actual = vec![
-			(Ordinal::North, (19, 2)),
-			(Ordinal::South, (19, 4)),
-			(Ordinal::West, (18, 3)),
+			(Ordinal::North, SectorID::new(19, 2)),
+			(Ordinal::South, SectorID::new(19, 4)),
+			(Ordinal::West, SectorID::new(18, 3)),
 		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_southern_sector_neighbours_with_drection() {
-		let sector_id = (5, 19);
+		let sector_id = SectorID::new(5, 19);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ordinal_and_ids_of_neighbouring_sectors(
@@ -622,15 +664,15 @@ mod tests {
 			map_z_dimension,
 		);
 		let actual = vec![
-			(Ordinal::North, (5, 18)),
-			(Ordinal::East, (6, 19)),
-			(Ordinal::West, (4, 19)),
+			(Ordinal::North, SectorID::new(5, 18)),
+			(Ordinal::East, SectorID::new(6, 19)),
+			(Ordinal::West, SectorID::new(4, 19)),
 		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_western_sector_neighbours_with_drection() {
-		let sector_id = (0, 5);
+		let sector_id = SectorID::new(0, 5);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ordinal_and_ids_of_neighbouring_sectors(
@@ -639,15 +681,15 @@ mod tests {
 			map_z_dimension,
 		);
 		let actual = vec![
-			(Ordinal::North, (0, 4)),
-			(Ordinal::East, (1, 5)),
-			(Ordinal::South, (0, 6)),
+			(Ordinal::North, SectorID::new(0, 4)),
+			(Ordinal::East, SectorID::new(1, 5)),
+			(Ordinal::South, SectorID::new(0, 6)),
 		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn get_centre_sector_neighbours_with_drection() {
-		let sector_id = (5, 7);
+		let sector_id = SectorID::new(5, 7);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let result = get_ordinal_and_ids_of_neighbouring_sectors(
@@ -656,16 +698,16 @@ mod tests {
 			map_z_dimension,
 		);
 		let actual = vec![
-			(Ordinal::North, (5, 6)),
-			(Ordinal::East, (6, 7)),
-			(Ordinal::South, (5, 8)),
-			(Ordinal::West, (4, 7)),
+			(Ordinal::North, SectorID::new(5, 6)),
+			(Ordinal::East, SectorID::new(6, 7)),
+			(Ordinal::South, SectorID::new(5, 8)),
+			(Ordinal::West, SectorID::new(4, 7)),
 		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn sector_xyz_corner_zero() {
-		let sector_id = (0, 0);
+		let sector_id = SectorID::new(0, 0);
 		let map_x_dimension = 30;
 		let map_z_dimension = 30;
 		let result = get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
@@ -674,7 +716,7 @@ mod tests {
 	}
 	#[test]
 	fn sector_xyz_corner_centre() {
-		let sector_id = (1, 1);
+		let sector_id = SectorID::new(1, 1);
 		let map_x_dimension = 30;
 		let map_z_dimension = 30;
 		let result = get_sector_xyz_at_top_left(sector_id, map_x_dimension, map_z_dimension);
@@ -812,7 +854,7 @@ mod tests {
 		let pixel_scale = 64.0;
 		let position = Vec2::new(530.0, 75.0);
 		let result = get_sector_id_from_xy(position, dimensions.0, dimensions.1, pixel_scale);
-		let actual = (1, 0);
+		let actual = SectorID::new(1, 0);
 		assert_eq!(actual, result.unwrap());
 	}
 }

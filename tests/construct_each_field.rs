@@ -29,10 +29,10 @@ fn field_on_field() {
 		map_dimensions.get_row(),
 	);
 	//
-	let source_sector = (2, 0);
-	let source_grid_cell = (7, 3);
-	let target_sector = (0, 2);
-	let target_grid_cell = (0, 6);
+	let source_sector = SectorID::new(2, 0);
+	let source_grid_cell = FieldCell::new(7, 3);
+	let target_sector = SectorID::new(0, 2);
+	let target_grid_cell = FieldCell::new(0, 6);
 	// path from actor to goal sectors
 	let node_path = portal_graph
 		.find_best_path(

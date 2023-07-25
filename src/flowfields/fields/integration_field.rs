@@ -66,55 +66,55 @@ impl Field<u16> for IntegrationField {
 		&self.0
 	}
 	/// Retrieve a grid cell value
-	fn get_grid_value(&self, column: usize, row: usize) -> u16 {
-		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot get a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+	fn get_grid_value(&self, field_cell: FieldCell) -> u16 {
+		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
+			panic!("Cannot get a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
-		self.0[column][row]
+		self.0[field_cell.get_column()][field_cell.get_row()]
 	}
 	/// Set a grid cell to a value
-	fn set_grid_value(&mut self, value: u16, column: usize, row: usize) {
-		if column >= self.0.len() || row >= self.0[0].len() {
-			panic!("Cannot set a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", column, row, self.0.len(), self.0[0].len())
+	fn set_grid_value(&mut self, value: u16, field_cell: FieldCell) {
+		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
+			panic!("Cannot set a IntegrationField grid value, index out of bounds. Asked for column {}, row {}, grid column length is {}, grid row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
 		}
-		self.0[column][row] = value;
+		self.0[field_cell.get_column()][field_cell.get_row()] = value;
 	}
 }
 impl IntegrationField {
 	/// Creates a new [IntegrationField] where all cells are set to `u16::MAX` apart from the `goals` which is set to `0`
-	pub fn new(goals: &Vec<(usize, usize)>) -> Self {
+	pub fn new(goals: &Vec<FieldCell>) -> Self {
 		let mut field = IntegrationField([[u16::MAX; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 		for goal in goals {
-			field.set_grid_value(0, goal.0, goal.1);
+			field.set_grid_value(0, *goal);
 		}
 		field
 	}
 	/// Reset all the cells of the [IntegrationField] to `u16::MAX` apart from the `goals` which are the starting points of calculating the field which is set to `0`
-	pub fn reset(&mut self, goals: &Vec<(usize, usize)>) {
+	pub fn reset(&mut self, goals: &Vec<FieldCell>) {
 		for i in 0..FIELD_RESOLUTION {
 			for j in 0..FIELD_RESOLUTION {
-				self.set_grid_value(u16::MAX, i, j);
+				self.set_grid_value(u16::MAX, FieldCell::new(i, j));
 			}
 		}
 		for goal in goals {
-			self.set_grid_value(0, goal.0, goal.1);
+			self.set_grid_value(0, *goal);
 		}
 	}
 	/// From a list of `goals` (the actual end target goal or portal grid cells
 	/// to the next sector towards the goal sector) grid cells iterate over
 	/// successive neighbouring cells and calculate the field values from the
 	/// `cost_field`
-	pub fn calculate_field(&mut self, goals: &[(usize, usize)], cost_field: &CostField) {
+	pub fn calculate_field(&mut self, goals: &[FieldCell], cost_field: &CostField) {
 		// further positions to process, tuple element 0 is the position, element 1 is the integration cost from the previous cell needed to help calculate element 0s cost
-		let mut queue: Vec<((usize, usize), u16)> = Vec::new();
+		let mut queue: Vec<(FieldCell, u16)> = Vec::new();
 		for goal in goals.iter() {
-			queue.push(((*goal), self.get_grid_value(goal.0, goal.1)));
+			queue.push(((*goal), self.get_grid_value(*goal)));
 		}
 		process_neighbours(self, queue, cost_field);
 		/// Recursively prcoess the cells
 		fn process_neighbours(
 			int_field: &mut IntegrationField,
-			queue: Vec<((usize, usize), u16)>,
+			queue: Vec<(FieldCell, u16)>,
 			cost_field: &CostField,
 		) {
 			let mut next_neighbours = Vec::new();
@@ -123,14 +123,14 @@ impl IntegrationField {
 				let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
 				// iterate over the neighbours calculating int costs
 				for n in neighbours.iter() {
-					let cell_cost = cost_field.get_grid_value(n.0, n.1);
+					let cell_cost = cost_field.get_grid_value(*n);
 					// ignore impassable cells
 					if cell_cost != 255 {
 						// don't overwrite an int cell with a better cost
 						let int_cost = cell_cost as u16 + prev_int_cost;
-						if int_cost < int_field.get_grid_value(n.0, n.1) {
-							int_field.set_grid_value(int_cost, n.0, n.1);
-							next_neighbours.push(((n.0, n.1), int_cost));
+						if int_cost < int_field.get_grid_value(*n) {
+							int_field.set_grid_value(int_cost, *n);
+							next_neighbours.push((*n, int_cost));
 						}
 					}
 				}
@@ -151,7 +151,7 @@ mod tests {
 	fn basic_field() {
 		let cost_field = CostField::default();
 		let mut integration_field = IntegrationField::default();
-		let source = vec![(4, 4)];
+		let source = vec![FieldCell::new(4, 4)];
 		integration_field.reset(&source);
 		integration_field.calculate_field(&source, &cost_field);
 		let result = integration_field.get_field();
@@ -167,22 +167,22 @@ mod tests {
 	#[test]
 	fn complex_field() {
 		let mut cost_field = CostField::default();
-		cost_field.set_grid_value(255, 5, 6);
-		cost_field.set_grid_value(255, 5, 7);
-		cost_field.set_grid_value(255, 6, 9);
-		cost_field.set_grid_value(255, 6, 8);
-		cost_field.set_grid_value(255, 6, 7);
-		cost_field.set_grid_value(255, 6, 4);
-		cost_field.set_grid_value(255, 7, 9);
-		cost_field.set_grid_value(255, 7, 4);
-		cost_field.set_grid_value(255, 8, 4);
-		cost_field.set_grid_value(255, 9, 4);
-		cost_field.set_grid_value(255, 1, 2);
-		cost_field.set_grid_value(255, 1, 1);
-		cost_field.set_grid_value(255, 2, 1);
-		cost_field.set_grid_value(255, 2, 2);
+		cost_field.set_grid_value(255, FieldCell::new(5, 6));
+		cost_field.set_grid_value(255, FieldCell::new(5, 7));
+		cost_field.set_grid_value(255, FieldCell::new(6, 9));
+		cost_field.set_grid_value(255, FieldCell::new(6, 8));
+		cost_field.set_grid_value(255, FieldCell::new(6, 7));
+		cost_field.set_grid_value(255, FieldCell::new(6, 4));
+		cost_field.set_grid_value(255, FieldCell::new(7, 9));
+		cost_field.set_grid_value(255, FieldCell::new(7, 4));
+		cost_field.set_grid_value(255, FieldCell::new(8, 4));
+		cost_field.set_grid_value(255, FieldCell::new(9, 4));
+		cost_field.set_grid_value(255, FieldCell::new(1, 2));
+		cost_field.set_grid_value(255, FieldCell::new(1, 1));
+		cost_field.set_grid_value(255, FieldCell::new(2, 1));
+		cost_field.set_grid_value(255, FieldCell::new(2, 2));
 		let mut integration_field = IntegrationField::default();
-		let source = vec![(4, 4)];
+		let source = vec![FieldCell::new(4, 4)];
 		integration_field.reset(&source);
 		integration_field.calculate_field(&source, &cost_field);
 		let result = integration_field.get_field();

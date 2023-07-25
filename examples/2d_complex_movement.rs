@@ -44,11 +44,11 @@ struct Actor;
 #[allow(clippy::missing_docs_in_private_items)]
 #[derive(Default, Component)]
 struct Pathing {
-	source_sector: Option<(u32, u32)>,
-	source_grid_cell: Option<(usize, usize)>,
-	target_sector: Option<(u32, u32)>,
-	target_goal: Option<(usize, usize)>,
-	portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
+	source_sector: Option<SectorID>,
+	source_grid_cell: Option<FieldCell>,
+	target_sector: Option<SectorID>,
+	target_goal: Option<FieldCell>,
+	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 }
 
 /// Spawn sprites to represent the world
@@ -83,7 +83,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					..default()
 				})
 				.insert(GridLabel(i, j))
-				.insert(SectorLabel(sector_id.0, sector_id.1));
+				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
 			}
 		}
 	}
@@ -214,7 +214,7 @@ fn actor_steering(
 					// get the flow field
 					if let Some(field) = flow_cache.get_field(*sector, *goal) {
 						// based on actor grid cell find the directional vector it should move in
-						let cell_value = field.get_grid_value(curr_actor_grid.0, curr_actor_grid.1);
+						let cell_value = field.get_grid_value(curr_actor_grid);
 						let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 						// info!("In sector {:?}, in grid cell {:?}", sector, curr_actor_grid);
 						// info!("Direction to move: {}", dir);
@@ -251,17 +251,20 @@ fn update_sprite_visuals_based_on_actor(
 	let sc_cache = costfield_q.get_single().unwrap();
 	let pathing = actor_q.get_single().unwrap();
 	if let Some(route) = &pathing.portal_route {
-		let mut route_map: HashMap<(u32, u32), (usize, usize)> = HashMap::new();
+		let mut route_map: HashMap<SectorID, FieldCell> = HashMap::new();
 		for (s, g) in route.iter() {
 			route_map.insert(*s, *g);
 		}
 		for (mut handle, grid_label, sector_label) in grid_q.iter_mut() {
 			// look for the value in the route_map if it's part of the flow, otherwise use the cost field
-			if route_map.contains_key(&(sector_label.0, sector_label.1)) {
-				let goal = route_map.get(&(sector_label.0, sector_label.1)).unwrap();
-				if let Some(flowfield) = f_cache.get_field((sector_label.0, sector_label.1), *goal)
+			if route_map.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
+				let goal = route_map
+					.get(&SectorID::new(sector_label.0, sector_label.1))
+					.unwrap();
+				if let Some(flowfield) =
+					f_cache.get_field(SectorID::new(sector_label.0, sector_label.1), *goal)
 				{
-					let flow_value = flowfield.get_grid_value(grid_label.0, grid_label.1);
+					let flow_value = flowfield.get_grid_value(FieldCell::new(grid_label.0, grid_label.1));
 					let icon = get_ord_icon(flow_value);
 					let new_handle: Handle<Image> = asset_server.load(icon);
 					*handle = new_handle;
@@ -269,9 +272,9 @@ fn update_sprite_visuals_based_on_actor(
 			} else {
 				let value = sc_cache
 					.get()
-					.get(&(sector_label.0, sector_label.1))
+					.get(&SectorID::new(sector_label.0, sector_label.1))
 					.unwrap()
-					.get_grid_value(grid_label.0, grid_label.1);
+					.get_grid_value(FieldCell::new(grid_label.0, grid_label.1));
 				let icon = get_basic_icon(value);
 				let new_handle: Handle<Image> = asset_server.load(icon);
 				*handle = new_handle;

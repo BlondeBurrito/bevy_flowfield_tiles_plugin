@@ -55,7 +55,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					..default()
 				})
 				.insert(GridLabel(i, j))
-				.insert(SectorLabel(sector_id.0, sector_id.1));
+				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
 			}
 		}
 	}
@@ -89,9 +89,9 @@ fn show_portals(
 	// switch grid sprites to indicate portals
 	for (mut handle, grid_label, sector_label) in grid_q.iter_mut() {
 		// lookup the sector and grid
-		if sector_portal_ids.contains_key(&(sector_label.0, sector_label.1)) {
+		if sector_portal_ids.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
 			let value = sector_portal_ids
-				.get(&(sector_label.0, sector_label.1))
+				.get(&SectorID::new(sector_label.0, sector_label.1))
 				.unwrap();
 			if value.contains(&(grid_label.0, grid_label.1)) {
 				let new_handle: Handle<Image> = asset_server.load("ordinal_icons/portals.png");

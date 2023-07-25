@@ -9,10 +9,10 @@ use bevy::prelude::*;
 /// Used to update a sectors [CostField]
 #[derive(Event)]
 pub struct EventUpdateCostfieldsCell {
-	/// Field/grid cell to update
-	cell: (usize, usize),
+	/// FieldCell to update
+	cell: FieldCell,
 	/// The sector the field/grid cell resides in
-	sector: (u32, u32),
+	sector: SectorID,
 	/// The value the field/grid cell should be assigned
 	cell_value: u8,
 }
@@ -20,7 +20,7 @@ pub struct EventUpdateCostfieldsCell {
 impl EventUpdateCostfieldsCell {
 	/// Create a new instance of [EventUpdateCostfieldsCell]
 	#[cfg(not(tarpaulin_include))]
-	pub fn new(cell: (usize, usize), sector: (u32, u32), cell_value: u8) -> Self {
+	pub fn new(cell: FieldCell, sector: SectorID, cell_value: u8) -> Self {
 		EventUpdateCostfieldsCell {
 			cell,
 			sector,
@@ -28,11 +28,11 @@ impl EventUpdateCostfieldsCell {
 		}
 	}
 	#[cfg(not(tarpaulin_include))]
-	pub fn get_cell(&self) -> (usize, usize) {
+	pub fn get_cell(&self) -> FieldCell {
 		self.cell
 	}
 	#[cfg(not(tarpaulin_include))]
-	pub fn get_sector(&self) -> (u32, u32) {
+	pub fn get_sector(&self) -> SectorID {
 		self.sector
 	}
 	#[cfg(not(tarpaulin_include))]
@@ -54,7 +54,7 @@ pub fn process_costfields_updates(
 		for mut costfields in costfields_q.iter_mut() {
 			for (sector, field) in costfields.get_mut().iter_mut() {
 				if *sector == sector_id {
-					field.set_grid_value(cost, grid_cell.0, grid_cell.1);
+					field.set_grid_value(cost, grid_cell);
 					event_portal_rebuild.send(EventRebuildSectorPortals::new(sector_id));
 				}
 			}
@@ -66,16 +66,16 @@ pub fn process_costfields_updates(
 #[derive(Event)]
 pub struct EventRebuildSectorPortals {
 	/// Unique ID of the sector
-	sector_id: (u32, u32),
+	sector_id: SectorID,
 }
 
 impl EventRebuildSectorPortals {
 	#[cfg(not(tarpaulin_include))]
-	pub fn new(sector_id: (u32, u32)) -> Self {
+	pub fn new(sector_id: SectorID) -> Self {
 		EventRebuildSectorPortals { sector_id }
 	}
 	#[cfg(not(tarpaulin_include))]
-	pub fn get_sector_id(&self) -> (u32, u32) {
+	pub fn get_sector_id(&self) -> SectorID {
 		self.sector_id
 	}
 }
@@ -109,14 +109,14 @@ pub fn rebuild_portals(
 #[derive(Event)]
 pub struct EventUpdatePortalGraph {
 	/// Unique ID of the sector
-	sector_id: (u32, u32),
+	sector_id: SectorID,
 }
 
 impl EventUpdatePortalGraph {
-	pub fn new(sector_id: (u32, u32)) -> Self {
+	pub fn new(sector_id: SectorID) -> Self {
 		EventUpdatePortalGraph { sector_id }
 	}
-	pub fn get_sector_id(&self) -> (u32, u32) {
+	pub fn get_sector_id(&self) -> SectorID {
 		self.sector_id
 	}
 }
@@ -152,7 +152,7 @@ pub fn update_portal_graph(
 }
 /// For the given sector any route or [FlowField] making use of it needs to have the cached entry removed and a new request made to regenerate the route
 #[derive(Event)]
-pub struct EventCleanCaches((u32, u32));
+pub struct EventCleanCaches(SectorID);
 
 //TODO in order to regenerate the routes the source field cell needs to be known - a cost field change may make that field cell invalid though... disable regen for now, steering pipeline/character controler will have to poll the route cache and request a new one....
 /// Lookup any cached data records making use of sectors that have had their [CostField] adjusted and remove them from the cache

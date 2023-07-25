@@ -31,11 +31,11 @@ struct Actor;
 #[allow(clippy::missing_docs_in_private_items)]
 #[derive(Default, Component)]
 struct Pathing {
-	source_sector: Option<(u32, u32)>,
-	source_grid_cell: Option<(usize, usize)>,
-	target_sector: Option<(u32, u32)>,
-	target_goal: Option<(usize, usize)>,
-	portal_route: Option<Vec<((u32, u32), (usize, usize))>>,
+	source_sector: Option<SectorID>,
+	source_grid_cell: Option<FieldCell>,
+	target_sector: Option<SectorID>,
+	target_goal: Option<FieldCell>,
+	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 }
 
 /// Spawn the map
@@ -192,7 +192,7 @@ fn actor_steering(
 					// get the flow field
 					if let Some(field) = flow_cache.get_field(*sector, *goal) {
 						// based on actor grid cell find the directional vector it should move in
-						let cell_value = field.get_grid_value(curr_actor_grid.0, curr_actor_grid.1);
+						let cell_value = field.get_grid_value(curr_actor_grid);
 						let dir = get_3d_direction_unit_vector_from_bits(cell_value);
 						// info!("In sector {:?}, in grid cell {:?}", sector, curr_actor_grid);
 						// info!("Direction to move: {}", dir);
