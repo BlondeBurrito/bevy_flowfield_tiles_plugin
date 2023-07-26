@@ -43,6 +43,27 @@ impl FieldCell {
 	pub fn get_row(&self) -> usize {
 		self.0 .1
 	}
+	/// From the position of a `cell_id`, if it sits along a boundary, return the [Ordinal] of that boundary. Note that if the `cell_id` is in a field corner then it'll have two boundaries. Note that if the `cell_id` is not in fact along a boundary then this will panic
+	pub fn get_boundary_ordinal_from_field_cell(&self) -> Vec<Ordinal> {
+		let mut boundaries = Vec::new();
+		if self.get_row() == 0 {
+			boundaries.push(Ordinal::North);
+		}
+		if self.get_column() == FIELD_RESOLUTION - 1 {
+			boundaries.push(Ordinal::East);
+		}
+		if self.get_row() == FIELD_RESOLUTION - 1 {
+			boundaries.push(Ordinal::South);
+		}
+		if self.get_column() == 0 {
+			boundaries.push(Ordinal::West);
+		}
+		if !boundaries.is_empty() {
+			boundaries
+		} else {
+			panic!("{:?} does not sit along the boundary", self);
+		}
+	}
 }
 
 /// Describes the properties of a route

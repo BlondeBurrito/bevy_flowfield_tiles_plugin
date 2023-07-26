@@ -6,7 +6,7 @@ pub use crate::flowfields::{
 	fields::{cost_field::*, flow_field::*, integration_field::*, *},
 	portal::portal_graph::*,
 	portal::portals::*,
-	sectors::*,
+	sectors::{sector_cost::*, sector_portals::*, *},
 	utilities::*,
 	*,
 };

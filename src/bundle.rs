@@ -5,31 +5,6 @@
 use crate::prelude::*;
 use bevy::prelude::*;
 
-/// The length `x` and depth `z` (or `y` in 2d) of the map
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component, Default, Clone)]
-pub struct MapDimensions(u32, u32);
-
-impl MapDimensions {
-	/// Create a new instance of [MapDimensions]. In 2d the dimensions should be measured by the number of sprites that fit into the `x` (length) and `y` (depth) axes. For 3d the recommendation is for a `unit` of space to be 1 meter, thereby the world is `x` (length) meters by `z` (depth) meters
-	pub fn new(length: u32, depth: u32) -> Self {
-		let length_rem = length % SECTOR_RESOLUTION as u32;
-		let depth_rem = depth % SECTOR_RESOLUTION as u32;
-		if length_rem > 0 || depth_rem > 0 {
-			panic!(
-				"Map dimensions `({}, {})` cannot support sectors, dimensions must be exact factors of {}",
-				length, depth, SECTOR_RESOLUTION
-			);
-		}
-		MapDimensions(length, depth)
-	}
-	pub fn get_column(&self) -> u32 {
-		self.0
-	}
-	pub fn get_row(&self) -> u32 {
-		self.1
-	}
-}
 //TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 /// Defines all required components for generating [FlowField] Tiles
 #[derive(Bundle)]
@@ -50,25 +25,15 @@ pub struct FlowFieldTilesBundle {
 
 impl FlowFieldTilesBundle {
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
-	pub fn new(map_length: u32, map_depth: u32) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth);
-		let cost_fields = SectorCostFields::new(map_length, map_depth);
-		let mut portals = SectorPortals::new(map_length, map_depth);
+	pub fn new(map_length: u32, map_depth: u32, sector_resolution: u32) -> Self {
+		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
+		let cost_fields = SectorCostFields::new(map_length, map_depth, sector_resolution);
+		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(
-				*sector_id,
-				&cost_fields,
-				map_dimensions.get_column(),
-				map_dimensions.get_row(),
-			);
+			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
-		let graph = PortalGraph::new(
-			&portals,
-			&cost_fields,
-			map_dimensions.get_column(),
-			map_dimensions.get_row(),
-		);
+		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {
@@ -80,27 +45,22 @@ impl FlowFieldTilesBundle {
 			flow_field_cache: cache,
 		}
 	}
-	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from disk
+	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
 	#[cfg(feature = "ron")]
-	pub fn new_from_disk(map_length: u32, map_depth: u32, path: &str) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth);
-		let cost_fields = SectorCostFields::from_file(path.to_string());
-		let mut portals = SectorPortals::new(map_length, map_depth);
+	pub fn from_ron(map_length: u32, map_depth: u32, sector_resolution: u32, path: &str) -> Self {
+		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
+		let cost_fields = SectorCostFields::from_ron(path.to_string());
+		if ((map_length * map_depth) / (sector_resolution * sector_resolution)) as usize
+			!= cost_fields.get().len()
+		{
+			panic!("Map size ({}, {}) with resolution {} produces ({}x{}) sectors. Ron file only produces {} sectors", map_length, map_depth, sector_resolution, map_length/sector_resolution, map_depth/sector_resolution, cost_fields.get().len());
+		}
+		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(
-				*sector_id,
-				&cost_fields,
-				map_dimensions.get_column(),
-				map_dimensions.get_row(),
-			);
+			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
-		let graph = PortalGraph::new(
-			&portals,
-			&cost_fields,
-			map_dimensions.get_column(),
-			map_dimensions.get_row(),
-		);
+		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {
@@ -114,26 +74,25 @@ impl FlowFieldTilesBundle {
 	}
 	/// Create a new instance of [FlowFieldTilesBundle] from a directory containing CSV [CostField] files
 	#[cfg(feature = "csv")]
-	pub fn from_csv(map_length: u32, map_depth: u32, directory: &str) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth);
-		let cost_fields =
-			SectorCostFields::from_csv_dir(map_length, map_depth, directory.to_string());
-		let mut portals = SectorPortals::new(map_length, map_depth);
+	pub fn from_csv(
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
+		directory: &str,
+	) -> Self {
+		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
+		let cost_fields = SectorCostFields::from_csv_dir(
+			map_length,
+			map_depth,
+			sector_resolution,
+			directory.to_string(),
+		);
+		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(
-				*sector_id,
-				&cost_fields,
-				map_dimensions.get_column(),
-				map_dimensions.get_row(),
-			);
+			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
-		let graph = PortalGraph::new(
-			&portals,
-			&cost_fields,
-			map_dimensions.get_column(),
-			map_dimensions.get_row(),
-		);
+		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {
@@ -153,15 +112,15 @@ mod tests {
 	use super::*;
 	#[test]
 	fn valid_map_dimensions() {
-		let _map_dimsions = MapDimensions::new(10, 10);
+		let _map_dimsions = MapDimensions::new(10, 10, 10);
 	}
 	#[test]
 	#[should_panic]
 	fn invalid_map_dimensions() {
-		MapDimensions::new(99, 3);
+		MapDimensions::new(99, 3, 10);
 	}
 	#[test]
 	fn new_bundle() {
-		let _ = FlowFieldTilesBundle::new(30, 30);
+		let _ = FlowFieldTilesBundle::new(30, 30, 10);
 	}
 }

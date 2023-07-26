@@ -25,13 +25,18 @@ struct FieldCellLabel(usize, usize);
 
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
-	let map_length = 30; // in sprite count
-	let map_depth = 30; // in sprite count
+	let map_dimensions = MapDimensions::new(1920, 1920, 640);
+	let sprite_dimension = 64.0;
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
 	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
-	let sector_cost_fields = SectorCostFields::from_csv_dir(map_length, map_depth, dir);
+	let sector_cost_fields = SectorCostFields::from_csv_dir(
+		map_dimensions.get_length(),
+		map_dimensions.get_depth(),
+		map_dimensions.get_sector_resolution(),
+		dir,
+	);
 	let fields = sector_cost_fields.get();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
@@ -39,16 +44,9 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		for (i, column) in field.get_field().iter().enumerate() {
 			for (j, value) in column.iter().enumerate() {
 				// grid origin is always in the top left
-				let sprite_x = 64.0;
-				let sprite_y = 64.0;
-				let sector_offset = get_sector_xy_at_top_left(
-					*sector_id,
-					map_length * sprite_x as u32,
-					map_depth * sprite_y as u32,
-					sprite_x,
-				);
-				let x = sector_offset.x + 32.0 + (sprite_x * i as f32);
-				let y = sector_offset.y - 32.0 - (sprite_y * j as f32);
+				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
+				let x = sector_offset.x + 32.0 + (sprite_dimension * i as f32);
+				let y = sector_offset.y - 32.0 - (sprite_dimension * j as f32);
 				cmds.spawn(SpriteBundle {
 					texture: asset_server.load(get_basic_icon(*value)),
 					transform: Transform::from_xyz(x, y, 0.0),
@@ -60,10 +58,14 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		}
 	}
 	// spawn the portals tracker
-	let mut portals = SectorPortals::new(map_length, map_depth);
+	let mut portals = SectorPortals::new(
+		map_dimensions.get_length(),
+		map_dimensions.get_depth(),
+		map_dimensions.get_sector_resolution(),
+	);
 	// update default portals for cost fields
 	for sector_id in sector_cost_fields.get().keys() {
-		portals.update_portals(*sector_id, &sector_cost_fields, map_length, map_depth);
+		portals.update_portals(*sector_id, &sector_cost_fields, &map_dimensions);
 	}
 	cmds.spawn(portals);
 }

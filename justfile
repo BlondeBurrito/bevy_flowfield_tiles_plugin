@@ -72,7 +72,7 @@ push MESSAGE +BRANCH='main':
   git push origin {{BRANCH}}
 # generate a changelog with git-cliff-based on conventional commits
 changelog-unreleased:
-  git cliff -u --output CHANGELOG.md
+  git cliff -u -p CHANGELOG.md
 # generate a changelog with git-cliff-based on conventional commits
 changelog TAG:
   git cliff --tag {{TAG}} --output CHANGELOG.md

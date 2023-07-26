@@ -53,6 +53,8 @@ csv = { workspace = true, optional = true}
 serde = ["dep:serde"]
 ron = ["serde", "dep:ron"]
 csv = ["serde", "dep:csv"]
+2d = []
+3d = []
 
 [profile.dev]
 opt-level = 1
@@ -109,7 +111,7 @@ required-features = ["ron"]
 [[example]]
 name = "visualise_portals"
 path = "examples/visualise_portals.rs"
-required-features = ["csv"]
+required-features = ["csv", "2d"]
 
 [[example]]
 name = "visualise_integration_field"
@@ -129,29 +131,29 @@ required-features = ["ron"]
 [[example]]
 name = "flow_field_right_click"
 path = "examples/flow_field_right_click.rs"
-required-features = ["ron"]
+required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_with_steering"
 path = "examples/2d_with_steering.rs"
-required-features = ["ron"]
+required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_complex_movement"
 path = "examples/2d_complex_movement.rs"
-required-features = ["csv"]
+required-features = ["csv", "2d"]
 
 [[example]]
 name = "2d_multi_actor"
 path = "examples/2d_multi_actor.rs"
-required-features = ["ron"]
+required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_multi_actor_controls"
 path = "examples/2d_multi_actor_controls.rs"
-required-features = ["ron"]
+required-features = ["ron", "2d"]
 
 [[example]]
 name = "3d_actor_movement"
 path = "examples/3d_actor_movement.rs"
-required-features = ["ron"]
+required-features = ["ron", "3d"]

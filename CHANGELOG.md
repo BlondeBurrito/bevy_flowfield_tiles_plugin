@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Bug Fixes
+
+- Redefine sector resolution
+
+### Features
+
+- Feature gate 2d and 3d interface methods
+
+### Refactor
+
+- [**breaking**] Replace sector and field tuple IDs with data structures of 'SectorID' and 'FieldCell' (#22)
+- [**breaking**] Sector user interface embedded into MapDimension data
+
 ## [0.1.0] - 2023-07-24
 
 ### Bug Fixes
