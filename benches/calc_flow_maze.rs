@@ -26,26 +26,23 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 /// Create the required CostFields and Portals before benchmarking
 fn prepare_fields(
 	map_length: u32,
-	map_depth: u32
-	, sector_resolution: u32
+	map_depth: u32,
+	sector_resolution: u32,
 ) -> (SectorPortals, SectorCostFields, MapDimensions, RouteCache) {
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
 	let csv_dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/bench_costfields/maze/";
-	let cost_fields = SectorCostFields::from_csv_dir(map_length, map_depth, sector_resolution, csv_dir);
-	let mut portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+	let cost_fields =
+		SectorCostFields::from_csv_dir(map_length, map_depth, sector_resolution, csv_dir);
+	let mut portals = SectorPortals::new(
+		map_dimensions.get_length(),
+		map_dimensions.get_depth(),
+		map_dimensions.get_sector_resolution(),
+	);
 	// update default portals for cost fields
 	for sector_id in cost_fields.get().keys() {
-		portals.update_portals(
-			*sector_id,
-			&cost_fields,
-			&map_dimensions
-		);
+		portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 	}
-	let graph = PortalGraph::new(
-		&portals,
-		&cost_fields,
-		&map_dimensions
-	);
+	let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
 
 	let mut route_cache = RouteCache::default();
 	// bottom left
@@ -110,7 +107,7 @@ fn flow_maze(
 						sector_id,
 						goal,
 						&neighbour_sector_id,
-						&map_dimensions
+						&map_dimensions,
 					);
 				sectors_expanded_goals.push((*sector_id, g));
 			}

@@ -175,9 +175,8 @@ impl PortalGraph {
 	) -> &mut Self {
 		let graph = &mut self.graph;
 		let translator = &mut self.node_index_translation;
-		let sector_neighbours = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
-			sector_id,
-		);
+		let sector_neighbours =
+			map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(sector_id);
 		for (ordinal, neighbour_id) in sector_neighbours.iter() {
 			match ordinal {
 				Ordinal::North => {
@@ -239,7 +238,7 @@ impl PortalGraph {
 		map_dimensions: &MapDimensions,
 	) -> &mut Self {
 		let mut sectors_to_rebuild =
-		map_dimensions.get_ids_of_neighbouring_sectors(&changed_sector);
+			map_dimensions.get_ids_of_neighbouring_sectors(&changed_sector);
 		let graph = &mut self.graph;
 		let translator = &mut self.node_index_translation;
 		// remove the nodes from the sector and its neighbours
@@ -277,8 +276,7 @@ impl PortalGraph {
 		// neighbours connectivity. Rebuild them too
 		sectors_to_rebuild.pop(); // don't need to rebuild the one that had its cost fields changed
 		for sector_id in sectors_to_rebuild.iter() {
-			let neighbours_neighbour =
-			map_dimensions.get_ids_of_neighbouring_sectors(sector_id);
+			let neighbours_neighbour = map_dimensions.get_ids_of_neighbouring_sectors(sector_id);
 			for id in neighbours_neighbour.iter() {
 				self.build_external_sector_edges(id, map_dimensions);
 			}
@@ -290,7 +288,7 @@ impl PortalGraph {
 		&mut self,
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
-		map_dimensions: &MapDimensions
+		map_dimensions: &MapDimensions,
 	) -> &mut Self {
 		let mut graph = PortalGraph::default();
 		graph

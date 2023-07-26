@@ -57,7 +57,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
 	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
-	let sector_cost_fields = SectorCostFields::from_csv_dir(map_length, map_depth, sector_resolution, dir);
+	let sector_cost_fields =
+		SectorCostFields::from_csv_dir(map_length, map_depth, sector_resolution, dir);
 	let fields = sector_cost_fields.get();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
@@ -65,9 +66,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		for (i, column) in field.get_field().iter().enumerate() {
 			for (j, value) in column.iter().enumerate() {
 				// grid origin is always in the top left
-				let sector_offset = map_dimensions.get_sector_corner_xy(
-					*sector_id,
-				);
+				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
 				let x = sector_offset.x + 32.0 + (FIELD_SPRITE_DIMENSION * i as f32);
 				let y = sector_offset.y - 32.0 - (FIELD_SPRITE_DIMENSION * j as f32);
 				cmds.spawn(SpriteBundle {
@@ -88,7 +87,12 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
-	cmds.spawn(FlowFieldTilesBundle::from_csv(map_length, map_depth, sector_resolution, &dir));
+	cmds.spawn(FlowFieldTilesBundle::from_csv(
+		map_length,
+		map_depth,
+		sector_resolution,
+		&dir,
+	));
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
 		texture: asset_server.load("2d/2d_actor_sprite.png"),
@@ -119,18 +123,17 @@ fn user_input(
 		{
 			let map_dimensions = dimensions_q.get_single().unwrap();
 			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) = map_dimensions.get_sector_and_field_id_from_xy(
-				world_position
-			) {
+			if let Some((target_sector_id, goal_id)) =
+				map_dimensions.get_sector_and_field_id_from_xy(world_position)
+			{
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_field_cell) = map_dimensions.get_sector_and_field_id_from_xy(
-					tform.translation.truncate()
-				)
-				.unwrap();
+				let (source_sector_id, source_field_cell) = map_dimensions
+					.get_sector_and_field_id_from_xy(tform.translation.truncate())
+					.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
 					source_sector_id, source_field_cell
@@ -184,10 +187,9 @@ fn actor_steering(
 		if let Some(route) = pathing.portal_route.as_mut() {
 			// info!("Route: {:?}", route);
 			// find the current actors postion in grid space
-			let (curr_actor_sector, curr_actor_field_cell) = map_dimensions.get_sector_and_field_id_from_xy(
-				tform.translation.truncate(),
-			)
-			.unwrap();
+			let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
+				.get_sector_and_field_id_from_xy(tform.translation.truncate())
+				.unwrap();
 			// tirm the actor stored route as it makes progress
 			// this ensures it doesn't use a previous goal from
 			// a sector it has already been through when it needs

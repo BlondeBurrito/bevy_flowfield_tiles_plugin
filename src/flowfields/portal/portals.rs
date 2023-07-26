@@ -123,16 +123,14 @@ impl Portals {
 		&mut self,
 		sector_cost_fields: &SectorCostFields,
 		sector_id: &SectorID,
-		map_dimensions: &MapDimensions
+		map_dimensions: &MapDimensions,
 	) {
 		self.clear();
 		// there are up to 4 lists of [FieldCell]s for a given sector, in case this sector being
 		// updated is on a boundary we need to determine the valid elements of [Portals] that
 		// should be updated
 		let valid_ordinals_for_this_sector: Vec<(Ordinal, SectorID)> =
-		map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
-				sector_id,
-			);
+			map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(sector_id);
 		// moving in a clockwise fashion around the valid ordinals of the boundary sector movement
 		// we inspect the [CostField] values to calculate the portals along each valid sector side
 		let cost_field = sector_cost_fields
@@ -347,16 +345,14 @@ impl Portals {
 		sector_id: &SectorID,
 		portal_id: &FieldCell,
 		neighbour_sector_id: &SectorID,
-		map_dimensions: &MapDimensions
+		map_dimensions: &MapDimensions,
 	) -> Vec<FieldCell> {
 		// find the bounudary the portal sit along
 		let mut boundary_ordinals = portal_id.get_boundary_ordinal_from_field_cell();
 		// if it's in a corner then it could apply to two boundaries, narrow it down so we know which boundary to walk
 		if boundary_ordinals.len() > 1 {
 			let valid_ordinals_for_this_sector: Vec<(Ordinal, SectorID)> =
-			map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
-					sector_id,
-				);
+				map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(sector_id);
 			'outer: for (ordinal, id) in valid_ordinals_for_this_sector.iter() {
 				if id == neighbour_sector_id {
 					boundary_ordinals.retain(|o| o == ordinal);

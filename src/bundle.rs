@@ -31,17 +31,9 @@ impl FlowFieldTilesBundle {
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(
-				*sector_id,
-				&cost_fields,
-				&map_dimensions
-			);
+			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
-		let graph = PortalGraph::new(
-			&portals,
-			&cost_fields,
-			&map_dimensions
-		);
+		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {
@@ -58,20 +50,17 @@ impl FlowFieldTilesBundle {
 	pub fn from_ron(map_length: u32, map_depth: u32, sector_resolution: u32, path: &str) -> Self {
 		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
 		let cost_fields = SectorCostFields::from_ron(path.to_string());
+		if ((map_length * map_depth) / (sector_resolution * sector_resolution)) as usize
+			!= cost_fields.get().len()
+		{
+			panic!("Map size ({}, {}) with resolution {} produces ({}x{}) sectors. Ron file only produces {} sectors", map_length, map_depth, sector_resolution, map_length/sector_resolution, map_depth/sector_resolution, cost_fields.get().len());
+		}
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(
-				*sector_id,
-				&cost_fields,
-				&map_dimensions
-			);
+			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
-		let graph = PortalGraph::new(
-			&portals,
-			&cost_fields,
-			&map_dimensions
-		);
+		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {
@@ -85,24 +74,25 @@ impl FlowFieldTilesBundle {
 	}
 	/// Create a new instance of [FlowFieldTilesBundle] from a directory containing CSV [CostField] files
 	#[cfg(feature = "csv")]
-	pub fn from_csv(map_length: u32, map_depth: u32, sector_resolution: u32, directory: &str) -> Self {
+	pub fn from_csv(
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
+		directory: &str,
+	) -> Self {
 		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
-		let cost_fields =
-			SectorCostFields::from_csv_dir(map_length, map_depth, sector_resolution, directory.to_string());
+		let cost_fields = SectorCostFields::from_csv_dir(
+			map_length,
+			map_depth,
+			sector_resolution,
+			directory.to_string(),
+		);
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(
-				*sector_id,
-				&cost_fields,
-				&map_dimensions
-			);
+			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
-		let graph = PortalGraph::new(
-			&portals,
-			&cost_fields,
-			&map_dimensions
-		);
+		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {

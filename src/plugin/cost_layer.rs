@@ -92,11 +92,7 @@ pub fn rebuild_portals(
 		let sector_id = event.get_sector_id();
 		// update the portals of the sector and around it
 		for (mut sector_portals, sector_cost_fields, dimensions) in portal_q.iter_mut() {
-			sector_portals.update_portals(
-				sector_id,
-				sector_cost_fields,
-				dimensions,
-			);
+			sector_portals.update_portals(sector_id, sector_cost_fields, dimensions);
 		}
 		// queue an update to the portal graph
 		event_update_graph.send(EventUpdatePortalGraph::new(sector_id));
@@ -138,12 +134,7 @@ pub fn update_portal_graph(
 		for (mut portal_graph, sector_portals, sector_cost_fields, dimensions) in
 			portal_q.iter_mut()
 		{
-			portal_graph.update_graph(
-				sector_id,
-				sector_portals,
-				sector_cost_fields,
-				dimensions
-			);
+			portal_graph.update_graph(sector_id, sector_portals, sector_cost_fields, dimensions);
 		}
 		event_cache_clean.send(EventCleanCaches(sector_id));
 	}

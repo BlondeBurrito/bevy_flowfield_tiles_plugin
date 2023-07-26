@@ -38,40 +38,40 @@ impl SectorID {
 #[derive(Component, Default, Clone, Copy)]
 pub struct MapDimensions {
 	/// Dimensions of the world
-	/// 
+	///
 	/// ## In 3d
-	/// 
+	///
 	/// This is taken as `(x, z)` dimensions of the world
-	/// 
+	///
 	/// ## In 2d
-	/// 
+	///
 	/// This is taken as the `(x, y)` pixel dimensions of the world
 	size: (u32, u32),
 	/// The factor by which the `size` of world will be divided by to produce
 	/// the number of sectors. The world dimensions must be perfectly divisible
 	/// by this number.
-	/// 
+	///
 	/// ## In 3d
-	/// 
+	///
 	/// This is the number of units that define a sector.
-	/// 
+	///
 	/// For a world size of `(30, 30)` and resolution `10` then there will be
 	/// `3x3` sectors created where each field within a sector represents a
 	/// `1x1` unit area in 3d space.
-	/// 
+	///
 	/// For a world size of `(30, 30)` and resolution `3` then there will be
 	/// `10x10` sectors created where each field within a sector represents a
 	/// `0.3x0.3` unit area in 3d space.
-	/// 
+	///
 	/// ## In 2d
-	/// 
+	///
 	/// This is the number of pixels that define the length/height of a sector
 	/// (square sectors so the same number).
-	/// 
+	///
 	/// For a world size of `(1920, 1920)` and resolution `640` then there will
 	/// be `3x3` sectors created where each field within a sector represents a
 	/// `64x64` pixel area in 2d space.
-	/// 
+	///
 	/// For a world size of `(1920, 1920)` and resolution `64` then there will
 	/// be `30x30` sectors created where each field within a sector represents
 	/// a `6.4x6.4` pixel area in 2d space.
@@ -157,16 +157,15 @@ impl MapDimensions {
 	}
 	/// From a 2d position get the sector and field cell it resides in
 	#[cfg(feature = "2d")]
-	pub fn get_sector_and_field_id_from_xy(
-		&self,
-		position: Vec2,
-	) -> Option<(SectorID, FieldCell)> {
+	pub fn get_sector_and_field_id_from_xy(&self, position: Vec2) -> Option<(SectorID, FieldCell)> {
 		if let Some(sector_id) = self.get_sector_id_from_xy(position) {
 			let sector_corner_origin = self.get_sector_corner_xy(sector_id);
-			let pixel_sector_field_ratio = self.get_sector_resolution() as f32 / FIELD_RESOLUTION as f32;
-			let field_id_0 = ((position.x - sector_corner_origin.x) / pixel_sector_field_ratio).floor() as usize;
-			let field_id_1 =
-				((-position.y + sector_corner_origin.y) / pixel_sector_field_ratio).floor() as usize;
+			let pixel_sector_field_ratio =
+				self.get_sector_resolution() as f32 / FIELD_RESOLUTION as f32;
+			let field_id_0 =
+				((position.x - sector_corner_origin.x) / pixel_sector_field_ratio).floor() as usize;
+			let field_id_1 = ((-position.y + sector_corner_origin.y) / pixel_sector_field_ratio)
+				.floor() as usize;
 			let field_id = FieldCell::new(field_id_0, field_id_1);
 			return Some((sector_id, field_id));
 		}
@@ -238,11 +237,13 @@ impl MapDimensions {
 
 	/// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
 	/// of the map retrieve the IDs neighbouring sectors
-	pub fn get_ids_of_neighbouring_sectors(
-		self,
-		sector_id: &SectorID,
-	) -> Vec<SectorID> {
-		Ordinal::get_sector_neighbours(sector_id, self.get_length(), self.get_depth(), self.get_sector_resolution())
+	pub fn get_ids_of_neighbouring_sectors(self, sector_id: &SectorID) -> Vec<SectorID> {
+		Ordinal::get_sector_neighbours(
+			sector_id,
+			self.get_length(),
+			self.get_depth(),
+			self.get_sector_resolution(),
+		)
 	}
 
 	/// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
@@ -252,7 +253,12 @@ impl MapDimensions {
 		&self,
 		sector_id: &SectorID,
 	) -> Vec<(Ordinal, SectorID)> {
-		Ordinal::get_sector_neighbours_with_ordinal(sector_id, self.get_length(), self.get_depth(), self.get_sector_resolution())
+		Ordinal::get_sector_neighbours_with_ordinal(
+			sector_id,
+			self.get_length(),
+			self.get_depth(),
+			self.get_sector_resolution(),
+		)
 	}
 }
 
@@ -389,9 +395,7 @@ mod tests {
 	fn get_northern_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(4, 0);
 		let map_dimensions = MapDimensions::new(200, 200, 10);
-		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
-			&sector_id,
-		);
+		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::East, SectorID::new(5, 0)),
 			(Ordinal::South, SectorID::new(4, 1)),
@@ -403,9 +407,7 @@ mod tests {
 	fn get_eastern_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(19, 3);
 		let map_dimensions = MapDimensions::new(200, 200, 10);
-		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
-			&sector_id,
-		);
+		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::North, SectorID::new(19, 2)),
 			(Ordinal::South, SectorID::new(19, 4)),
@@ -417,9 +419,7 @@ mod tests {
 	fn get_southern_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(5, 19);
 		let map_dimensions = MapDimensions::new(200, 200, 10);
-		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
-			&sector_id,
-		);
+		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::North, SectorID::new(5, 18)),
 			(Ordinal::East, SectorID::new(6, 19)),
@@ -431,9 +431,7 @@ mod tests {
 	fn get_western_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(0, 5);
 		let map_dimensions = MapDimensions::new(200, 200, 10);
-		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
-			&sector_id,
-		);
+		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::North, SectorID::new(0, 4)),
 			(Ordinal::East, SectorID::new(1, 5)),
@@ -445,9 +443,7 @@ mod tests {
 	fn get_centre_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(5, 7);
 		let map_dimensions = MapDimensions::new(200, 200, 10);
-		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
-			&sector_id,
-		);
+		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::North, SectorID::new(5, 6)),
 			(Ordinal::East, SectorID::new(6, 7)),

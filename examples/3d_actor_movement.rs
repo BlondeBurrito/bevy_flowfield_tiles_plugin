@@ -70,7 +70,10 @@ fn setup_navigation(
 	// create the entity handling the algorithm
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	cmds.spawn(FlowFieldTilesBundle::from_ron(
-		MAP_LENGTH, MAP_DPETH, SECTOR_RESOLUTION, &path,
+		MAP_LENGTH,
+		MAP_DPETH,
+		SECTOR_RESOLUTION,
+		&path,
 	));
 	// create the controllable actor in the top right corner
 	let mesh = meshes.add(
@@ -116,16 +119,16 @@ fn user_input(
 			let world_position = op_world_position.unwrap();
 			info!("World cursor position: {:?}", world_position);
 			if let Some((target_sector_id, goal_id)) =
-			map_dimensions.get_sector_and_field_cell_from_xyz(world_position)
+				map_dimensions.get_sector_and_field_cell_from_xyz(world_position)
 			{
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_field_cell) =
-				map_dimensions.get_sector_and_field_cell_from_xyz(tform.translation)
-						.unwrap();
+				let (source_sector_id, source_field_cell) = map_dimensions
+					.get_sector_and_field_cell_from_xyz(tform.translation)
+					.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
 					source_sector_id, source_field_cell
@@ -179,9 +182,9 @@ fn actor_steering(
 		if let Some(route) = pathing.portal_route.as_mut() {
 			// info!("Route: {:?}", route);
 			// find the current actors postion in grid space
-			let (curr_actor_sector, curr_actor_field_cell) =
-			map_dimensions.get_sector_and_field_cell_from_xyz(tform.translation)
-					.unwrap();
+			let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
+				.get_sector_and_field_cell_from_xyz(tform.translation)
+				.unwrap();
 			// tirm the actor stored route as it makes progress
 			// this ensures it doesn't use a previous goal from
 			// a sector it has already been through when it needs

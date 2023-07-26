@@ -46,7 +46,10 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let sector_resolution = 640;
 	let sprite_dimension = 64.0;
 	cmds.spawn(FlowFieldTilesBundle::from_ron(
-		map_length, map_depth, sector_resolution, &s_path,
+		map_length,
+		map_depth,
+		sector_resolution,
+		&s_path,
 	));
 	// use the impression of the cost field to just init node images
 	let cost_field = CostField::from_ron(c_path);
@@ -94,18 +97,17 @@ fn user_input(
 		{
 			let map_dimensions = dimensions_q.get_single().unwrap();
 			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) = map_dimensions.get_sector_and_field_id_from_xy(
-				world_position,
-			) {
+			if let Some((target_sector_id, goal_id)) =
+				map_dimensions.get_sector_and_field_id_from_xy(world_position)
+			{
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_field_cell) = map_dimensions.get_sector_and_field_id_from_xy(
-					tform.translation.truncate(),
-				)
-				.unwrap();
+				let (source_sector_id, source_field_cell) = map_dimensions
+					.get_sector_and_field_id_from_xy(tform.translation.truncate())
+					.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
 					source_sector_id, source_field_cell

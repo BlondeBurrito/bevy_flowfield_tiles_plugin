@@ -156,7 +156,7 @@ pub fn generate_flow_fields(
 							sector_id,
 							goal,
 							&neighbour_sector_id,
-							map_dimensions
+							map_dimensions,
 						);
 					sectors_expanded_goals.push((*sector_id, g));
 				}

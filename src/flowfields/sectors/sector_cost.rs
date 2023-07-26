@@ -49,7 +49,12 @@ impl SectorCostFields {
 	}
 	/// From a directory containing a series of CSV files generate the [SectorCostFields]
 	#[cfg(feature = "csv")]
-	pub fn from_csv_dir(map_length: u32, map_depth: u32, sector_resolution: u32, directory: String) -> Self {
+	pub fn from_csv_dir(
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
+		directory: String,
+	) -> Self {
 		let required_files_count =
 			(map_length * map_depth) as usize / (sector_resolution * sector_resolution) as usize;
 		let files = std::fs::read_dir(directory)

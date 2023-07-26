@@ -369,7 +369,12 @@ mod tests {
 		let map_x_dimension = 300;
 		let map_z_dimension = 550;
 		let sector_resolution = 10;
-		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_neighbours(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![SectorID::new(1, 0), SectorID::new(0, 1)];
 		assert_eq!(actual, result);
 	}
@@ -379,7 +384,12 @@ mod tests {
 		let map_x_dimension = 300;
 		let map_z_dimension = 550;
 		let sector_resolution = 10;
-		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_neighbours(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![SectorID::new(29, 53), SectorID::new(28, 54)];
 		assert_eq!(actual, result);
 	}
@@ -389,7 +399,12 @@ mod tests {
 		let map_x_dimension = 300;
 		let map_z_dimension = 550;
 		let sector_resolution = 10;
-		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_neighbours(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![
 			SectorID::new(14, 30),
 			SectorID::new(15, 31),
@@ -404,7 +419,12 @@ mod tests {
 		let map_x_dimension = 300;
 		let map_z_dimension = 550;
 		let sector_resolution = 10;
-		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_neighbours(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![
 			SectorID::new(0, 12),
 			SectorID::new(1, 13),
@@ -418,8 +438,12 @@ mod tests {
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let sector_resolution = 10;
-		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![Ordinal::East, Ordinal::South, Ordinal::West];
 		assert_eq!(actual, result);
 	}
@@ -429,8 +453,12 @@ mod tests {
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let sector_resolution = 10;
-		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![Ordinal::North, Ordinal::South, Ordinal::West];
 		assert_eq!(actual, result);
 	}
@@ -440,8 +468,12 @@ mod tests {
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let sector_resolution = 10;
-		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::West];
 		assert_eq!(actual, result);
 	}
@@ -451,8 +483,12 @@ mod tests {
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let sector_resolution = 10;
-		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South];
 		assert_eq!(actual, result);
 	}
@@ -462,8 +498,12 @@ mod tests {
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
 		let sector_resolution = 10;
-		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			sector_resolution,
+		);
 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
 		assert_eq!(actual, result);
 	}
