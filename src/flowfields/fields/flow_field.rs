@@ -51,6 +51,7 @@ pub fn convert_ordinal_to_bits_dir(ordinal: Ordinal) -> u8 {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Reflect)]
 pub struct FlowField([[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 
 impl Default for FlowField {
@@ -61,7 +62,7 @@ impl Default for FlowField {
 
 impl Field<u8> for FlowField {
 	/// Get a reference to the field array
-	fn get_field(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
+	fn get(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
 	/// Retrieve a field cell value
@@ -115,7 +116,7 @@ impl FlowField {
 			self.set_field_cell_value(BITS_GOAL, goals[0]);
 		}
 
-		for (i, column) in integration_field.get_field().iter().enumerate() {
+		for (i, column) in integration_field.get().iter().enumerate() {
 			for (j, _row) in column.iter().enumerate() {
 				if self.get_field_cell_value(FieldCell::new(i, j)) == BITS_DEFAULT {
 					let current_cost = integration_field.get_field_cell_value(FieldCell::new(i, j));
@@ -161,72 +162,72 @@ fn lookup_portal_goal_neighbour_costs_in_previous_sector(
 		Ordinal::North => {
 			// orthogonal adjacent cost
 			let adj_pos = (portal_goal.get_column(), 9);
-			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+			let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 			adjacent_neighbours.push((Ordinal::North, adj_cost));
 			// try and get a cost left
 			if portal_goal.get_column() > 0 {
 				let adj_pos = (portal_goal.get_column() - 1, 9);
-				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
 			}
 			// try and get a cost right
 			if portal_goal.get_column() < FIELD_RESOLUTION - 1 {
 				let adj_pos = (portal_goal.get_column() + 1, 9);
-				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::NorthEast, adj_cost));
 			}
 		}
 		Ordinal::East => {
 			// orthogonal adjacent cost
 			let adj_pos = (0, portal_goal.get_row());
-			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+			let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 			adjacent_neighbours.push((Ordinal::East, adj_cost));
 			// try and get a cost above
 			if portal_goal.get_row() > 0 {
 				let adj_pos = (0, portal_goal.get_row() - 1);
-				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::NorthEast, adj_cost));
 			}
 			// try and get a cost below
 			if portal_goal.get_row() < FIELD_RESOLUTION - 1 {
 				let adj_pos = (0, portal_goal.get_row() + 1);
-				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
 			}
 		}
 		Ordinal::South => {
 			// orthogonal adjacent cost
 			let adj_pos = (portal_goal.get_column(), 0);
-			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+			let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 			adjacent_neighbours.push((Ordinal::South, adj_cost));
 			// try and get a cost left
 			if portal_goal.get_column() > 0 {
 				let adj_pos = (portal_goal.get_column() - 1, 0);
-				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
 			}
 			// try and get a cost right
 			if portal_goal.get_column() < FIELD_RESOLUTION - 1 {
 				let adj_pos = (portal_goal.get_column() + 1, 0);
-				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
 			}
 		}
 		Ordinal::West => {
 			// orthogonal adjacent cost
 			let adj_pos = (9, portal_goal.get_row());
-			let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+			let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 			adjacent_neighbours.push((Ordinal::West, adj_cost));
 			// try and get a cost above
 			if portal_goal.get_row() > 0 {
 				let adj_pos = (9, portal_goal.get_row() - 1);
-				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
 			}
 			// try and get a cost below
 			if portal_goal.get_row() < FIELD_RESOLUTION - 1 {
 				let adj_pos = (9, portal_goal.get_row() + 1);
-				let adj_cost = previous_integration_field.get_field()[adj_pos.0][adj_pos.1];
+				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
 				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
 			}
 		}
@@ -350,12 +351,12 @@ mod tests {
 		let mut flow_field = FlowField::default();
 		flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
 
-		for column in flow_field.get_field().iter() {
+		for column in flow_field.get().iter() {
 			for row_value in column.iter() {
 				if *row_value != BITS_PATHABLE + BITS_SOUTH
 					&& *row_value != BITS_PORTAL_GOAL + BITS_SOUTH
 				{
-					println!("Flow field: {:?}", flow_field.get_field());
+					println!("Flow field: {:?}", flow_field.get());
 					panic!("Some FlowField default bits have not been replaced");
 				}
 			}
@@ -388,12 +389,12 @@ mod tests {
 		let mut flow_field = FlowField::default();
 		flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
 
-		for column in flow_field.get_field().iter() {
+		for column in flow_field.get().iter() {
 			for row_value in column.iter() {
 				if *row_value != BITS_PATHABLE + BITS_WEST
 					&& *row_value != BITS_PORTAL_GOAL + BITS_WEST
 				{
-					println!("Flow field: {:?}", flow_field.get_field());
+					println!("Flow field: {:?}", flow_field.get());
 					panic!("Some FlowField default bits have not been replaced");
 				}
 			}

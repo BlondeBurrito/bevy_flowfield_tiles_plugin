@@ -41,12 +41,13 @@
 //! ```
 //!
 
+use bevy::reflect::Reflect;
 use std::collections::HashSet;
 
 use crate::prelude::*;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone)]
+#[derive(Clone, Reflect)]
 pub struct CostField([[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 
 impl Default for CostField {
@@ -57,7 +58,7 @@ impl Default for CostField {
 
 impl Field<u8> for CostField {
 	/// Get a reference to the field array
-	fn get_field(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
+	fn get(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
 	/// Retrieve a field cell value

@@ -163,7 +163,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 						let flow_field = sector_flow_fields.get(&SectorID::new(i, j));
 						if let Some(field) = flow_field {
 							// create each column from the field
-							for array in field.get_field().iter() {
+							for array in field.get().iter() {
 								p.spawn(NodeBundle {
 									style: Style {
 										width: Val::Percent(10.0),

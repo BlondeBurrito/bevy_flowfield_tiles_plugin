@@ -59,7 +59,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
 		// iterate over the dimensions of the field
-		for (i, column) in field.get_field().iter().enumerate() {
+		for (i, column) in field.get().iter().enumerate() {
 			for (j, value) in column.iter().enumerate() {
 				// grid origin is always in the top left
 				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);

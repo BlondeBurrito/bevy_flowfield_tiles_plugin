@@ -62,7 +62,7 @@ impl Default for IntegrationField {
 
 impl Field<u16> for IntegrationField {
 	/// Get a reference to the field array
-	fn get_field(&self) -> &[[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
+	fn get(&self) -> &[[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
 		&self.0
 	}
 	/// Retrieve a field cell value
@@ -154,7 +154,7 @@ mod tests {
 		let source = vec![FieldCell::new(4, 4)];
 		integration_field.reset(&source);
 		integration_field.calculate_field(&source, &cost_field);
-		let result = integration_field.get_field();
+		let result = integration_field.get();
 
 		let actual: [[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
 			[8,7,6,5,4,5,6,7,8,9], [7,6,5,4,3,4,5,6,7,8], [6,5,4,3,2,3,4,5,6,7], [5,4,3,2,1,2,3,4,5,6], [4,3,2,1,0,1,2,3,4,5], [5,4,3,2,1,2,3,4,5,6], [6,5,4,3,2,3,4,5,6,7], [7,6,5,4,3,4,5,6,7,8], [8,7,6,5,4,5,6,7,8,9], [9,8,7,6,5,6,7,8,9,10]
@@ -185,7 +185,7 @@ mod tests {
 		let source = vec![FieldCell::new(4, 4)];
 		integration_field.reset(&source);
 		integration_field.calculate_field(&source, &cost_field);
-		let result = integration_field.get_field();
+		let result = integration_field.get();
 
 		let actual: [[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
 			[8,7,6,5,4,5,6,7,8,9], [7,65535,65535,4,3,4,5,6,7,8], [6,65535,65535,3,2,3,4,5,6,7], [5,4,3,2,1,2,3,4,5,6], [4,3,2,1,0,1,2,3,4,5], [5,4,3,2,1,2,65535,65535,5,6], [6,5,4,3,65535,3,4,65535,65535,65535], [7,6,5,4,65535,4,5,6,7,65535], [8,7,6,5,65535,5,6,7,8,9], [9,8,7,6,65535,6,7,8,9,10]

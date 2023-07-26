@@ -14,7 +14,7 @@ use bevy::utils::Duration;
 /// Defines required access to field arrays
 pub trait Field<T> {
 	/// Get a reference to the field array
-	fn get_field(&self) -> &[[T; FIELD_RESOLUTION]; FIELD_RESOLUTION];
+	fn get(&self) -> &[[T; FIELD_RESOLUTION]; FIELD_RESOLUTION];
 	/// Retrieve a field cell value
 	fn get_field_cell_value(&self, field_cell: FieldCell) -> T;
 	/// Set a field cell to a value
@@ -23,7 +23,7 @@ pub trait Field<T> {
 
 /// ID of a cell within a field
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash, Reflect)]
 pub struct FieldCell((usize, usize));
 
 impl FieldCell {
@@ -67,7 +67,7 @@ impl FieldCell {
 }
 
 /// Describes the properties of a route
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Reflect)]
 pub struct RouteMetadata {
 	/// Starting sector of the route
 	source_sector: SectorID,
@@ -176,7 +176,7 @@ impl RouteCache {
 	}
 }
 /// Describes the properties of a [FlowField]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Reflect)]
 pub struct FlowFieldMetadata {
 	/// The sector of the corresponding [FlowField]
 	sector_id: SectorID,

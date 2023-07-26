@@ -44,12 +44,14 @@
 //! the agent can immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
+use bevy::reflect::Reflect;
+
 use crate::prelude::*;
 
 /// Portals contains an array of length 4 (one element for each side of a sector) where the values are lists of the portals. The elements correspond to Ordinals in a strict ordering of `0..=3 == North, East,
 /// South, West`
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Reflect)]
 pub struct Portals([Vec<FieldCell>; 4]);
 
 impl Portals {

@@ -55,7 +55,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let cost_field = CostField::from_ron(c_path);
 	// create a blank visualisation
 	cmds.spawn(Camera2dBundle::default());
-	for (i, column) in cost_field.get_field().iter().enumerate() {
+	for (i, column) in cost_field.get().iter().enumerate() {
 		for (j, value) in column.iter().enumerate() {
 			// grid origin is always in the top left
 			let x = -(map_length as f32) / 2.0 + 32.0 + (sprite_dimension * i as f32);

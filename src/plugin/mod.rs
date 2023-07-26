@@ -1,6 +1,7 @@
 //! Defines the Bevy [Plugin] for FlowfieldTiles
 //!
 
+use crate::prelude::*;
 use bevy::prelude::*;
 
 pub mod cost_layer;
@@ -17,7 +18,16 @@ pub struct FlowFieldTilesPlugin;
 impl Plugin for FlowFieldTilesPlugin {
 	#[cfg(not(tarpaulin_include))]
 	fn build(&self, app: &mut App) {
-		app.add_event::<cost_layer::EventUpdateCostfieldsCell>()
+		app.register_type::<Ordinal>()
+			.register_type::<MapDimensions>()
+			.register_type::<CostField>()
+			.register_type::<Portals>()
+			.register_type::<FlowField>()
+			.register_type::<SectorID>()
+			.register_type::<FieldCell>()
+			.register_type::<RouteMetadata>()
+			.register_type::<FlowFieldMetadata>()
+			.add_event::<cost_layer::EventUpdateCostfieldsCell>()
 			.add_event::<cost_layer::EventRebuildSectorPortals>()
 			.add_event::<cost_layer::EventUpdatePortalGraph>()
 			.add_event::<cost_layer::EventCleanCaches>()
