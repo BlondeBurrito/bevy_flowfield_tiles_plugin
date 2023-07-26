@@ -14,7 +14,7 @@ fn main() {
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// calculate the field
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
-	let cost_field = CostField::from_file(path);
+	let cost_field = CostField::from_ron(path);
 	let mut int_field = IntegrationField::default();
 	let source = vec![FieldCell::new(4, 4)];
 	int_field.reset(&source);

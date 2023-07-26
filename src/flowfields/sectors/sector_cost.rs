@@ -1,4 +1,5 @@
-//! A map is split into a series of `MxN` sectors composed of various fields used for path calculation
+//! A map is split into a series of `MxN` sectors where each has a [CostField]
+//! associated with it
 //!
 //!
 
@@ -38,7 +39,7 @@ impl SectorCostFields {
 	}
 	/// From a `ron` file generate the [SectorCostFields]
 	#[cfg(feature = "ron")]
-	pub fn from_file(path: String) -> Self {
+	pub fn from_ron(path: String) -> Self {
 		let file = std::fs::File::open(path).expect("Failed opening CostField file");
 		let fields: SectorCostFields = match ron::de::from_reader(file) {
 			Ok(fields) => fields,
@@ -114,6 +115,6 @@ mod tests {
 	#[cfg(feature = "ron")]
 	fn sector_cost_fields_file() {
 		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
-		let _cost_fields = SectorCostFields::from_file(path);
+		let _cost_fields = SectorCostFields::from_ron(path);
 	}
 }

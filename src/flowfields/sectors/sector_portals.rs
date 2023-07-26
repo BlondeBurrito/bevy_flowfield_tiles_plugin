@@ -1,4 +1,6 @@
-//! A map is split into a series of `MxN` sectors composed of various fields used for path calculation
+//! A map is split into a series of `MxN` sectors where each has a number of
+//! [Portals] for indicating points that can be used to path to neighbouring
+//! sectors
 //!
 //!
 

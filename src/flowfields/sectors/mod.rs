@@ -1,4 +1,5 @@
-//! A map is split into a series of `MxN` sectors composed of various fields used for path calculation
+//! A map is split into a series of `MxN` sectors composed of various fields
+//! used for path calculation
 //!
 //!
 
@@ -32,13 +33,48 @@ impl SectorID {
 	}
 }
 
-/// The length `x` and depth `z` (or `y` in 2d) of the map
+/// The dimensions of the world
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component, Default, Clone, Copy)]
 pub struct MapDimensions {
 	/// Dimensions of the world
+	/// 
+	/// ## In 3d
+	/// 
+	/// This is taken as `(x, z)` dimensions of the world
+	/// 
+	/// ## In 2d
+	/// 
+	/// This is taken as the `(x, y)` pixel dimensions of the world
 	size: (u32, u32),
-	/// The factor by which the `length` and `depth` of world will be divided by to produce the number of sectors. The world dimensions must be perfectly divisible by this number
+	/// The factor by which the `size` of world will be divided by to produce
+	/// the number of sectors. The world dimensions must be perfectly divisible
+	/// by this number.
+	/// 
+	/// ## In 3d
+	/// 
+	/// This is the number of units that define a sector.
+	/// 
+	/// For a world size of `(30, 30)` and resolution `10` then there will be
+	/// `3x3` sectors created where each field within a sector represents a
+	/// `1x1` unit area in 3d space.
+	/// 
+	/// For a world size of `(30, 30)` and resolution `3` then there will be
+	/// `10x10` sectors created where each field within a sector represents a
+	/// `0.3x0.3` unit area in 3d space.
+	/// 
+	/// ## In 2d
+	/// 
+	/// This is the number of pixels that define the length/height of a sector
+	/// (square sectors so the same number).
+	/// 
+	/// For a world size of `(1920, 1920)` and resolution `640` then there will
+	/// be `3x3` sectors created where each field within a sector represents a
+	/// `64x64` pixel area in 2d space.
+	/// 
+	/// For a world size of `(1920, 1920)` and resolution `64` then there will
+	/// be `30x30` sectors created where each field within a sector represents
+	/// a `6.4x6.4` pixel area in 2d space.
 	sector_resolution: u32,
 }
 
@@ -76,7 +112,7 @@ impl MapDimensions {
 	///
 	/// `pixel_scale` refers to the dimensions of your map sprites, not that their `x` and `y` dimensions must be the same, i.e a square shape
 	#[cfg(feature = "2d")]
-	pub fn get_sector_id_from_xy(&self, position: Vec2, pixel_scale: f32) -> Option<SectorID> {
+	pub fn get_sector_id_from_xy(&self, position: Vec2) -> Option<SectorID> {
 		if position.x < -((self.get_length() / 2) as f32)
 			|| position.x > (self.get_length() / 2) as f32
 			|| position.y < -((self.get_depth() / 2) as f32)
@@ -96,8 +132,8 @@ impl MapDimensions {
 		let y_origin = (self.get_depth() / 2) as f32 - position.y;
 		// the grid IDs follow a (column, row) convention, by dividing the repositioned dimension
 		// by the sector grid sizes and rounding down we determine the sector indices
-		let mut column = (x_origin / (pixel_scale * self.get_sector_resolution() as f32)).floor() as u32;
-		let mut row = (y_origin / (pixel_scale * self.get_sector_resolution() as f32)).floor() as u32;
+		let mut column = (x_origin / (self.get_sector_resolution() as f32)).floor() as u32;
+		let mut row = (y_origin / (self.get_sector_resolution() as f32)).floor() as u32;
 		// safety for x-y being at the exact limits of map size
 		if column >= x_sector_count {
 			column = x_sector_count - 1;
@@ -110,14 +146,13 @@ impl MapDimensions {
 
 	/// Get the `(x,y)` coordinates of the top left corner of a sector in real space
 	#[cfg(feature = "2d")]
-	pub fn get_sector_corner_xy(&self, sector_id: SectorID, pixel_scale: f32) -> Vec2 {
+	pub fn get_sector_corner_xy(&self, sector_id: SectorID) -> Vec2 {
 		// x sector-grid origin begins in the negative
 		let x_origin = -(self.get_length() as f32) / 2.0;
-		let sprite_length_of_sector = pixel_scale * self.get_sector_resolution() as f32;
-		let x = x_origin + sector_id.get_column() as f32 * sprite_length_of_sector;
+		let x = x_origin + sector_id.get_column() as f32 * self.get_sector_resolution() as f32;
 		// y sector grid origin begins in the positive
 		let y_origin = self.get_depth() as f32 / 2.0;
-		let y = y_origin - sector_id.get_row() as f32 * sprite_length_of_sector;
+		let y = y_origin - sector_id.get_row() as f32 * self.get_sector_resolution() as f32;
 		Vec2::new(x, y)
 	}
 	/// From a 2d position get the sector and field cell it resides in
@@ -125,13 +160,13 @@ impl MapDimensions {
 	pub fn get_sector_and_field_id_from_xy(
 		&self,
 		position: Vec2,
-		pixel_scale: f32,
 	) -> Option<(SectorID, FieldCell)> {
-		if let Some(sector_id) = self.get_sector_id_from_xy(position, pixel_scale) {
-			let sector_corner_origin = self.get_sector_corner_xy(sector_id, pixel_scale);
-			let field_id_0 = ((position.x - sector_corner_origin.x) / pixel_scale).floor() as usize;
+		if let Some(sector_id) = self.get_sector_id_from_xy(position) {
+			let sector_corner_origin = self.get_sector_corner_xy(sector_id);
+			let pixel_sector_field_ratio = self.get_sector_resolution() as f32 / FIELD_RESOLUTION as f32;
+			let field_id_0 = ((position.x - sector_corner_origin.x) / pixel_sector_field_ratio).floor() as usize;
 			let field_id_1 =
-				((-position.y + sector_corner_origin.y) / pixel_scale).floor() as usize;
+				((-position.y + sector_corner_origin.y) / pixel_sector_field_ratio).floor() as usize;
 			let field_id = FieldCell::new(field_id_0, field_id_1);
 			return Some((sector_id, field_id));
 		}
@@ -259,19 +294,17 @@ mod tests {
 	}
 	#[test]
 	fn sector_from_xy_none() {
-		let map_dimensions = MapDimensions::new(20, 20, 10);
-		let pixel_scale = 64.0;
+		let map_dimensions = MapDimensions::new(1280, 1280, 640);
 		let position = Vec2::new(-1500.0, 0.0);
-		let result = map_dimensions.get_sector_id_from_xy(position, pixel_scale);
+		let result = map_dimensions.get_sector_id_from_xy(position);
 
 		assert!(result.is_none());
 	}
 	#[test]
 	fn sector_from_xy() {
-		let map_dimensions = MapDimensions::new(20, 20, 10);
-		let pixel_scale = 64.0;
+		let map_dimensions = MapDimensions::new(1280, 1280, 640);
 		let position = Vec2::new(530.0, 75.0);
-		let result = map_dimensions.get_sector_id_from_xy(position, pixel_scale);
+		let result = map_dimensions.get_sector_id_from_xy(position);
 		let actual = SectorID::new(1, 0);
 		assert_eq!(actual, result.unwrap());
 	}

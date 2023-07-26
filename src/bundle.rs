@@ -53,11 +53,11 @@ impl FlowFieldTilesBundle {
 			flow_field_cache: cache,
 		}
 	}
-	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from disk
+	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
 	#[cfg(feature = "ron")]
-	pub fn new_from_disk(map_length: u32, map_depth: u32, sector_resolution: u32, path: &str) -> Self {
+	pub fn from_ron(map_length: u32, map_depth: u32, sector_resolution: u32, path: &str) -> Self {
 		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
-		let cost_fields = SectorCostFields::from_file(path.to_string());
+		let cost_fields = SectorCostFields::from_ron(path.to_string());
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {

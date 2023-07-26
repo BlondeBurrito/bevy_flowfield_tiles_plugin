@@ -4,13 +4,6 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
 
-/// Pixel `x` length of the world
-const PIXEL_LENGTH: u32 = 640;
-/// Pixel `y` depth of the world
-const PIXEL_DEPTH: u32 = 640;
-/// Dimension of square sprites making up the world
-const FIELD_SPRITE_DIMENSION: f32 = 64.0;
-
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
@@ -48,23 +41,22 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// create the entity handling the algorithm
 	let s_path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_field_single.ron";
 	let c_path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
-	let map_length = 10; // in sprite count
-	let map_depth = 10; // in sprite count
-	let sector_resolution = 10;
-	cmds.spawn(FlowFieldTilesBundle::new_from_disk(
+	let map_length = 640;
+	let map_depth = 640;
+	let sector_resolution = 640;
+	let sprite_dimension = 64.0;
+	cmds.spawn(FlowFieldTilesBundle::from_ron(
 		map_length, map_depth, sector_resolution, &s_path,
 	));
 	// use the impression of the cost field to just init node images
-	let cost_field = CostField::from_file(c_path);
+	let cost_field = CostField::from_ron(c_path);
 	// create a blank visualisation
 	cmds.spawn(Camera2dBundle::default());
 	for (i, column) in cost_field.get_field().iter().enumerate() {
 		for (j, value) in column.iter().enumerate() {
 			// grid origin is always in the top left
-			let sprite_x = 64.0;
-			let sprite_y = 64.0;
-			let x = -sprite_x * map_length as f32 / 2.0 + 32.0 + (64.0 * i as f32);
-			let y = sprite_y * map_depth as f32 / 2.0 - 32.0 - (64.0 * j as f32);
+			let x = -(map_length as f32) / 2.0 + 32.0 + (sprite_dimension * i as f32);
+			let y = map_depth as f32 / 2.0 - 32.0 - (sprite_dimension * j as f32);
 			cmds.spawn(SpriteBundle {
 				texture: asset_server.load(get_basic_icon(*value)),
 				transform: Transform::from_xyz(x, y, 0.0),
@@ -87,6 +79,7 @@ fn user_input(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
+	dimensions_q: Query<&MapDimensions>,
 	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
 	mut event: EventWriter<EventPathRequest>,
 ) {
@@ -99,23 +92,18 @@ fn user_input(
 			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
 			.map(|ray| ray.origin.truncate())
 		{
+			let map_dimensions = dimensions_q.get_single().unwrap();
 			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) = get_sector_and_field_id_from_xy(
+			if let Some((target_sector_id, goal_id)) = map_dimensions.get_sector_and_field_id_from_xy(
 				world_position,
-				PIXEL_LENGTH,
-				PIXEL_DEPTH,
-				FIELD_SPRITE_DIMENSION,
 			) {
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_field_cell) = get_sector_and_field_id_from_xy(
+				let (source_sector_id, source_field_cell) = map_dimensions.get_sector_and_field_id_from_xy(
 					tform.translation.truncate(),
-					PIXEL_LENGTH,
-					PIXEL_DEPTH,
-					FIELD_SPRITE_DIMENSION,
 				)
 				.unwrap();
 				info!(

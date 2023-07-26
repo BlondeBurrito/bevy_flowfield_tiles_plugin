@@ -233,7 +233,7 @@ Note that the data stored in the caches is timestamped - if a record lives longe
 
 NB: the user interface to this needs a little polish but the `examples/` should get folks up and running
 
-Update your `Cargo.toml` and add any features you require, to actually interface with calculated fields you should enable either `2d` or `3d` depending on the coordinate system of your game:
+Update your `Cargo.toml` and add any features you require, to actually interface with calculated fields you should enable either `2d` or `3d` depending on the coordinate system of your world:
 
 ```toml
 [dependencies]

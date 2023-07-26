@@ -127,7 +127,7 @@ impl CostField {
 	}
 	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]
-	pub fn from_file(path: String) -> Self {
+	pub fn from_ron(path: String) -> Self {
 		let file = std::fs::File::open(path).expect("Failed opening CostField file");
 		let field: CostField = match ron::de::from_reader(file) {
 			Ok(field) => field,
@@ -154,7 +154,7 @@ mod tests {
 	#[cfg(feature = "ron")]
 	fn cost_field_file() {
 		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field.ron";
-		let _cost_field = CostField::from_file(path);
+		let _cost_field = CostField::from_ron(path);
 	}
 	#[test]
 	fn internal_portal_visibility_true() {

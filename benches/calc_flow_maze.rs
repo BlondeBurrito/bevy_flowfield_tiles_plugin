@@ -156,7 +156,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 			flow_maze(
 				black_box(portals.clone()),
 				black_box(cost_fields.clone()),
-				black_box(map_dimensions.clone()),
+				black_box(map_dimensions),
 				black_box(route_cache.clone()),
 			)
 		})

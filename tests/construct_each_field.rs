@@ -9,7 +9,7 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 fn field_on_field() {
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let map_dimensions = MapDimensions::new(30, 30, 10);
-	let sector_cost_fields = SectorCostFields::from_file(path);
+	let sector_cost_fields = SectorCostFields::from_ron(path);
 	let mut sector_portals =
 		SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 	// update default portals for cost fields

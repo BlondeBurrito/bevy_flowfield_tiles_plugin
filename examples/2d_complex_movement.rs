@@ -5,13 +5,9 @@ use std::collections::HashMap;
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
+
 /// Timestep of actor movement system
 const ACTOR_TIMESTEP: f32 = 0.25;
-
-/// Pixel `x` length of the world
-const PIXEL_LENGTH: u32 = 1920;
-/// Pixel `y` depth of the world
-const PIXEL_DEPTH: u32 = 1920;
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 
@@ -53,13 +49,15 @@ struct Pathing {
 
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
-	let map_length = 30; // in sprite count
-	let map_depth = 30; // in sprite count
+	let map_length = 1920;
+	let map_depth = 1920;
+	let sector_resolution = 640;
+	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
 	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
-	let sector_cost_fields = SectorCostFields::from_csv_dir(map_length, map_depth, dir);
+	let sector_cost_fields = SectorCostFields::from_csv_dir(map_length, map_depth, sector_resolution, dir);
 	let fields = sector_cost_fields.get();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
@@ -67,16 +65,11 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		for (i, column) in field.get_field().iter().enumerate() {
 			for (j, value) in column.iter().enumerate() {
 				// grid origin is always in the top left
-				let sprite_x = FIELD_SPRITE_DIMENSION;
-				let sprite_y = FIELD_SPRITE_DIMENSION;
-				let sector_offset = get_sector_corner_xy(
+				let sector_offset = map_dimensions.get_sector_corner_xy(
 					*sector_id,
-					map_length * sprite_x as u32,
-					map_depth * sprite_y as u32,
-					sprite_x,
 				);
-				let x = sector_offset.x + 32.0 + (sprite_x * i as f32);
-				let y = sector_offset.y - 32.0 - (sprite_y * j as f32);
+				let x = sector_offset.x + 32.0 + (FIELD_SPRITE_DIMENSION * i as f32);
+				let y = sector_offset.y - 32.0 - (FIELD_SPRITE_DIMENSION * j as f32);
 				cmds.spawn(SpriteBundle {
 					texture: asset_server.load(get_basic_icon(*value)),
 					transform: Transform::from_xyz(x, y, 0.0),
@@ -92,9 +85,9 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// create the entity handling the algorithm
 	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
-	let map_length = 30; // in sprite count
-	let map_depth = 30; // in sprite count
-	let sector_resolution = 10;
+	let map_length = 1920;
+	let map_depth = 1920;
+	let sector_resolution = 640;
 	cmds.spawn(FlowFieldTilesBundle::from_csv(map_length, map_depth, sector_resolution, &dir));
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
@@ -111,6 +104,7 @@ fn user_input(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
+	dimensions_q: Query<&MapDimensions>,
 	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
 	mut event: EventWriter<EventPathRequest>,
 ) {
@@ -123,23 +117,18 @@ fn user_input(
 			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
 			.map(|ray| ray.origin.truncate())
 		{
+			let map_dimensions = dimensions_q.get_single().unwrap();
 			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) = get_sector_and_field_id_from_xy(
-				world_position,
-				PIXEL_LENGTH,
-				PIXEL_DEPTH,
-				FIELD_SPRITE_DIMENSION,
+			if let Some((target_sector_id, goal_id)) = map_dimensions.get_sector_and_field_id_from_xy(
+				world_position
 			) {
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_field_cell) = get_sector_and_field_id_from_xy(
-					tform.translation.truncate(),
-					PIXEL_LENGTH,
-					PIXEL_DEPTH,
-					FIELD_SPRITE_DIMENSION,
+				let (source_sector_id, source_field_cell) = map_dimensions.get_sector_and_field_id_from_xy(
+					tform.translation.truncate()
 				)
 				.unwrap();
 				info!(
@@ -185,21 +174,18 @@ const SPEED: f32 = 64.0;
 /// [FlowField] for its current position and move the actor
 fn actor_steering(
 	mut actor_q: Query<(&mut Transform, &mut Pathing), With<Actor>>,
-	flow_cache_q: Query<&FlowFieldCache>,
+	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
 ) {
 	let (mut tform, mut pathing) = actor_q.get_single_mut().unwrap();
-	let flow_cache = flow_cache_q.get_single().unwrap();
+	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 
 	if pathing.target_goal.is_some() {
 		// lookup the overarching route
 		if let Some(route) = pathing.portal_route.as_mut() {
 			// info!("Route: {:?}", route);
 			// find the current actors postion in grid space
-			let (curr_actor_sector, curr_actor_field_cell) = get_sector_and_field_id_from_xy(
+			let (curr_actor_sector, curr_actor_field_cell) = map_dimensions.get_sector_and_field_id_from_xy(
 				tform.translation.truncate(),
-				PIXEL_LENGTH,
-				PIXEL_DEPTH,
-				FIELD_SPRITE_DIMENSION,
 			)
 			.unwrap();
 			// tirm the actor stored route as it makes progress

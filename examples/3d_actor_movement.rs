@@ -69,7 +69,7 @@ fn setup_navigation(
 ) {
 	// create the entity handling the algorithm
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
-	cmds.spawn(FlowFieldTilesBundle::new_from_disk(
+	cmds.spawn(FlowFieldTilesBundle::from_ron(
 		MAP_LENGTH, MAP_DPETH, SECTOR_RESOLUTION, &path,
 	));
 	// create the controllable actor in the top right corner

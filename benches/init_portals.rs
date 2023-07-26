@@ -32,7 +32,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		b.iter(|| {
 			init_portals(
 				black_box(cost_fields.clone()),
-				black_box(map_dimensions.clone()),
+				black_box(map_dimensions),
 			)
 		})
 	});
