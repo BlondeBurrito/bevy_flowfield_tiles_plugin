@@ -21,22 +21,20 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let sector_cost_fields = SectorCostFields::from_file(path);
 	let mut sector_portals =
-		SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth());
+		SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 	// update default portals for cost fields
 	for sector_id in sector_cost_fields.get().keys() {
 		sector_portals.update_portals(
 			*sector_id,
 			&sector_cost_fields,
-			map_dimensions.get_length(),
-			map_dimensions.get_depth(),
+			&map_dimensions
 		);
 	}
 	// generate the portal graph
 	let portal_graph = PortalGraph::new(
 		&sector_portals,
 		&sector_cost_fields,
-		map_dimensions.get_length(),
-		map_dimensions.get_depth(),
+		&map_dimensions
 	);
 	//
 	let source_sector = SectorID::new(2, 0);
@@ -92,8 +90,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					sector_id,
 					goal,
 					&neighbour_sector_id,
-					map_dimensions.get_length(),
-					map_dimensions.get_depth(),
+					&map_dimensions
 				);
 			sectors_expanded_goals.push((*sector_id, g));
 		}

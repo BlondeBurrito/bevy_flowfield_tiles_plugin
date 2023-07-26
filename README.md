@@ -233,11 +233,11 @@ Note that the data stored in the caches is timestamped - if a record lives longe
 
 NB: the user interface to this needs a little polish but the `examples/` should get folks up and running
 
-Update your `Cargo.toml`:
+Update your `Cargo.toml` and add any features you require, to actually interface with calculated fields you should enable either `2d` or `3d` depending on the coordinate system of your game:
 
 ```toml
 [dependencies]
-bevy_flowfield_tiles_plugin = "0.1"
+bevy_flowfield_tiles_plugin = { version = "0.1", features = ["3d"] }
 ```
 
 ## Default
@@ -408,6 +408,8 @@ NB: when a CostField is modified Portals and the PortalGraph are updated and any
 * `serde` - enables serlialisation on some data types
 * `ron` - enables reading `CostField` from files. NB: fixed-size arrays in `.ron` are written as tuples
 * `csv` - enables creating all of the `CostFields` by reading from a directory of csv files. Note that csv filenames need to follow the sector ID convention of `column_row.csv`, the underscore is important, and the path of the directory should be fully qualified and the files themselves should not contain any headers
+* `2d` - enables interface methods when working with Flowfields in a 2d world
+* `3d` - enables interface methods when working with FlowFields in a 3d world
 
 # Performance
 

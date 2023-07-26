@@ -75,6 +75,7 @@ impl MapDimensions {
 	/// dimensions (pixels) of the map, calculate the sector ID that point resides in
 	///
 	/// `pixel_scale` refers to the dimensions of your map sprites, not that their `x` and `y` dimensions must be the same, i.e a square shape
+	#[cfg(feature = "2d")]
 	pub fn get_sector_id_from_xy(&self, position: Vec2, pixel_scale: f32) -> Option<SectorID> {
 		if position.x < -((self.get_length() / 2) as f32)
 			|| position.x > (self.get_length() / 2) as f32
@@ -108,6 +109,7 @@ impl MapDimensions {
 	}
 
 	/// Get the `(x,y)` coordinates of the top left corner of a sector in real space
+	#[cfg(feature = "2d")]
 	pub fn get_sector_corner_xy(&self, sector_id: SectorID, pixel_scale: f32) -> Vec2 {
 		// x sector-grid origin begins in the negative
 		let x_origin = -(self.get_length() as f32) / 2.0;
@@ -119,6 +121,7 @@ impl MapDimensions {
 		Vec2::new(x, y)
 	}
 	/// From a 2d position get the sector and field cell it resides in
+	#[cfg(feature = "2d")]
 	pub fn get_sector_and_field_id_from_xy(
 		&self,
 		position: Vec2,
@@ -137,6 +140,7 @@ impl MapDimensions {
 
 	/// From a position in `x, y, z` space and the dimensions of the map calculate
 	/// the sector ID that point resides in
+	#[cfg(feature = "3d")]
 	pub fn get_sector_id_from_xyz(&self, position: Vec3) -> Option<SectorID> {
 		if position.x < -((self.get_length() / 2) as f32)
 			|| position.x > (self.get_length() / 2) as f32
@@ -170,6 +174,7 @@ impl MapDimensions {
 	}
 
 	/// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
+	#[cfg(feature = "3d")]
 	pub fn get_sector_corner_xyz(&self, sector_id: SectorID) -> Vec3 {
 		// x sector-grid origin begins in the negative
 		let x_origin = -(self.get_length() as f32) / 2.0;
@@ -181,6 +186,7 @@ impl MapDimensions {
 	}
 
 	/// From a point in 3D space calcualte what Sector and field cell it resides in
+	#[cfg(feature = "3d")]
 	pub fn get_sector_and_field_cell_from_xyz(
 		&self,
 		position: Vec3,
