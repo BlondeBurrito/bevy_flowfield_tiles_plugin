@@ -27,6 +27,8 @@ struct FieldCellLabel(usize, usize);
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 30; // in sprite count
 	let map_depth = 30; // in sprite count
+	let map_dimensions = MapDimensions::new(30, 30, 10);
+	let sprite_dimension = 64.0;
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
@@ -41,7 +43,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				// grid origin is always in the top left
 				let sprite_x = 64.0;
 				let sprite_y = 64.0;
-				let sector_offset = get_sector_xy_at_top_left(
+				let sector_offset = map_dimensions.get_sector_corner_xy(
 					*sector_id,
 					map_length * sprite_x as u32,
 					map_depth * sprite_y as u32,
@@ -63,7 +65,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut portals = SectorPortals::new(map_length, map_depth);
 	// update default portals for cost fields
 	for sector_id in sector_cost_fields.get().keys() {
-		portals.update_portals(*sector_id, &sector_cost_fields, map_length, map_depth);
+		portals.update_portals(*sector_id, &sector_cost_fields, &map_dimensions);
 	}
 	cmds.spawn(portals);
 }

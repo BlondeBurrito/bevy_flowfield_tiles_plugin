@@ -69,7 +69,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				// grid origin is always in the top left
 				let sprite_x = FIELD_SPRITE_DIMENSION;
 				let sprite_y = FIELD_SPRITE_DIMENSION;
-				let sector_offset = get_sector_xy_at_top_left(
+				let sector_offset = get_sector_corner_xy(
 					*sector_id,
 					map_length * sprite_x as u32,
 					map_depth * sprite_y as u32,
@@ -94,7 +94,8 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
 	let map_length = 30; // in sprite count
 	let map_depth = 30; // in sprite count
-	cmds.spawn(FlowFieldTilesBundle::from_csv(map_length, map_depth, &dir));
+	let sector_resolution = 10;
+	cmds.spawn(FlowFieldTilesBundle::from_csv(map_length, map_depth, sector_resolution, &dir));
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
 		texture: asset_server.load("2d/2d_actor_sprite.png"),
@@ -264,7 +265,10 @@ fn update_sprite_visuals_based_on_actor(
 				if let Some(flowfield) =
 					f_cache.get_field(SectorID::new(sector_label.0, sector_label.1), *goal)
 				{
-					let flow_value = flowfield.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
+					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
+						field_cell_label.0,
+						field_cell_label.1,
+					));
 					let icon = get_ord_icon(flow_value);
 					let new_handle: Handle<Image> = asset_server.load(icon);
 					*handle = new_handle;

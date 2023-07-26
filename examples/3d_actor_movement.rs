@@ -10,7 +10,8 @@ const ACTOR_TIMESTEP: f32 = 0.25;
 const MAP_LENGTH: u32 = 30;
 /// Depth `z` of the world
 const MAP_DPETH: u32 = 30;
-
+/// Factor of sectors to create
+const SECTOR_RESOLUTION: u32 = 10;
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
@@ -69,7 +70,7 @@ fn setup_navigation(
 	// create the entity handling the algorithm
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	cmds.spawn(FlowFieldTilesBundle::new_from_disk(
-		MAP_LENGTH, MAP_DPETH, &path,
+		MAP_LENGTH, MAP_DPETH, SECTOR_RESOLUTION, &path,
 	));
 	// create the controllable actor in the top right corner
 	let mesh = meshes.add(
@@ -95,6 +96,7 @@ fn user_input(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
+	dimensions_q: Query<&MapDimensions>,
 	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
 	mut event: EventWriter<EventPathRequest>,
 ) {
@@ -110,10 +112,11 @@ fn user_input(
 					.map(|distance| ray.get_point(distance))
 			});
 		if let Some(op_world_position) = ray_point {
+			let map_dimensions = dimensions_q.get_single().unwrap();
 			let world_position = op_world_position.unwrap();
 			info!("World cursor position: {:?}", world_position);
 			if let Some((target_sector_id, goal_id)) =
-				get_sector_and_field_cell_from_xyz(world_position, MAP_LENGTH, MAP_DPETH)
+			map_dimensions.get_sector_and_field_cell_from_xyz(world_position)
 			{
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
@@ -121,7 +124,7 @@ fn user_input(
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
 				let (source_sector_id, source_field_cell) =
-					get_sector_and_field_cell_from_xyz(tform.translation, MAP_LENGTH, MAP_DPETH)
+				map_dimensions.get_sector_and_field_cell_from_xyz(tform.translation)
 						.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
@@ -166,10 +169,10 @@ const SPEED: f32 = 1.0;
 /// [FlowField] for its current position and move the actor
 fn actor_steering(
 	mut actor_q: Query<(&mut Transform, &mut Pathing), With<Actor>>,
-	flow_cache_q: Query<&FlowFieldCache>,
+	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
 ) {
 	let (mut tform, mut pathing) = actor_q.get_single_mut().unwrap();
-	let flow_cache = flow_cache_q.get_single().unwrap();
+	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 
 	if pathing.target_goal.is_some() {
 		// lookup the overarching route
@@ -177,7 +180,7 @@ fn actor_steering(
 			// info!("Route: {:?}", route);
 			// find the current actors postion in grid space
 			let (curr_actor_sector, curr_actor_field_cell) =
-				get_sector_and_field_cell_from_xyz(tform.translation, MAP_LENGTH, MAP_DPETH)
+			map_dimensions.get_sector_and_field_cell_from_xyz(tform.translation)
 					.unwrap();
 			// tirm the actor stored route as it makes progress
 			// this ensures it doesn't use a previous goal from

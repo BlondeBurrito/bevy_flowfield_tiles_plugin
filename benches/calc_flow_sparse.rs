@@ -12,26 +12,25 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 /// Create the required CostFields and Portals before benchmarking
 fn prepare_fields(
 	map_length: u32,
-	map_depth: u32,
+	map_depth: u32
+	, sector_resolution: u32
 ) -> (SectorPortals, SectorCostFields, MapDimensions, RouteCache) {
-	let map_dimensions = MapDimensions::new(map_length, map_depth);
+	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
 	//TODO setup a sparse costfields
-	let cost_fields = SectorCostFields::new(map_length, map_depth);
-	let mut portals = SectorPortals::new(map_dimensions.get_column(), map_dimensions.get_row());
+	let cost_fields = SectorCostFields::new(map_length, map_depth, sector_resolution);
+	let mut portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 	// update default portals for cost fields
 	for sector_id in cost_fields.get().keys() {
 		portals.update_portals(
 			*sector_id,
 			&cost_fields,
-			map_dimensions.get_column(),
-			map_dimensions.get_row(),
+			&map_dimensions
 		);
 	}
 	let graph = PortalGraph::new(
 		&portals,
 		&cost_fields,
-		map_dimensions.get_column(),
-		map_dimensions.get_row(),
+		&map_dimensions
 	);
 
 	let mut route_cache = RouteCache::default();
@@ -96,8 +95,7 @@ fn flow_sparse(
 						sector_id,
 						goal,
 						&neighbour_sector_id,
-						map_dimensions.get_column(),
-						map_dimensions.get_row(),
+						&map_dimensions
 					);
 				sectors_expanded_goals.push((*sector_id, g));
 			}
@@ -136,7 +134,7 @@ fn flow_sparse(
 pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut group = c.benchmark_group("algorithm_use");
 	group.significance_level(0.05).sample_size(100);
-	let (portals, cost_fields, map_dimensions, route_cache) = prepare_fields(1000, 1000);
+	let (portals, cost_fields, map_dimensions, route_cache) = prepare_fields(1000, 1000, 10);
 	group.bench_function("calc_flow_sparse", |b| {
 		b.iter(|| {
 			flow_sparse(

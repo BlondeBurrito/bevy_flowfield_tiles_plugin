@@ -47,13 +47,12 @@ impl PortalGraph {
 	pub fn new(
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
-		map_x_dimension: u32,
-		map_z_dimension: u32,
+		map_dimensions: &MapDimensions,
 	) -> Self {
 		let mut portal_graph = PortalGraph::default();
 		portal_graph.build_graph_nodes(sector_portals);
 		portal_graph.build_edges_within_each_sector(sector_portals, sector_cost_fields);
-		portal_graph.build_edges_between_sectors(sector_portals, map_x_dimension, map_z_dimension);
+		portal_graph.build_edges_between_sectors(sector_portals, map_dimensions);
 		portal_graph
 	}
 	/// Builds the [StableGraph] nodes for each portal within a sector
@@ -160,11 +159,10 @@ impl PortalGraph {
 	fn build_edges_between_sectors(
 		&mut self,
 		sector_portals: &SectorPortals,
-		map_x_dimension: u32,
-		map_z_dimension: u32,
+		map_dimensions: &MapDimensions,
 	) -> &mut Self {
 		for (sector_id, _portals) in sector_portals.get().iter() {
-			self.build_external_sector_edges(sector_id, map_x_dimension, map_z_dimension);
+			self.build_external_sector_edges(sector_id, map_dimensions);
 		}
 		self
 	}
@@ -173,15 +171,12 @@ impl PortalGraph {
 	fn build_external_sector_edges(
 		&mut self,
 		sector_id: &SectorID,
-		map_x_dimension: u32,
-		map_z_dimension: u32,
+		map_dimensions: &MapDimensions,
 	) -> &mut Self {
 		let graph = &mut self.graph;
 		let translator = &mut self.node_index_translation;
-		let sector_neighbours = get_ordinal_and_ids_of_neighbouring_sectors(
+		let sector_neighbours = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(
 			sector_id,
-			map_x_dimension,
-			map_z_dimension,
 		);
 		for (ordinal, neighbour_id) in sector_neighbours.iter() {
 			match ordinal {
@@ -241,11 +236,10 @@ impl PortalGraph {
 		changed_sector: SectorID,
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
-		map_x_dimension: u32,
-		map_z_dimension: u32,
+		map_dimensions: &MapDimensions,
 	) -> &mut Self {
 		let mut sectors_to_rebuild =
-			get_ids_of_neighbouring_sectors(&changed_sector, map_x_dimension, map_z_dimension);
+		map_dimensions.get_ids_of_neighbouring_sectors(&changed_sector);
 		let graph = &mut self.graph;
 		let translator = &mut self.node_index_translation;
 		// remove the nodes from the sector and its neighbours
@@ -277,16 +271,16 @@ impl PortalGraph {
 		}
 		// rebuild the edges between each sector
 		for sector_id in sectors_to_rebuild.iter() {
-			self.build_external_sector_edges(sector_id, map_x_dimension, map_z_dimension);
+			self.build_external_sector_edges(sector_id, map_dimensions);
 		}
 		// Note the adjacent sectors that were completely rebuilt have destroyed !their!
 		// neighbours connectivity. Rebuild them too
 		sectors_to_rebuild.pop(); // don't need to rebuild the one that had its cost fields changed
 		for sector_id in sectors_to_rebuild.iter() {
 			let neighbours_neighbour =
-				get_ids_of_neighbouring_sectors(sector_id, map_x_dimension, map_z_dimension);
+			map_dimensions.get_ids_of_neighbouring_sectors(sector_id);
 			for id in neighbours_neighbour.iter() {
-				self.build_external_sector_edges(id, map_x_dimension, map_z_dimension);
+				self.build_external_sector_edges(id, map_dimensions);
 			}
 		}
 		self
@@ -296,14 +290,13 @@ impl PortalGraph {
 		&mut self,
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
-		map_x_dimension: u32,
-		map_z_dimension: u32,
+		map_dimensions: &MapDimensions
 	) -> &mut Self {
 		let mut graph = PortalGraph::default();
 		graph
 			.build_graph_nodes(sector_portals)
 			.build_edges_within_each_sector(sector_portals, sector_cost_fields)
-			.build_edges_between_sectors(sector_portals, map_x_dimension, map_z_dimension);
+			.build_edges_between_sectors(sector_portals, map_dimensions);
 		self.graph = graph.graph;
 		self
 	}
@@ -381,10 +374,7 @@ impl PortalGraph {
 			for cell in ordinal.iter() {
 				let cost_field = sector_cost_fields.get().get(&source_sector_id).unwrap();
 				if cost_field
-					.can_internal_portal_pair_see_each_other(
-						source_field_cell,
-						*cell,
-					)
+					.can_internal_portal_pair_see_each_other(source_field_cell, *cell)
 					.0
 				{
 					source_portals.push(*cell);
@@ -400,10 +390,7 @@ impl PortalGraph {
 			for cell in ordinal.iter() {
 				let cost_field = sector_cost_fields.get().get(&target_sector_id).unwrap();
 				if cost_field
-					.can_internal_portal_pair_see_each_other(
-						target_field_cell,
-						*cell,
-					)
+					.can_internal_portal_pair_see_each_other(target_field_cell, *cell)
 					.0
 				{
 					target_portals.push(*cell);
@@ -539,21 +526,20 @@ fn find_index_from_single_portal_and_portal_cell(
 #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-	use crate::flowfields::sectors::SectorCostFields;
+	use crate::flowfields::sectors::sector_cost::SectorCostFields;
 
 use super::*;
 	#[test]
 	fn portal_graph_node_count() {
 		//init
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
-		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
 		for (sector_id, _cost_fields) in sector_cost_fields.get().iter() {
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
-				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, map_x_dimension, map_z_dimension),
+				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, &map_dimensions),
 				None => panic!("Key {:?} not found in Portals", sector_id),
 			}
 		}
@@ -569,15 +555,14 @@ use super::*;
 	#[test]
 	fn portal_graph_basic_sector_edge_count() {
 		//init
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
-		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
 		for (sector_id, _cost_fields) in sector_cost_fields.get().iter() {
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
-				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, map_x_dimension, map_z_dimension),
+				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, &map_dimensions),
 				None => panic!("Key {:?} not found in Portals", sector_id),
 			}
 		}
@@ -613,15 +598,14 @@ use super::*;
 	#[test]
 	fn portal_graph_basic_edge_count() {
 		//init
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
-		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
 		for (sector_id, _cost_fields) in sector_cost_fields.get().iter() {
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
-				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, map_x_dimension, map_z_dimension),
+				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, &map_dimensions),
 				None => panic!("Key {:?} not found in Portals", sector_id),
 			}
 		}
@@ -632,7 +616,7 @@ use super::*;
 		// build the edges within each sector
 		portal_graph.build_edges_within_each_sector(&sector_portals, &sector_cost_fields);
 		// build the edges between sectors
-		portal_graph.build_edges_between_sectors(&sector_portals, map_x_dimension, map_z_dimension);
+		portal_graph.build_edges_between_sectors(&sector_portals, &map_dimensions);
 		let result = portal_graph.graph.edge_count();
 
 		// _______________________________
@@ -661,13 +645,12 @@ use super::*;
 	#[test]
 	fn update_graph_from_portals_change() {
 		//init
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let mut sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
-		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
-			portals.recalculate_portals(&sector_cost_fields, id, map_x_dimension, map_z_dimension)
+			portals.recalculate_portals(&sector_cost_fields, id,&map_dimensions)
 		}
 		
 		// build the graph
@@ -676,7 +659,7 @@ use super::*;
 		// build the edges within each sector
 		portal_graph.build_edges_within_each_sector(&sector_portals, &sector_cost_fields);
 		// build the edges between sectors
-		portal_graph.build_edges_between_sectors(&sector_portals, map_x_dimension, map_z_dimension);
+		portal_graph.build_edges_between_sectors(&sector_portals, &map_dimensions);
 		// the current graph has this plain representation of portals
 		// _______________________________
 		// |         |         |         |
@@ -699,7 +682,7 @@ use super::*;
 		let mutated_sector_id = SectorID::new(0, 0);
 		let field = sector_cost_fields.get_mut().get_mut(&mutated_sector_id).unwrap();
 		field.set_field_cell_value(255, FieldCell::new(4, 9));
-		sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, map_x_dimension, map_z_dimension);
+		sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, &map_dimensions);
 
 		// This produces a new representation with an extra portal, `x` denotes the impassable point
 		// just inserted
@@ -721,7 +704,7 @@ use super::*;
 		// |_________|_________|_________|
 
 		// update the graph
-		portal_graph.update_graph(mutated_sector_id, &sector_portals, &sector_cost_fields, map_x_dimension, map_z_dimension);
+		portal_graph.update_graph(mutated_sector_id, &sector_portals, &sector_cost_fields, &map_dimensions);
 		// test that the graph has updated with the new edges
 		let result = portal_graph.graph.edge_count();
 		// each portal in a sector is connected to every other portal in that sector
@@ -760,15 +743,14 @@ use super::*;
 	// }
 	#[test]
 	fn best_path_as_sector_portals() {
-		let map_x_dimension = 30;
-		let map_z_dimension = 30;
-		let sector_cost_fields = SectorCostFields::new(map_x_dimension, map_z_dimension);
-		let mut sector_portals = SectorPortals::new(map_x_dimension, map_z_dimension);
+		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
 		for (sector_id, _cost_fields) in sector_cost_fields.get().iter() {
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
-				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, map_x_dimension, map_z_dimension),
+				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, &map_dimensions),
 				None => panic!("Key {:?} not found in Portals", sector_id),
 			}
 		}
@@ -779,7 +761,7 @@ use super::*;
 		// build the edges within each sector
 		portal_graph.build_edges_within_each_sector(&sector_portals, &sector_cost_fields);
 		// build the edges between sectors
-		portal_graph.build_edges_between_sectors(&sector_portals, map_x_dimension, map_z_dimension);
+		portal_graph.build_edges_between_sectors(&sector_portals, &map_dimensions);
 
 		// _______________________________
 		// |         |         |         |

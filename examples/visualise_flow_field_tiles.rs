@@ -17,26 +17,26 @@ fn main() {
 /// Init world
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// calculate the fields
-	let map_dimensions = MapDimensions::new(30, 30);
+	let map_dimensions = MapDimensions::new(30, 30, 10);
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let sector_cost_fields = SectorCostFields::from_file(path);
 	let mut sector_portals =
-		SectorPortals::new(map_dimensions.get_column(), map_dimensions.get_row());
+		SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth());
 	// update default portals for cost fields
 	for sector_id in sector_cost_fields.get().keys() {
 		sector_portals.update_portals(
 			*sector_id,
 			&sector_cost_fields,
-			map_dimensions.get_column(),
-			map_dimensions.get_row(),
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
 		);
 	}
 	// generate the portal graph
 	let portal_graph = PortalGraph::new(
 		&sector_portals,
 		&sector_cost_fields,
-		map_dimensions.get_column(),
-		map_dimensions.get_row(),
+		map_dimensions.get_length(),
+		map_dimensions.get_depth(),
 	);
 	//
 	let source_sector = SectorID::new(2, 0);
@@ -92,8 +92,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					sector_id,
 					goal,
 					&neighbour_sector_id,
-					map_dimensions.get_column(),
-					map_dimensions.get_row(),
+					map_dimensions.get_length(),
+					map_dimensions.get_depth(),
 				);
 			sectors_expanded_goals.push((*sector_id, g));
 		}
@@ -152,13 +152,13 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		})
 		.with_children(|p| {
 			// create an area for each sector int field
-			for i in 0..map_dimensions.get_column() / 10 {
-				for j in 0..map_dimensions.get_row() / 10 {
+			for i in 0..map_dimensions.get_length() / 10 {
+				for j in 0..map_dimensions.get_depth() / 10 {
 					// bounding node of a sector
 					p.spawn(NodeBundle {
 						style: Style {
-							width: Val::Percent(100.0 / (map_dimensions.get_column() / 10) as f32),
-							height: Val::Percent(100.0 / (map_dimensions.get_row() / 10) as f32),
+							width: Val::Percent(100.0 / (map_dimensions.get_length() / 10) as f32),
+							height: Val::Percent(100.0 / (map_dimensions.get_depth() / 10) as f32),
 							flex_direction: FlexDirection::Column,
 							flex_wrap: FlexWrap::Wrap,
 							flex_shrink: 0.0,

@@ -136,7 +136,8 @@ impl FlowField {
 							}
 						}
 						if let Some(target) = cheapest_neighbour {
-							let ord = Ordinal::cell_to_cell_direction(*target, FieldCell::new(i, j));
+							let ord =
+								Ordinal::cell_to_cell_direction(*target, FieldCell::new(i, j));
 							let bit_ord = convert_ordinal_to_bits_dir(ord);
 							let mut value = 0;
 							value |= bit_ord;

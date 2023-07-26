@@ -69,7 +69,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				// grid origin is always in the top left
 				let sprite_x = FIELD_SPRITE_DIMENSION;
 				let sprite_y = FIELD_SPRITE_DIMENSION;
-				let sector_offset = get_sector_xy_at_top_left(
+				let sector_offset = get_sector_corner_xy(
 					*sector_id,
 					map_length * sprite_x as u32,
 					map_depth * sprite_y as u32,
@@ -94,8 +94,9 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let map_length = 30; // in sprite count
 	let map_depth = 30; // in sprite count
+	let sector_resolution = 10;
 	cmds.spawn(FlowFieldTilesBundle::new_from_disk(
-		map_length, map_depth, &path,
+		map_length, map_depth, sector_resolution, &path,
 	));
 	// create an actor controlled with right click
 	cmds.spawn(SpriteBundle {
@@ -295,8 +296,7 @@ fn actor_steering(
 						// get the flow field
 						if let Some(field) = flow_cache.get_field(*sector, *goal) {
 							// based on actor field cell find the directional vector it should move in
-							let cell_value =
-								field.get_field_cell_value(curr_actor_field_cell);
+							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 							// info!("In sector {:?}, in field cell {:?}", sector, curr_actor_field_cell);
 							// info!("Direction to move: {}", dir);
@@ -336,8 +336,7 @@ fn actor_steering(
 						// get the flow field
 						if let Some(field) = flow_cache.get_field(*sector, *goal) {
 							// based on actor field cell find the directional vector it should move in
-							let cell_value =
-								field.get_field_cell_value(curr_actor_field_cell);
+							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 							// info!("In sector {:?}, in field cell {:?}", sector, curr_actor_field_cell);
 							// info!("Direction to move: {}", dir);

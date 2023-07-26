@@ -50,8 +50,9 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let c_path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
 	let map_length = 10; // in sprite count
 	let map_depth = 10; // in sprite count
+	let sector_resolution = 10;
 	cmds.spawn(FlowFieldTilesBundle::new_from_disk(
-		map_length, map_depth, &s_path,
+		map_length, map_depth, sector_resolution, &s_path,
 	));
 	// use the impression of the cost field to just init node images
 	let cost_field = CostField::from_file(c_path);
@@ -166,7 +167,8 @@ fn update_sprite_visuals_based_on_actor(
 		let op_flowfield = cache.get_field(route[0].0, route[0].1);
 		if let Some(flowfield) = op_flowfield {
 			for (mut handle, field_cell_label) in field_cell_q.iter_mut() {
-				let flow_value = flowfield.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
+				let flow_value = flowfield
+					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
 				let icon = get_ord_icon(flow_value);
 				let new_handle: Handle<Image> = asset_server.load(icon);
 				*handle = new_handle;

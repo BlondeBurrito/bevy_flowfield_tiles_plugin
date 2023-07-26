@@ -4,8 +4,6 @@
 use crate::prelude::*;
 use bevy::prelude::*;
 
-/// Determines the number of Sectors by dividing the map length and depth by this value
-pub const SECTOR_RESOLUTION: usize = 10;
 /// Defines the dimenions of all field arrays
 pub const FIELD_RESOLUTION: usize = 10;
 
@@ -60,41 +58,97 @@ impl Ordinal {
 			neighbours.push(FieldCell::new(cell_id.get_column() - 1, cell_id.get_row())); // western cell coords
 		}
 		if cell_id.get_row() > 0 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(cell_id.get_column() + 1, cell_id.get_row() - 1)); // north-east cell
+			neighbours.push(FieldCell::new(
+				cell_id.get_column() + 1,
+				cell_id.get_row() - 1,
+			)); // north-east cell
 		}
 		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(cell_id.get_column() + 1, cell_id.get_row() + 1)); // south-east cell
+			neighbours.push(FieldCell::new(
+				cell_id.get_column() + 1,
+				cell_id.get_row() + 1,
+			)); // south-east cell
 		}
 		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(cell_id.get_column() - 1, cell_id.get_row() + 1)); // south-west cell
+			neighbours.push(FieldCell::new(
+				cell_id.get_column() - 1,
+				cell_id.get_row() + 1,
+			)); // south-west cell
 		}
 		if cell_id.get_row() > 0 && cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(cell_id.get_column() - 1, cell_id.get_row() - 1)); // north-west cell
+			neighbours.push(FieldCell::new(
+				cell_id.get_column() - 1,
+				cell_id.get_row() - 1,
+			)); // north-west cell
 		}
 		neighbours
 	}
 	/// Based on a sectors `(column, row)` position find its neighbours based on map size limits (up to 4)
+	/// ```txt
+	/// top left                     // top right
+	/// has 2 valid neighbours      // has two valid neighbours
+	/// ___________                 // ___________
+	/// | x       |                 // |       x |
+	/// |x        |                 // |        x|
+	/// |         |                 // |         |
+	/// |         |                 // |         |
+	/// |_________|                 // |_________|
+	/// bottom right                // bottom left sector
+	/// has two valid neighbours    // has two valid neighbours
+	/// ___________                 // ___________
+	/// |         |                 // |         |
+	/// |         |                 // |         |
+	/// |         |                 // |         |
+	/// |        x|                 // |x        |
+	/// |_______x_|                 // |_x_______|
+	/// northern row minus          // eastern column minus
+	/// corners have three          // corners have three
+	/// valid neighbours            // valid neighbours
+	/// ___________                 // ___________
+	/// |x       x|                 // |        x|
+	/// |  xxxxx  |                 // |       x |
+	/// |         |                 // |       x |
+	/// |         |                 // |       x |
+	/// |_________|                 // |________x|
+	/// southern row minus          // western column minus
+	/// corners have three          // corners have three
+	/// valid neighbours            // valid neighbours
+	/// ___________                 // ___________
+	/// |         |                 // |x        |
+	/// |         |                 // | x       |
+	/// |         |                 // | x       |
+	/// | xxxxxxx |                 // | x       |
+	/// |x       x|                 // |x________|
+	/// all other sectors not along an edge of the map have four valid sectors for portals
+	/// ___________
+	/// |         |
+	/// |    x    |
+	/// |   x x   |
+	/// |    x    |
+	/// |_________|
+	/// ```
 	pub fn get_sector_neighbours(
 		sector_id: &SectorID,
-		map_x_dimension: u32,
-		map_z_dimension: u32,
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
 	) -> Vec<SectorID> {
 		let mut neighbours = Vec::new();
-		let sector_x_column_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
-		let sector_z_row_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
+		let sector_column_limit = map_length / sector_resolution - 1;
+		let sector_row_limit = map_depth / sector_resolution - 1;
 		if sector_id.get_row() > 0 {
 			neighbours.push(SectorID::new(
 				sector_id.get_column(),
 				sector_id.get_row() - 1,
 			)); // northern sector coords
 		}
-		if sector_id.get_column() < sector_x_column_limit {
+		if sector_id.get_column() < sector_column_limit {
 			neighbours.push(SectorID::new(
 				sector_id.get_column() + 1,
 				sector_id.get_row(),
 			)); // eastern sector coords
 		}
-		if sector_id.get_row() < sector_z_row_limit {
+		if sector_id.get_row() < sector_row_limit {
 			neighbours.push(SectorID::new(
 				sector_id.get_column(),
 				sector_id.get_row() + 1,
@@ -111,19 +165,20 @@ impl Ordinal {
 	/// Based on a sectors `(column, row)` position find the [Ordinal] directions for its boundaries that can support [crate::prelude::Portals]
 	pub fn get_sector_portal_ordinals(
 		sector_id: &SectorID,
-		map_x_dimension: u32,
-		map_z_dimension: u32,
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
 	) -> Vec<Ordinal> {
 		let mut neighbours = Vec::new();
-		let sector_x_column_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
-		let sector_z_row_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
+		let sector_column_limit = map_length / sector_resolution - 1;
+		let sector_row_limit = map_depth / sector_resolution - 1;
 		if sector_id.get_row() > 0 {
 			neighbours.push(Ordinal::North); // northern sector coords
 		}
-		if sector_id.get_column() < sector_x_column_limit {
+		if sector_id.get_column() < sector_column_limit {
 			neighbours.push(Ordinal::East); // eastern sector coords
 		}
-		if sector_id.get_row() < sector_z_row_limit {
+		if sector_id.get_row() < sector_row_limit {
 			neighbours.push(Ordinal::South); // southern sector coords
 		}
 		if sector_id.get_column() > 0 {
@@ -132,14 +187,58 @@ impl Ordinal {
 		neighbours
 	}
 	/// Based on a sectors `(column, row)` position find its neighbours based on map size limits (up to 4) and include the [Ordinal] direction in the result
+	/// ```txt
+	///top left                      top right
+	/// has 2 valid neighbours       has two valid neighbours
+	/// ___________                  ___________
+	/// | x       |                  |       x |
+	/// |x        |                  |        x|
+	/// |         |                  |         |
+	/// |         |                  |         |
+	/// |_________|                  |_________|
+	/// bottom right                 bottom left sector
+	/// has two valid neighbours     has two valid neighbours
+	/// ___________                  ___________
+	/// |         |                  |         |
+	/// |         |                  |         |
+	/// |         |                  |         |
+	/// |        x|                  |x        |
+	/// |_______x_|                  |_x_______|
+	/// northern row minus           eastern column minus
+	/// corners have three           corners have three
+	/// valid neighbours             valid neighbours
+	/// ___________                  ___________
+	/// |x       x|                  |        x|
+	/// |  xxxxx  |                  |       x |
+	/// |         |                  |       x |
+	/// |         |                  |       x |
+	/// |_________|                  |________x|
+	/// southern row minus           western column minus
+	/// corners have three           corners have three
+	/// valid neighbours             valid neighbours
+	/// ___________                  ___________
+	/// |         |                  |x        |
+	/// |         |                  | x       |
+	/// |         |                  | x       |
+	/// | xxxxxxx |                  | x       |
+	/// |x       x|                  |x________|
+	/// all other sectors not along an edge of the map have four valid sectors for portals
+	/// ___________
+	/// |         |
+	/// |    x    |
+	/// |   x x   |
+	/// |    x    |
+	/// |_________|
+	/// ```
 	pub fn get_sector_neighbours_with_ordinal(
 		sector_id: &SectorID,
 		map_x_dimension: u32,
 		map_z_dimension: u32,
+		sector_resolution: u32,
 	) -> Vec<(Ordinal, SectorID)> {
 		let mut neighbours = Vec::new();
-		let sector_x_column_limit = map_x_dimension / SECTOR_RESOLUTION as u32 - 1;
-		let sector_z_row_limit = map_z_dimension / SECTOR_RESOLUTION as u32 - 1;
+		let sector_x_column_limit = map_x_dimension / sector_resolution - 1;
+		let sector_z_row_limit = map_z_dimension / sector_resolution - 1;
 		if sector_id.get_row() > 0 {
 			neighbours.push((
 				Ordinal::North,
@@ -245,14 +344,23 @@ mod tests {
 	fn ordinal_field_cell_neighbours3() {
 		let cell_id = FieldCell::new(4, 4);
 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
-		let actual = vec![FieldCell::new(4, 3), FieldCell::new(5, 4), FieldCell::new(4, 5), FieldCell::new(3, 4)];
+		let actual = vec![
+			FieldCell::new(4, 3),
+			FieldCell::new(5, 4),
+			FieldCell::new(4, 5),
+			FieldCell::new(3, 4),
+		];
 		assert_eq!(actual, result);
 	}
 	#[test]
 	fn ordinal_field_cell_neighbours4() {
 		let cell_id = FieldCell::new(5, 0);
 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
-		let actual = vec![FieldCell::new(6, 0), FieldCell::new(5, 1), FieldCell::new(4, 0)];
+		let actual = vec![
+			FieldCell::new(6, 0),
+			FieldCell::new(5, 1),
+			FieldCell::new(4, 0),
+		];
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -260,7 +368,8 @@ mod tests {
 		let sector_id = SectorID::new(0, 0);
 		let map_x_dimension = 300;
 		let map_z_dimension = 550;
-		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
+		let sector_resolution = 10;
+		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![SectorID::new(1, 0), SectorID::new(0, 1)];
 		assert_eq!(actual, result);
 	}
@@ -269,7 +378,8 @@ mod tests {
 		let sector_id = SectorID::new(29, 54);
 		let map_x_dimension = 300;
 		let map_z_dimension = 550;
-		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
+		let sector_resolution = 10;
+		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![SectorID::new(29, 53), SectorID::new(28, 54)];
 		assert_eq!(actual, result);
 	}
@@ -278,7 +388,8 @@ mod tests {
 		let sector_id = SectorID::new(14, 31);
 		let map_x_dimension = 300;
 		let map_z_dimension = 550;
-		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
+		let sector_resolution = 10;
+		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![
 			SectorID::new(14, 30),
 			SectorID::new(15, 31),
@@ -292,7 +403,8 @@ mod tests {
 		let sector_id = SectorID::new(0, 13);
 		let map_x_dimension = 300;
 		let map_z_dimension = 550;
-		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension);
+		let sector_resolution = 10;
+		let result = Ordinal::get_sector_neighbours(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![
 			SectorID::new(0, 12),
 			SectorID::new(1, 13),
@@ -305,8 +417,9 @@ mod tests {
 		let sector_id = SectorID::new(3, 0);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
+		let sector_resolution = 10;
 		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![Ordinal::East, Ordinal::South, Ordinal::West];
 		assert_eq!(actual, result);
 	}
@@ -315,8 +428,9 @@ mod tests {
 		let sector_id = SectorID::new(19, 5);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
+		let sector_resolution = 10;
 		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![Ordinal::North, Ordinal::South, Ordinal::West];
 		assert_eq!(actual, result);
 	}
@@ -325,8 +439,9 @@ mod tests {
 		let sector_id = SectorID::new(4, 19);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
+		let sector_resolution = 10;
 		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::West];
 		assert_eq!(actual, result);
 	}
@@ -335,8 +450,9 @@ mod tests {
 		let sector_id = SectorID::new(0, 5);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
+		let sector_resolution = 10;
 		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South];
 		assert_eq!(actual, result);
 	}
@@ -345,8 +461,9 @@ mod tests {
 		let sector_id = SectorID::new(4, 5);
 		let map_x_dimension = 200;
 		let map_z_dimension = 200;
+		let sector_resolution = 10;
 		let result =
-			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension);
+			Ordinal::get_sector_portal_ordinals(&sector_id, map_x_dimension, map_z_dimension, sector_resolution);
 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
 		assert_eq!(actual, result);
 	}

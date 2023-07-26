@@ -95,8 +95,7 @@ pub fn rebuild_portals(
 			sector_portals.update_portals(
 				sector_id,
 				sector_cost_fields,
-				dimensions.get_column(),
-				dimensions.get_row(),
+				dimensions,
 			);
 		}
 		// queue an update to the portal graph
@@ -143,8 +142,7 @@ pub fn update_portal_graph(
 				sector_id,
 				sector_portals,
 				sector_cost_fields,
-				dimensions.get_column(),
-				dimensions.get_row(),
+				dimensions
 			);
 		}
 		event_cache_clean.send(EventCleanCaches(sector_id));
