@@ -10,7 +10,7 @@ pub const FIELD_RESOLUTION: usize = 10;
 /// Convenience way of accessing the 4 sides of a sector in [crate::prelude::Portals], the 4 sides of a field cell in [crate::prelude::IntegrationField] and the 8 directions
 /// of movement in [crate::prelude::flow_field::FlowField]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Reflect)]
 pub enum Ordinal {
 	North,
 	East,

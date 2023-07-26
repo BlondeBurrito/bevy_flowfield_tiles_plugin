@@ -11,7 +11,7 @@ use bevy::prelude::*;
 
 /// Unique ID of a sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash, Reflect)]
 pub struct SectorID((u32, u32));
 
 impl SectorID {
@@ -35,7 +35,7 @@ impl SectorID {
 
 /// The dimensions of the world
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component, Default, Clone, Copy)]
+#[derive(Component, Default, Clone, Copy, Reflect)]
 pub struct MapDimensions {
 	/// Dimensions of the world
 	///

@@ -148,7 +148,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 						let int_field = sector_int_fields.get(&SectorID::new(i, j));
 						if let Some(field) = int_field {
 							// create each column from the field
-							for array in field.get_field().iter() {
+							for array in field.get().iter() {
 								p.spawn(NodeBundle {
 									style: Style {
 										width: Val::Percent(10.0),

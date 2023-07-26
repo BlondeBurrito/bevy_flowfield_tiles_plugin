@@ -48,7 +48,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		})
 		.with_children(|p| {
 			// create each column from the field
-			for array in int_field.get_field().iter() {
+			for array in int_field.get().iter() {
 				p.spawn(NodeBundle {
 					style: Style {
 						width: Val::Percent(10.0),
