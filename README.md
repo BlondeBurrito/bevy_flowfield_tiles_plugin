@@ -468,8 +468,19 @@ NB: when a CostField is modified Portals and the PortalGraph are updated and any
 
 Benchmarks are split into two categories:
 
-* Data initialisation - measures setting up CostFields, generating portals and the graph
+* Data initialisation
+  * [init_cost_fields](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/init_cost_fields.rs) - measures the time it takes to initalise 100x100 sector `CostFields`
+  * [init_portals](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/init_portals.rs) - measures the time it takes to build `Portals` across 100x100 sectors
+  * [init_portal_graph](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/init_portal_graph.rs) - measure the time it takes to build the `PortalGraph` for 100x100 sectors
+  * [init_bundle](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/init_bundle.rs) - measure the total time it takes to have the `FlowFieldTilesBundle` ready
 * Algorithm use - measures generating a set of FlowFields
+  * [calc_route](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/calc_route.rs) - measures how long it takes to generate a route from one corner of a 100x100 sector layout to the opposite corner
+  * [calc_flow_open](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/calc_flow_open.rs) - measure how long it takes to create a full set of `FlowFields` describing movement across uniform `CostFields` (cost = 1) from one corner to another
+  * [calc_flow_maze](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/calc_flow_maze.rs) - measures how long it takes to create a full set of `FlowFields` describing movement from one corner to another in a 100x100 sector world. The world is composed of vertical corridors meaning that the actor has to path up and down to eventually snake it's way to the goal
+
+Currently the slowest area is generating the `PortalGraph` (7s on my machine) so this should be some initialisation that happens behind the scenes (like a loading screen or some such).
+
+Depending on pathing complexity I've seen `FlowField` generation range from 5-90ms.
 
 # LICENSE
 
