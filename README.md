@@ -226,12 +226,14 @@ Note that the data stored in the caches is timestamped - if a record lives longe
 
 </details>
 
+## Actor Sizes
+
+[TODO](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/2)
+
 </details>
 </br>
 
 # Usage
-
-NB: the user interface to this needs a little polish but the `examples/` should get folks up and running
 
 Update your `Cargo.toml` and add any features you require, to actually interface with calculated fields you should enable either `2d` or `3d` depending on the coordinate system of your world:
 
@@ -261,28 +263,59 @@ In your own simulation you may well be using custom schedules or stages to contr
 
 ## Initialising Data
 
-Next it' time to spawn the bundle entity configured to your world size (looking through the examples will help explain this section too).
+Next it' time to spawn the bundle entity configured to your world size (looking through the examples will give some pointers on this too).
 
-In 3d length refers to the `x` dimension and depth refers to the `z` dimension. Each dimension should be exactly divisible by `10`.
+The size and resolution of the world need to be known at initialisation and three values are required:
 
-In 2d the dimensions can be configured in different ways:
+* `map_length` - in 2d this refers to the pixel `x` size of the world. In 3d this is simply the `x` size
+* `map_depth` - in 2d this refers to the pixel `y` size of the world. In 3d this is the `z` size
+* `sector_resolution` - determines the numder of sectors by taking each size and dividing them by this value. In 2d this is basically the pixel length of each sector side and likewise for 3d it's the length of each sector side using whatever unit of measurement you've defined (for ease of use I go with a unit of `x` is 1 meter and a unit of `z` is one meter)
+  * 2d: a world of pixel size `(1920, 1080)` with a resolution of `40` will produce 48x27 sectors. Another way of looking at this could be based on the idea of having a world made of sprites where each sprite corresponds to where a `FieldCell` would be. If these regular sized sprites have a pixel length and height of `64` and your world is made from a `20x20` grid of these sprites then you can calcualte what the size is. `map_length` would be your sprite length multiplied by the number sprites along the `x` axis of the world, i.e `64 * 20 = 1280`. `map_depth` follows a likewise calculation `64 * 20 = 1280`. As for resolution it will depend on how granular you want, in this example case a `10x10` `CostField` is supposed to overlay an exact number of sprites so we use the sprite size to find the resolution `64 * 10 = 640`.
+  * 3d: a world of size `(780x440)` with resolution `10` produces `78x44` sectors. Given that fields are `10x10` arrays this translates to a single `FieldCell` representing a `1x1` unit area
 
-* For a world made from a grid of sprites then length is the number of sprites along the `x` axis and depth is the number of sprites along the `y` axis. E.g a world map made of many sprites where each sprite has dimensions `64x64` and the overall pixel dimensions of the world are `640x640`, means that the length is `640/64 = 10` and depth is `640/64 = 10`.
-* For a world made from a single sprite (or a handful) that represents a very large area (where an actor is comparitively small compared to the world) then you need to choose a scale by which the alogirthm will subdivide your world into sectors, this must be exactly divisible by 10. E.g a world has pixel dimensions of `1140x980`, to create a series of sectors representing a `114x98` pixel area we set the length parameter to `114` and the depth parameter to `98`.
+Within a system somewhere you can spawn the Bundle:
 
 ```rust
-    cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth));
+fn my_system(mut cmds: Commands) {
+    let map_length = 1920;
+    let map_depth = 1920;
+    let sector_resolution = 640;
+    cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth, sector_resolution));
+}
 ```
 
-Next you need to seed your `CostFields` to reflect the make up of your world, this can be done programmatically (in 3d you might fire a series of raycasts and based on collider collisions flip a `CostField` field cell to a higher number via `EventUpdateCostfieldsCell`) or you can load predetermined values from disk.
+Note that this will initialise all the `CostFields` representing the world with cell values of `1`. Meaning everywhere is pathable, in all likihood you'll then need to seed the fields with true values.
+
+In 3d you could consider making a raycast to the centre of where each FieldCell would be and use something like the `y` position of the ray hit to determine if something is passable or not and then flip the value of that particular `FieldCell` (`EventUpdateCostfieldsCell` can be used to queue a cost change).
+
+Most likely for 2d or more complex 3d scenarios you'll probably want to enable either the `ron` or `csv` feature which allows for creating a `FlowfieldTilesBundle` with inital `CostFields` from a `.ron` file or a collection of `.csv`, the examples showcase this in more detail.
 
 ## Path Request
+
+When it comes to interacting with the algorithm this is based on an event to be emitted when a movable actor needs a path:
+
+```rust
+struct EventPathRequest {
+    /// The starting sector of the request
+    source_sector: SectorID,
+    /// The starting field cell of the starting sector
+    source_field_cell: FieldCell,
+    /// The sector to try and find a path to
+    target_sector: SectorID,
+    /// The field cell in the target sector to find a path to
+    target_goal: FieldCell,
+}
+```
+
+Each parameter can be determined by querying the `MapDimension` component of the Bundle with the starting and end `Transform::translation` of actor position and target position.
 
 Using some example components to track and label an Actor:
 
 ```rust
+/// Enables easy querying of Actor entities
 #[derive(Component)]
 struct Actor;
+/// Consumed by an Actor steering pipeline to produce movement
 #[derive(Default, Component)]
 struct Pathing {
     source_sector: Option<SectorID>,
@@ -293,36 +326,53 @@ struct Pathing {
 }
 ```
 
-By taking an actors Transform and some position in space you queue field generation by sending an `EventPathRequest` event:
+We can then do something like process mouse clicks to fire off PathRequest events (in 3d use the methods ending in xyz instead):
 
 ```rust
-const PIXEL_LENGTH: u32 = 1920;
-const PIXEL_DEPTH: u32 = 1920;
-const FIELD_SPRITE_DIMENSION: f32 = 64.0;
-fn some_system(mut event: EventWriter<EventPathRequest>, ***some other params***) {
-    // obtain `world_position` from cursor or other input device
-    if let Some((target_sector_id, goal_id)) =
-        get_sector_and_field_id_from_xy(
-            world_position,
-            PIXEL_LENGTH,
-            PIXEL_DEPTH,
-            FIELD_SPRITE_DIMENSION
-        )
-    {
-        // actor position in the world
-        if let Some((source_sector_id, source_field_cell)) = get_sector_and_field_id_from_xy(
-                tform.translation.truncate(),
-                PIXEL_LENGTH,
-                PIXEL_DEPTH,
-                FIELD_SPRITE_DIMENSION
-            ) {
-            // ask for route generation going from source to target
-            event.send(EventPathRequest::new(
-                source_sector_id,
-                source_field_cell,
-                target_sector_id,
-                goal_id,
-            ));
+fn user_input(
+    mouse_button_input: Res<Input<MouseButton>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    camera_q: Query<(&Camera, &GlobalTransform)>,
+    dimensions_q: Query<&MapDimensions>,
+    mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
+    mut event: EventWriter<EventPathRequest>,
+) {
+    if mouse_button_input.just_released(MouseButton::Right) {
+        // get 2d world positionn of cursor
+        let (camera, camera_transform) = camera_q.single();
+        let window = windows.single();
+        if let Some(world_position) = window
+            .cursor_position()
+            .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+            .map(|ray| ray.origin.truncate())
+        {
+            // from 2d mouse position get the sector and field cell it is in
+            // (if not outside the world)
+            let map_dimensions = dimensions_q.get_single().unwrap();
+            if let Some((target_sector_id, goal_id)) =
+                map_dimensions.get_sector_and_field_id_from_xy(world_position)
+            {
+                // from actor translation find what sector and cell it is in
+                let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
+                let (source_sector_id, source_field_cell) = map_dimensions
+                    .get_sector_and_field_id_from_xy(tform.translation.truncate())
+                    .unwrap();
+                // send an event asking for a path to be generated
+                event.send(EventPathRequest::new(
+                    source_sector_id,
+                    source_field_cell,
+                    target_sector_id,
+                    goal_id,
+                ));
+                // update the actor pathing (we get the route later once it is built)
+                pathing.source_sector = Some(source_sector_id);
+                pathing.source_field_cell = Some(source_field_cell);
+                pathing.target_sector = Some(target_sector_id);
+                pathing.target_goal = Some(goal_id);
+                pathing.portal_route = None;
+            } else {
+                warn!("Cursor out of bounds");
+            }
         }
     }
 }
@@ -335,13 +385,19 @@ Note this example is very basic as it only handles a single actor, in an applica
 ```rust
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
     let mut pathing = actor_q.get_single_mut().unwrap();
-    if pathing.target_goal.is_some() {
+    // indicates whether the Actor has requested a route and doesn't have one assigned
+    if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
+        // check the cache to see if the route has been built yet
+        // routes are ID'ed by the starting and end sectors and the target field cell at the end
         let route_cache = route_q.get_single().unwrap();
         if let Some(route) = route_cache.get_route(
             pathing.source_sector.unwrap(),
             pathing.target_sector.unwrap(),
             pathing.target_goal.unwrap(),
         ) {
+            // it has! So set the Actors (high level) pathing route and you
+            // can optionally implement a pre-cursor steering pipeline to walk
+            // the route until the FlowFields are built too
             pathing.portal_route = Some(route.clone());
         }
     }
@@ -353,35 +409,36 @@ And once the `FlowFields` have been built they can query the `FlowFieldCache` in
 Note this example is very basic as it only handles a single actor, in an application you'd devise your own handling system:
 
 ```rust
-const PIXEL_LENGTH: u32 = 1920;
-const PIXEL_DEPTH: u32 = 1920;
-const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 const ACTOR_SPEED: f32 = 64.0;
 fn actor_steering(
-    mut actor_q: Query<(&mut Transform, &Pathing), With<Actor>>,
-    flow_cache_q: Query<&FlowFieldCache>,
+    mut actor_q: Query<(&mut Transform, &mut Pathing), With<Actor>>,
+    flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
 ) {
-    let (mut tform, pathing) = actor_q.get_single_mut().unwrap();
-    let flow_cache = flow_cache_q.get_single().unwrap();
+    let (mut tform, mut pathing) = actor_q.get_single_mut().unwrap();
+    let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 
     if pathing.target_goal.is_some() {
         // lookup the overarching route
-        if let Some(route) = &pathing.portal_route {
-            // find the current actors postion in field space
-            let (curr_actor_sector, curr_actor_field_cell) = get_sector_and_field_id_from_xy(
-                tform.translation.truncate(),
-                PIXEL_LENGTH,
-                PIXEL_DEPTH,
-                FIELD_SPRITE_DIMENSION,
-            )
-            .unwrap();
+        if let Some(route) = pathing.portal_route.as_mut() {
+            // find the current actors postion in grid space
+            let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
+                .get_sector_and_field_id_from_xy(tform.translation.truncate())
+                .unwrap();
+            // tirm the actor stored route as it makes progress
+            // this ensures it doesn't use a previous goal from
+            // a sector it has already been through when it needs
+            // to pass through it again as part of a different
+            // segment of the route
+            if curr_actor_sector != route.first().unwrap().0 {
+                route.remove(0);
+            }
             // lookup the relevant sector-goal of this sector
             'routes: for (sector, goal) in route.iter() {
                 if *sector == curr_actor_sector {
                     // get the flow field
                     if let Some(field) = flow_cache.get_field(*sector, *goal) {
                         // based on actor field cell find the directional vector it should move in
-                        let cell_value = field.get_field_value(curr_actor_field_cell.0, curr_actor_field_cell.1);
+                        let cell_value = field.get_field_cell_value(curr_actor_field_cell);
                         let dir = get_2d_direction_unit_vector_from_bits(cell_value);
                         let velocity = dir * ACTOR_SPEED;
                         // move the actor based on the velocity
@@ -398,10 +455,6 @@ fn actor_steering(
 NB: generated FlowFields and Routes expire from their caches after 15 minutes, your steering pipeline may need to send a new `EventPathRequest` if one gets expired that an actor was relying on.
 
 NB: when a CostField is modified Portals and the PortalGraph are updated and any Routes or FlowFields involving the modified Sector CostField are removed. This means an actor would need a way of knowing (implicitly or explicitly) that it needs to have a new Route made via an `EventPathRequest`. Hopefully auto regeneration of these routes can be solved to take the burden away from the actors, see [issue](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/8).
-
-## Actor Sizes
-
-[TODO](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/2)
 
 # Features
 
