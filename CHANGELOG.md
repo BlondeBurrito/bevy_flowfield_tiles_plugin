@@ -2,34 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.2.0] - 2023-07-31
 
-### Features
+### Documentation
 
-- [**breaking**] Added reflection (#25)
-
-* Reflection on `Ordinal`, `MapDimensions`, `CostField`, `Portals`, `FlowField`, `SectorID`, `FieldCell`, `RouteMetadata` and `FlowFieldMetadata`
-
-
-### Refactor
-
-- [**breaking**] Replace sector and field tuple IDs with data structures of 'SectorID' and 'FieldCell' (#22)
+- Updated usage section to align with cleaner interface (#27)
 
 
 
-- [**breaking**] Sector user interface embedded into MapDimension data (#24)
-
-* Sector interface functions are members of `MapDimensions`
-  * Methods are gated behind features `2d` and `3d`
-* Sector resolution no longer `const`, set at bundle creation allowing for a customised scale factor and very granular fields
-  * A `30x30` world with a resolution of `10` will produce a `3x3` sector representation, where a `FieldCell` represents a `1x1` unit area
-  * A `30x30` world with a resolution of `3` will produce a `10x10` sector representation, where a `FieldCell` represents a `0.3x0.3` unit area
-* Renamed bundle `new_from_disk()` method to `from_ron()` to align with serialising csv 
-* Renamed `SectorCostField::from_file()` to `SectorCostField::from_ron()`
-* Renamed `CostField::from_file()` to `CostField::from_ron()`
+- Explain each bench (#29)
 
 
-## [0.2.0] - 2023-07-26
+
 
 ### Features
 
