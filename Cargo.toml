@@ -56,6 +56,9 @@ csv = ["serde", "dep:csv"]
 2d = []
 3d = []
 
+[package.metadata.docs.rs]
+features = ["serde", "ron", "csv", "2d", "3d"]
+
 [profile.dev]
 opt-level = 1
 
