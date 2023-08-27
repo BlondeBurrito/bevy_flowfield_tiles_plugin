@@ -2,30 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.3.0] - 2023-08-27
 
 ### Bug Fixes
 
-- Graph updates should no longer collide due to multiple cost changes
+- Graph updates should no longer collide due to multiple cost changes (#30)
 
 
 
-
-### Features
-
-- Example of continuous actor spawning
-
-
-
-
-### Miscellaneous Tasks
-
-- Enable feature docs on docrs
-
-
-
-
-## [unreleased]
 
 ### Features
 
