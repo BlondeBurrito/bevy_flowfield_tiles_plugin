@@ -186,7 +186,12 @@ impl PortalGraph {
 					let this_sector_portals = &translator.get(sector_id).unwrap()[0];
 					let neighbour_portals = &translator.get(neighbour_id).unwrap()[2];
 					for (i, portal_index) in this_sector_portals.iter().enumerate() {
-						graph.update_edge(*portal_index, neighbour_portals[i], 1);
+						if let Some(neighbour) = neighbour_portals.get(i) {
+							if graph.contains_node(*portal_index) && graph.contains_node(*neighbour)
+							{
+								graph.update_edge(*portal_index, *neighbour, 1);
+							}
+						}
 					}
 				}
 				Ordinal::East => {
@@ -196,7 +201,12 @@ impl PortalGraph {
 					let this_sector_portals = &translator.get(sector_id).unwrap()[1];
 					let neighbour_portals = &translator.get(neighbour_id).unwrap()[3];
 					for (i, portal_index) in this_sector_portals.iter().enumerate() {
-						graph.update_edge(*portal_index, neighbour_portals[i], 1);
+						if let Some(neighbour) = neighbour_portals.get(i) {
+							if graph.contains_node(*portal_index) && graph.contains_node(*neighbour)
+							{
+								graph.update_edge(*portal_index, *neighbour, 1);
+							}
+						}
 					}
 				}
 				Ordinal::South => {
@@ -206,7 +216,12 @@ impl PortalGraph {
 					let this_sector_portals = &translator.get(sector_id).unwrap()[2];
 					let neighbour_portals = &translator.get(neighbour_id).unwrap()[0];
 					for (i, portal_index) in this_sector_portals.iter().enumerate() {
-						graph.update_edge(*portal_index, neighbour_portals[i], 1);
+						if let Some(neighbour) = neighbour_portals.get(i) {
+							if graph.contains_node(*portal_index) && graph.contains_node(*neighbour)
+							{
+								graph.update_edge(*portal_index, *neighbour, 1);
+							}
+						}
 					}
 				}
 				Ordinal::West => {
@@ -216,7 +231,12 @@ impl PortalGraph {
 					let this_sector_portals = &translator.get(sector_id).unwrap()[3];
 					let neighbour_portals = &translator.get(neighbour_id).unwrap()[1];
 					for (i, portal_index) in this_sector_portals.iter().enumerate() {
-						graph.update_edge(*portal_index, neighbour_portals[i], 1);
+						if let Some(neighbour) = neighbour_portals.get(i) {
+							if graph.contains_node(*portal_index) && graph.contains_node(*neighbour)
+							{
+								graph.update_edge(*portal_index, *neighbour, 1);
+							}
+						}
 					}
 				}
 				_ => panic!("Cannot create diagonals between sectors"),

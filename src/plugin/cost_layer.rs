@@ -40,105 +40,55 @@ impl EventUpdateCostfieldsCell {
 		self.cell_value
 	}
 }
+
 /// Read [EventUpdateCostfieldsCell] and update the values within [CostField]
 #[cfg(not(tarpaulin_include))]
 pub fn process_costfields_updates(
 	mut events: EventReader<EventUpdateCostfieldsCell>,
-	mut costfields_q: Query<&mut SectorCostFields>,
-	mut event_portal_rebuild: EventWriter<EventRebuildSectorPortals>,
-) {
-	for event in events.iter() {
-		let field_cell = event.get_cell();
-		let sector_id = event.get_sector();
-		let cost = event.get_cost_value();
-		for mut costfields in costfields_q.iter_mut() {
-			for (sector, field) in costfields.get_mut().iter_mut() {
-				if *sector == sector_id {
-					field.set_field_cell_value(cost, field_cell);
-					event_portal_rebuild.send(EventRebuildSectorPortals::new(sector_id));
-				}
-			}
-		}
-	}
-}
-/// Emitted when a [CostField] has been updated so the [Portals] of the sector
-/// and its neighbours can be rebuilt
-#[derive(Event)]
-pub struct EventRebuildSectorPortals {
-	/// Unique ID of the sector
-	sector_id: SectorID,
-}
-
-impl EventRebuildSectorPortals {
-	#[cfg(not(tarpaulin_include))]
-	pub fn new(sector_id: SectorID) -> Self {
-		EventRebuildSectorPortals { sector_id }
-	}
-	#[cfg(not(tarpaulin_include))]
-	pub fn get_sector_id(&self) -> SectorID {
-		self.sector_id
-	}
-}
-/// Process events indicating that a [CostField] has changed and as such update
-/// the [Portals] associated with the sector of the [CostField] and its
-/// neighbours need to be regenerated
-#[cfg(not(tarpaulin_include))]
-pub fn rebuild_portals(
-	mut event_portal_rebuild: EventReader<EventRebuildSectorPortals>,
-	mut portal_q: Query<(&mut SectorPortals, &SectorCostFields, &MapDimensions)>,
-	mut event_update_graph: EventWriter<EventUpdatePortalGraph>,
-) {
-	for event in event_portal_rebuild.iter() {
-		let sector_id = event.get_sector_id();
-		// update the portals of the sector and around it
-		for (mut sector_portals, sector_cost_fields, dimensions) in portal_q.iter_mut() {
-			sector_portals.update_portals(sector_id, sector_cost_fields, dimensions);
-		}
-		// queue an update to the portal graph
-		event_update_graph.send(EventUpdatePortalGraph::new(sector_id));
-	}
-}
-
-/// Emitted when [Portals] has been updated so the
-/// [PortalGraph] of the sector and its neighbours can be rebuilt
-#[derive(Event)]
-pub struct EventUpdatePortalGraph {
-	/// Unique ID of the sector
-	sector_id: SectorID,
-}
-
-impl EventUpdatePortalGraph {
-	pub fn new(sector_id: SectorID) -> Self {
-		EventUpdatePortalGraph { sector_id }
-	}
-	pub fn get_sector_id(&self) -> SectorID {
-		self.sector_id
-	}
-}
-
-/// Process events indicating that a [Portals] has been changed and as such update
-/// the navigation graph
-#[cfg(not(tarpaulin_include))]
-pub fn update_portal_graph(
-	mut event_graph: EventReader<EventRebuildSectorPortals>,
-	mut portal_q: Query<(
+	mut query: Query<(
 		&mut PortalGraph,
-		&SectorPortals,
-		&SectorCostFields,
+		&mut SectorPortals,
+		&mut SectorCostFields,
 		&MapDimensions,
 	)>,
 	mut event_cache_clean: EventWriter<EventCleanCaches>,
 ) {
-	for event in event_graph.iter() {
-		let sector_id = event.get_sector_id();
-		for (mut portal_graph, sector_portals, sector_cost_fields, dimensions) in
-			portal_q.iter_mut()
+	// coalesce events to avoid processing duplicates
+	let mut coalesced_sectors = Vec::new();
+	for event in events.iter() {
+		let field_cell = event.get_cell();
+		let sector_id = event.get_sector();
+		let cost = event.get_cost_value();
+		for (_portal_graph, mut sector_portals, mut sector_cost_fields, dimensions) in
+			query.iter_mut()
 		{
-			portal_graph.update_graph(sector_id, sector_portals, sector_cost_fields, dimensions);
+			for (sector, field) in sector_cost_fields.get_mut().iter_mut() {
+				if *sector == sector_id {
+					field.set_field_cell_value(cost, field_cell);
+				}
+			}
+			// update the portals of the sector and around it
+			sector_portals.update_portals(sector_id, sector_cost_fields.as_ref(), dimensions);
 		}
-		event_cache_clean.send(EventCleanCaches(sector_id));
+		if !coalesced_sectors.contains(&sector_id) {
+			coalesced_sectors.push(sector_id);
+		}
+	}
+	for sector_id in coalesced_sectors.iter() {
+		debug!("Rebuilding fields of {:?}", sector_id.get());
+		for (mut portal_graph, sector_portals, sector_cost_fields, dimensions) in query.iter_mut() {
+			// update the graph
+			portal_graph.update_graph(
+				*sector_id,
+				sector_portals.as_ref(),
+				sector_cost_fields.as_ref(),
+				dimensions,
+			);
+		}
+		event_cache_clean.send(EventCleanCaches(*sector_id));
 	}
 }
+
 /// For the given sector any route or [FlowField] making use of it needs to have the cached entry removed and a new request made to regenerate the route
 #[derive(Event)]
 pub struct EventCleanCaches(SectorID);
