@@ -41,6 +41,7 @@ publish = true
 [dev-dependencies]
 criterion = "0.5"
 bevy = { workspace = true, default-features = true }
+rand = "0.8"
 
 [dependencies]
 bevy = { workspace = true }
@@ -160,3 +161,8 @@ required-features = ["ron", "2d"]
 name = "3d_actor_movement"
 path = "examples/3d_actor_movement.rs"
 required-features = ["ron", "3d"]
+
+[[example]]
+name = "2d_continuous"
+path = "examples/2d_continuous.rs"
+required-features = ["ron", "2d"]

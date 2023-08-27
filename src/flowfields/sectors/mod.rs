@@ -171,6 +171,15 @@ impl MapDimensions {
 		}
 		None
 	}
+	// /// From a field cell within a Sector retrieve the 2d Vec3 of its position.
+	// ///
+	// /// The `z` coordinate is defaulted to `1.0`.
+	// #[cfg(feature = "2d")]
+	// fn get_xyz_from_field_sector(&self, sector: SectorID, field: FieldCell) -> Option<Vec3> {
+	// 	let sector_column = sector.get_column();
+	// 	// minimum x
+	// 	let min_x = ( self.get_length() / 2) as f32;
+	// }
 
 	/// From a position in `x, y, z` space and the dimensions of the map calculate
 	/// the sector ID that point resides in
