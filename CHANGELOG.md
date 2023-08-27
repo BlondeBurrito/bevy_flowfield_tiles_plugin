@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Features
+
+- Example of continuous actor spawning
+
+
+
+
+### Miscellaneous Tasks
+
+- Enable feature docs on docrs
+
+
+
+
 ## [0.2.0] - 2023-07-31
 
 ### Documentation

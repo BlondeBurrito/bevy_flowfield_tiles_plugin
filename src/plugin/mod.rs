@@ -28,8 +28,6 @@ impl Plugin for FlowFieldTilesPlugin {
 			.register_type::<RouteMetadata>()
 			.register_type::<FlowFieldMetadata>()
 			.add_event::<cost_layer::EventUpdateCostfieldsCell>()
-			.add_event::<cost_layer::EventRebuildSectorPortals>()
-			.add_event::<cost_layer::EventUpdatePortalGraph>()
 			.add_event::<cost_layer::EventCleanCaches>()
 			.add_event::<flow_layer::EventPathRequest>()
 			.configure_sets(Update, (OrderingSet::Tidy, OrderingSet::Calculate).chain())
@@ -43,8 +41,8 @@ impl Plugin for FlowFieldTilesPlugin {
 						.in_set(OrderingSet::Tidy),
 					(
 						cost_layer::process_costfields_updates,
-						cost_layer::rebuild_portals,
-						cost_layer::update_portal_graph,
+						// cost_layer::rebuild_portals,
+						// cost_layer::update_portal_graph,
 						cost_layer::clean_cache,
 						flow_layer::handle_path_requests,
 						flow_layer::generate_flow_fields,
