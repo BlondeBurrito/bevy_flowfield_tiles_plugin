@@ -15,6 +15,7 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 | [commit](https://github.com/bevyengine/bevy/commit/8ba9571eedada4f3ff43cdf1402670b7fe7c280d) |  main                        |
 | 0.11 |  0.1 - 0.3  |
 
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/continuous_resized.gif" alt="crgif" width="350"/>
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/2d_with_steering_cropped.gif" alt="sgif" width="350"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/3d_actor_movement_cropped.gif" alt="3sgif" width="400"/>
 
 # Table of Contents
