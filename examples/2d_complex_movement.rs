@@ -246,11 +246,9 @@ fn actor_steering(
 						let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 						if pathing.current_direction.is_none() {
 							pathing.current_direction = Some(dir);
-						} else {
-							if pathing.current_direction.unwrap() != dir {
-								pathing.previous_direction = pathing.current_direction;
-								pathing.current_direction = Some(dir);
-							}
+						} else if pathing.current_direction.unwrap() != dir {
+							pathing.previous_direction = pathing.current_direction;
+							pathing.current_direction = Some(dir);
 						}
 						velocity.0 = dir * SPEED * time_step.period.as_secs_f32();
 					}
@@ -376,7 +374,7 @@ fn create_wall_colliders(mut cmds: Commands) {
 		1.0,
 	);
 
-	let walls = vec![
+	let walls = [
 		(top_location, top_scale),
 		(bottom_location, bottom_scale),
 		(left_location, left_scale),
