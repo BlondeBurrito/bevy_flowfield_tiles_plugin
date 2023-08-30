@@ -1,0 +1,10 @@
+[package]
+name = "examples_utils"
+version = "0.0.0"
+edition = "2021"
+description = "Helpers for avoiding duplicating code across exmaples"
+publish = false
+
+[dependencies]
+bevy = { version = "0.11", default-features = false }
+

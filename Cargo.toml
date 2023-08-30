@@ -12,7 +12,8 @@ categories = ["game-development", "algorithms"]
 exclude = [".github/", "crates/", "assets/", "docs/png/", "justfile"]
 
 [workspace]
-members = []
+members = ["crates/*"]
+exclude = ["crates/examples_utils"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
@@ -42,6 +43,7 @@ publish = true
 criterion = "0.5"
 bevy = { workspace = true, default-features = true }
 rand = "0.8"
+# examples_utils = { path = "crates/examples_utils" }
 
 [dependencies]
 bevy = { workspace = true }
