@@ -1,7 +1,10 @@
 //! Generates a 30x30 world and endlessly spawns actors with randomised destinations
 //!
 
-use bevy::{prelude::*, sprite::collide_aabb::{collide, Collision}};
+use bevy::{
+	prelude::*,
+	sprite::collide_aabb::{collide, Collision},
+};
 use bevy_flowfield_tiles_plugin::prelude::*;
 use rand::seq::SliceRandom;
 
@@ -23,7 +26,10 @@ fn main() {
 			Update,
 			(actor_update_route, spawn_actors, despawn_at_destination),
 		)
-		.add_systems(FixedUpdate, (actor_steering, collision_detection, apply_velocity).chain())
+		.add_systems(
+			FixedUpdate,
+			(actor_steering, collision_detection, apply_velocity).chain(),
+		)
 		.run();
 }
 
@@ -89,11 +95,17 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					})
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.with_children(|p| { // required to have a collider sized correctly
+					.with_children(|p| {
+						// required to have a collider sized correctly
 						p.spawn(SpatialBundle {
-							transform: Transform::from_scale(Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0)),
+							transform: Transform::from_scale(Vec3::new(
+								FIELD_SPRITE_DIMENSION,
+								FIELD_SPRITE_DIMENSION,
+								1.0,
+							)),
 							..default()
-						}).insert(Collider);
+						})
+						.insert(Collider);
 					});
 				} else {
 					cmds.spawn(SpriteBundle {
@@ -199,7 +211,8 @@ fn spawn_actors(
 		})
 		.insert(Actor)
 		.insert(Velocity::default())
-		.insert(pathing).with_children(|p| {
+		.insert(pathing)
+		.with_children(|p| {
 			p.spawn(SpatialBundle {
 				transform: Transform::from_scale(Vec3::new(16.0, 16.0, 1.0)),
 				..default()
@@ -238,7 +251,6 @@ fn actor_steering(
 		if pathing.target_goal.is_some() {
 			// lookup the overarching route
 			if let Some(route) = pathing.portal_route.as_mut() {
-				// info!("Route: {:?}", route);
 				// find the current actors postion in grid space
 				let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
 					.get_sector_and_field_id_from_xy(tform.translation.truncate())
@@ -324,13 +336,29 @@ struct Collider;
 /// Create collider entities around the world
 fn create_wall_colliders(mut cmds: Commands) {
 	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 0.0);
-	let top_scale = Vec3::new(FIELD_SPRITE_DIMENSION * 30.0, FIELD_SPRITE_DIMENSION / 2.0, 1.0);
+	let top_scale = Vec3::new(
+		FIELD_SPRITE_DIMENSION * 30.0,
+		FIELD_SPRITE_DIMENSION / 2.0,
+		1.0,
+	);
 	let bottom_location = Vec3::new(0.0, -FIELD_SPRITE_DIMENSION * 15.0, 0.0);
-	let bottom_scale = Vec3::new(FIELD_SPRITE_DIMENSION * 30.0, FIELD_SPRITE_DIMENSION / 2.0, 1.0);
+	let bottom_scale = Vec3::new(
+		FIELD_SPRITE_DIMENSION * 30.0,
+		FIELD_SPRITE_DIMENSION / 2.0,
+		1.0,
+	);
 	let left_location = Vec3::new(-FIELD_SPRITE_DIMENSION * 15.0, 0.0, 0.0);
-	let left_scale = Vec3::new(FIELD_SPRITE_DIMENSION / 2.0, FIELD_SPRITE_DIMENSION * 30.0, 1.0);
+	let left_scale = Vec3::new(
+		FIELD_SPRITE_DIMENSION / 2.0,
+		FIELD_SPRITE_DIMENSION * 30.0,
+		1.0,
+	);
 	let right_location = Vec3::new(FIELD_SPRITE_DIMENSION * 15.0, 0.0, 0.0);
-	let right_scale = Vec3::new(FIELD_SPRITE_DIMENSION / 2.0, FIELD_SPRITE_DIMENSION * 30.0, 1.0);
+	let right_scale = Vec3::new(
+		FIELD_SPRITE_DIMENSION / 2.0,
+		FIELD_SPRITE_DIMENSION * 30.0,
+		1.0,
+	);
 
 	let walls = vec![
 		(top_location, top_scale),
@@ -367,48 +395,46 @@ fn collision_detection(
 	time_step: Res<FixedTime>,
 ) {
 	for (mut velocity, actor_tform, children, pathing) in actor_q.iter_mut() {
-		// info!("Velocity ({}, {})", velocity.0.x, velocity.0.y);
-		// info!("Actor scale {:?}", actor_tform.scale);
 		for (parent, child_collider_tform) in static_colliders.iter() {
 			let parent_collider_tform = parent_colliders.get(parent.get()).unwrap();
-			// info!("Collider scale {:?}", collider_tform.scale);
 			for &child in children {
 				let tform = actor_child_q.get(child).unwrap();
 				let collision = collide(
 					actor_tform.translation,
 					tform.scale.truncate(),
 					parent_collider_tform.translation,
-					child_collider_tform.scale.truncate()
+					child_collider_tform.scale.truncate(),
 				);
 				if let Some(collision) = collision {
 					// direct the actor away from the collider
 					match collision {
 						Collision::Left => {
 							velocity.0.x *= -1.0;
-								if let Some(dir) = pathing.previous_direction {
-									velocity.0.y = dir.y * SPEED * time_step.period.as_secs_f32() * 2.0;
-								}
-						},
+							if let Some(dir) = pathing.previous_direction {
+								velocity.0.y = dir.y * SPEED * time_step.period.as_secs_f32() * 2.0;
+							}
+						}
 						Collision::Right => {
-								velocity.0.x *= -1.0;
-								if let Some(dir) = pathing.previous_direction {
-									velocity.0.y = dir.y * SPEED * time_step.period.as_secs_f32() * 2.0;
-								}
-						},
+							velocity.0.x *= -1.0;
+							if let Some(dir) = pathing.previous_direction {
+								velocity.0.y = dir.y * SPEED * time_step.period.as_secs_f32() * 2.0;
+							}
+						}
 						Collision::Top => {
 							velocity.0.y *= -1.0;
-								if let Some(dir) = pathing.previous_direction {
-									velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;
-								}
-						},
+							if let Some(dir) = pathing.previous_direction {
+								velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;
+							}
+						}
 						Collision::Bottom => {
 							velocity.0.y *= -1.0;
-								if let Some(dir) = pathing.previous_direction {
-									velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;
-								}
-						},
+							if let Some(dir) = pathing.previous_direction {
+								velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;
+							}
+						}
 						Collision::Inside => {
-							velocity.0 *= -1.0; /* do nothing */ }
+							velocity.0 *= -1.0;
+						}
 					}
 				}
 			}
