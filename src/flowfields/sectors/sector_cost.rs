@@ -37,6 +37,12 @@ impl SectorCostFields {
 	pub fn get_mut(&mut self) -> &mut BTreeMap<SectorID, CostField> {
 		&mut self.0
 	}
+	/// Update a cost within a particular `sector_id`
+	pub fn set_field_cell_value(&mut self, sector_id: SectorID, value: u8, field_cell: FieldCell) {
+		if let Some(cost_field) = self.get_mut().get_mut(&sector_id) {
+			cost_field.set_field_cell_value(value, field_cell);
+		}
+	}
 	/// From a `ron` file generate the [SectorCostFields]
 	#[cfg(feature = "ron")]
 	pub fn from_ron(path: String) -> Self {
@@ -45,11 +51,13 @@ impl SectorCostFields {
 			Ok(fields) => fields,
 			Err(e) => panic!("Failed deserializing SectorCostFields: {}", e),
 		};
+		//TODO handle scaling
 		fields
 	}
 	/// From a directory containing a series of CSV files generate the [SectorCostFields]
 	#[cfg(feature = "csv")]
 	pub fn from_csv_dir(
+		//TODO scaling
 		map_length: u32,
 		map_depth: u32,
 		sector_resolution: u32,
@@ -109,6 +117,42 @@ impl SectorCostFields {
 			sector_cost_fields.get_mut().insert(*sector_id, cost_field);
 		}
 		sector_cost_fields
+	}
+}
+
+/// Keys represent unique sector IDs and are in the format of `(column, row)`
+/// when considering a grid of sectors across the map. The sectors begin in the
+/// top left of the map ((-x_max, -z_max) for 3d, (-x_max, y_max) for 2d)
+/// and values are the [CostField] associated with that sector
+///
+/// Each [FieldCell] containing an impassable `255` value is scaled based on actor size to close off gaps which the actor could not path through
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Component, Clone, Default)]
+pub struct SectorCostFieldsScaled(BTreeMap<SectorID, CostField>);
+
+impl SectorCostFieldsScaled {
+	/// Create a new instance of [SectorCostFields] based on the map dimensions containing [CostField]
+	pub fn new(sector_cost_fields: &SectorCostFields, actor_scale: u32) -> Self {
+		let mut map = BTreeMap::new();
+		for (sector, field) in sector_cost_fields.get().iter() {
+			map.insert(*sector, field.clone());
+		}
+		SectorCostFieldsScaled(map)
+		//TODO actuall scale
+	}
+	/// Get a reference to the map of scaled sectors and [CostField]
+	pub fn get(&self) -> &BTreeMap<SectorID, CostField> {
+		&self.0
+	}
+	/// Get a mutable reference to the map of scaled sectors and [CostField]
+	pub fn get_mut(&mut self) -> &mut BTreeMap<SectorID, CostField> {
+		&mut self.0
+	}
+	/// From an adjusted [CostField] recalculate the actor size based scaling
+	/// of impassable cells across the sector
+	pub fn update(&mut self, sector_id: &SectorID, field: &CostField, actor_scale: u32) {
+		self.get_mut().insert(*sector_id, field.clone());
+		//TODO scale
 	}
 }
 

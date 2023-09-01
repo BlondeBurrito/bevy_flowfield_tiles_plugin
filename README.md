@@ -15,8 +15,7 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 | [commit](https://github.com/bevyengine/bevy/commit/8ba9571eedada4f3ff43cdf1402670b7fe7c280d) |  main                        |
 | 0.11 |  0.1 - 0.3  |
 
-<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/continuous_resized.gif" alt="crgif" width="350"/>
-<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/2d_with_steering_cropped.gif" alt="sgif" width="350"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/3d_actor_movement_cropped.gif" alt="3sgif" width="400"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/continuous_resized.gif" alt="crgif" width="300"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/2d_with_steering_cropped.gif" alt="sgif" width="350"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/3d_actor_movement_cropped.gif" alt="3sgif" width="400"/>
 
 # Table of Contents
 
@@ -230,6 +229,38 @@ Note that the data stored in the caches is timestamped - if a record lives longe
 ## Actor Sizes
 
 [TODO](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/2)
+
+In a simulation you may have actors of different sizes, consider:
+
+pic
+
+The smaller actor on the left can evidently pass through the gap between the impassable terrain. On the right however the actor is much larger and as such when processing a PathRequest only routes with suitable clearance should be considered.
+
+To handle this the overall `MapDimenions` component which defines the sizing of the various fields contains an `actor_max_scale` parameter
+
+In a game with actors of multiple sizes you will want to create distinct entities of `FlowFieldTilesBundle` where each is configured to handle a certain size of actor.
+
+```rust
+#[derive(Component)]
+struct ActorSmall
+#[derive(Component)]
+struct ActorLarge
+
+fn setup () {
+	cmds.spawn(FlowFieldTilesBundle::new(param, param, param)).insert(ActorSmall)
+	cmds.spawn(FlowFieldTilesBundle::new(param, param, param)).insert(ActorLarge)
+}
+
+fn navigation_small_actors(
+	actor_q: Query<&Actor, With<ActorSmall>>,
+	field_q: Query<&FlowCache, With<ActorSmall>>
+) {/* handling movement etc */}
+
+fn navigation_large_actors(
+	actor_q: Query<&Actor, With<ActorLarge>>,
+	field_q: Query<&FlowCache, With<ActorLarge>>
+) {/* handling movement etc */}
+```
 
 </details>
 </br>

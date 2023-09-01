@@ -123,7 +123,7 @@ impl Portals {
 	/// ```
 	pub fn recalculate_portals(
 		&mut self,
-		sector_cost_fields: &SectorCostFields,
+		sector_cost_fields: &SectorCostFieldsScaled,
 		sector_id: &SectorID,
 		map_dimensions: &MapDimensions,
 	) {
@@ -343,7 +343,7 @@ impl Portals {
 	/// A [FieldCell] represents the midpoint of a segment along a boundary, for smooth pathfinding any field cell along the segemnt should be a viable goal node when calculating an [IntegrationField]. This takes inspects the `portal_id` within the given `sector_id` and build a list of field cells which comprise the true dimension of the portal
 	pub fn expand_portal_into_goals(
 		&self,
-		sector_cost_fields: &SectorCostFields,
+		sector_cost_fields: &SectorCostFieldsScaled,
 		sector_id: &SectorID,
 		portal_id: &FieldCell,
 		neighbour_sector_id: &SectorID,
@@ -524,23 +524,27 @@ impl Portals {
 	}
 }
 
-#[rustfmt::skip]
 #[cfg(test)]
 mod tests {
 	use crate::flowfields::sectors::sector_portals::SectorPortals;
 
-use super::*;
+	use super::*;
 	#[test]
 	fn portals_top_left_sector() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		let sector_id = SectorID::new(0, 0);
-		let cost_field = sector_cost_fields.get_mut().get_mut(&sector_id).unwrap();
 		// switch some fields to impassable
-		cost_field.set_field_cell_value(255, FieldCell::new(9, 5));
-		cost_field.set_field_cell_value(255, FieldCell::new(0, 9));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(9, 5));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(0, 9));
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
 		let mut portals = Portals::default();
-		portals.recalculate_portals(&sector_cost_fields, &sector_id, &map_dimensions);
+		portals.recalculate_portals(&sector_cost_fields_scaled, &sector_id, &map_dimensions);
 		let northern_side_portal_count = 0;
 		let eastern_side_portal_count = 2;
 		let southern_side_portal_count = 1;
@@ -552,15 +556,20 @@ use super::*;
 	}
 	#[test]
 	fn portals_top_middle_sector() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		let sector_id = SectorID::new(1, 0);
-		let cost_field = sector_cost_fields.get_mut().get_mut(&sector_id).unwrap();
 		// switch some fields to impassable
-		cost_field.set_field_cell_value(255, FieldCell::new(9, 5));
-		cost_field.set_field_cell_value(255, FieldCell::new(0, 9));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(9, 5));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(0, 9));
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
 		let mut portals = Portals::default();
-		portals.recalculate_portals(&sector_cost_fields, &sector_id, &map_dimensions);
+		portals.recalculate_portals(&sector_cost_fields_scaled, &sector_id, &map_dimensions);
 		let northern_side_portal_count = 0;
 		let eastern_side_portal_count = 2;
 		let southern_side_portal_count = 1;
@@ -572,15 +581,20 @@ use super::*;
 	}
 	#[test]
 	fn portals_centre_sector() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		let sector_id = SectorID::new(1, 1);
-		let cost_field = sector_cost_fields.get_mut().get_mut(&sector_id).unwrap();
 		// switch some fields to impassable
-		cost_field.set_field_cell_value(255, FieldCell::new(9, 5));
-		cost_field.set_field_cell_value(255, FieldCell::new(0, 9));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(9, 5));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(0, 9));
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
 		let mut portals = Portals::default();
-		portals.recalculate_portals(&sector_cost_fields, &sector_id, &map_dimensions);
+		portals.recalculate_portals(&sector_cost_fields_scaled, &sector_id, &map_dimensions);
 		let northern_side_portal_count = 1;
 		let eastern_side_portal_count = 2;
 		let southern_side_portal_count = 1;
@@ -592,17 +606,22 @@ use super::*;
 	}
 	#[test]
 	fn portals_bottom_middle_sector() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		let sector_id = SectorID::new(1, 2);
-		let cost_field = sector_cost_fields.get_mut().get_mut(&sector_id).unwrap();
 		// switch some fields to impassable
-		cost_field.set_field_cell_value(255, FieldCell::new(4, 0));
-		cost_field.set_field_cell_value(255, FieldCell::new(6, 0));
-		cost_field.set_field_cell_value(255, FieldCell::new(9, 5));
-		cost_field.set_field_cell_value(255, FieldCell::new(0, 9));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(4, 0));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(6, 0));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(9, 5));
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(0, 9));
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
 		let mut portals = Portals::default();
-		portals.recalculate_portals(&sector_cost_fields, &sector_id, &map_dimensions);
+		portals.recalculate_portals(&sector_cost_fields_scaled, &sector_id, &map_dimensions);
 		let northern_side_portal_count = 3;
 		let eastern_side_portal_count = 2;
 		let southern_side_portal_count = 0;
@@ -614,14 +633,24 @@ use super::*;
 	}
 	#[test]
 	fn verify_rebuilding() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
-		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
+		let mut sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
+		let mut sector_portals = SectorPortals::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
-			portals.recalculate_portals(&sector_cost_fields, id, &map_dimensions)
+			portals.recalculate_portals(&sector_cost_fields_scaled, id, &map_dimensions)
 		}
-		
+
 		// the current portals
 		// _______________________________
 		// |         |         |         |
@@ -639,18 +668,43 @@ use super::*;
 		// |         P         P         |
 		// |         |         |         |
 		// |_________|_________|_________|
-		let pre_first = sector_portals.get_mut().get_mut(&SectorID::new(0, 0)).unwrap().clone();
-		let pre_second = sector_portals.get_mut().get_mut(&SectorID::new(0, 1)).unwrap().clone();
+		let pre_first = sector_portals
+			.get_mut()
+			.get_mut(&SectorID::new(0, 0))
+			.unwrap()
+			.clone();
+		let pre_second = sector_portals
+			.get_mut()
+			.get_mut(&SectorID::new(0, 1))
+			.unwrap()
+			.clone();
 		println!("Pre update portals {:?}", pre_first);
 		println!("Pre update portals {:?}", pre_second);
 		// update the top-left CostFields and calculate new portals
 		let mutated_sector_id = SectorID::new(0, 0);
-		let field = sector_cost_fields.get_mut().get_mut(&mutated_sector_id).unwrap();
-		field.set_field_cell_value(255, FieldCell::new(4, 9));
-		sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, &map_dimensions);
+		sector_cost_fields.set_field_cell_value(mutated_sector_id, 255, FieldCell::new(4, 9));
+		let field = sector_cost_fields.get().get(&mutated_sector_id).unwrap();
+		sector_cost_fields_scaled.update(
+			&mutated_sector_id,
+			field,
+			map_dimensions.get_actor_scale(),
+		);
+		sector_portals.update_portals(
+			mutated_sector_id,
+			&sector_cost_fields_scaled,
+			&map_dimensions,
+		);
 
-		let post_first = sector_portals.get_mut().get_mut(&mutated_sector_id).unwrap().clone();
-		let post_second = sector_portals.get_mut().get_mut(&SectorID::new(0, 1)).unwrap().clone();
+		let post_first = sector_portals
+			.get_mut()
+			.get_mut(&mutated_sector_id)
+			.unwrap()
+			.clone();
+		let post_second = sector_portals
+			.get_mut()
+			.get_mut(&SectorID::new(0, 1))
+			.unwrap()
+			.clone();
 		println!("Updated portals {:?}", post_first);
 		println!("Updated portals {:?}", post_second);
 		// This produces a new representation with an extra portal, `x` denotes the impassable point
@@ -677,135 +731,295 @@ use super::*;
 			vec![],
 			vec![FieldCell::new(9, 4)],
 			vec![FieldCell::new(1, 9), FieldCell::new(7, 9)],
-			vec![]
-			];
+			vec![],
+		];
 		let actual_second = [
 			vec![FieldCell::new(1, 0), FieldCell::new(7, 0)],
 			vec![FieldCell::new(9, 4)],
 			vec![FieldCell::new(4, 9)],
-			vec![]
-			];
+			vec![],
+		];
 		assert_eq!(actual_first[2], post_first.get()[2]);
 		assert_eq!(actual_second[0], post_second.get()[0]);
 	}
 	#[test]
 	fn expand_portal_goals_north() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
-		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
+		let mut sector_portals = SectorPortals::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
-			portals.recalculate_portals(&sector_cost_fields, id, &map_dimensions)
+			portals.recalculate_portals(&sector_cost_fields_scaled, id, &map_dimensions)
 		}
 		let sector_id = SectorID::new(1, 1);
 		let portal_id = FieldCell::new(4, 0);
 		let neighbour_sector_id = SectorID::new(1, 0);
-		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, &map_dimensions);
+		let goals = sector_portals
+			.get()
+			.get(&sector_id)
+			.unwrap()
+			.expand_portal_into_goals(
+				&sector_cost_fields_scaled,
+				&sector_id,
+				&portal_id,
+				&neighbour_sector_id,
+				&map_dimensions,
+			);
 
 		let actual = vec![
-			FieldCell::new(4, 0), FieldCell::new(3, 0), FieldCell::new(2, 0), FieldCell::new(1, 0), FieldCell::new(0, 0), FieldCell::new(5, 0), FieldCell::new(6, 0), FieldCell::new(7, 0), FieldCell::new(8, 0), FieldCell::new(9, 0)
-			];
+			FieldCell::new(4, 0),
+			FieldCell::new(3, 0),
+			FieldCell::new(2, 0),
+			FieldCell::new(1, 0),
+			FieldCell::new(0, 0),
+			FieldCell::new(5, 0),
+			FieldCell::new(6, 0),
+			FieldCell::new(7, 0),
+			FieldCell::new(8, 0),
+			FieldCell::new(9, 0),
+		];
 		assert_eq!(actual, goals);
 	}
 	#[test]
 	fn expand_portal_goals_east() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
-		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
+		let mut sector_portals = SectorPortals::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
-			portals.recalculate_portals(&sector_cost_fields, id, &map_dimensions)
+			portals.recalculate_portals(&sector_cost_fields_scaled, id, &map_dimensions)
 		}
 		let sector_id = SectorID::new(1, 1);
 		let portal_id = FieldCell::new(9, 4);
 		let neighbour_sector_id = SectorID::new(2, 1);
-		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, &map_dimensions);
+		let goals = sector_portals
+			.get()
+			.get(&sector_id)
+			.unwrap()
+			.expand_portal_into_goals(
+				&sector_cost_fields_scaled,
+				&sector_id,
+				&portal_id,
+				&neighbour_sector_id,
+				&map_dimensions,
+			);
 
 		let actual = vec![
-			FieldCell::new(9, 4), FieldCell::new(9, 3), FieldCell::new(9, 2), FieldCell::new(9, 1), FieldCell::new(9, 0), FieldCell::new(9, 5), FieldCell::new(9, 6),FieldCell::new (9, 7), FieldCell::new(9, 8), FieldCell::new(9, 9)
-			];
+			FieldCell::new(9, 4),
+			FieldCell::new(9, 3),
+			FieldCell::new(9, 2),
+			FieldCell::new(9, 1),
+			FieldCell::new(9, 0),
+			FieldCell::new(9, 5),
+			FieldCell::new(9, 6),
+			FieldCell::new(9, 7),
+			FieldCell::new(9, 8),
+			FieldCell::new(9, 9),
+		];
 		assert_eq!(actual, goals);
 	}
 	#[test]
 	fn expand_portal_goals_south() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
-		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
+		let mut sector_portals = SectorPortals::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
-			portals.recalculate_portals(&sector_cost_fields, id, &map_dimensions)
+			portals.recalculate_portals(&sector_cost_fields_scaled, id, &map_dimensions)
 		}
 		let sector_id = SectorID::new(1, 1);
 		let portal_id = FieldCell::new(4, 9);
 		let neighbour_sector_id = SectorID::new(1, 2);
-		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, &map_dimensions);
+		let goals = sector_portals
+			.get()
+			.get(&sector_id)
+			.unwrap()
+			.expand_portal_into_goals(
+				&sector_cost_fields_scaled,
+				&sector_id,
+				&portal_id,
+				&neighbour_sector_id,
+				&map_dimensions,
+			);
 
 		let actual = vec![
-			FieldCell::new(4, 9), FieldCell::new(3, 9), FieldCell::new(2, 9), FieldCell::new(1, 9), FieldCell::new(0, 9), FieldCell::new(5, 9), FieldCell::new(6, 9), FieldCell::new(7, 9), FieldCell::new(8, 9), FieldCell::new(9, 9)
-			];
+			FieldCell::new(4, 9),
+			FieldCell::new(3, 9),
+			FieldCell::new(2, 9),
+			FieldCell::new(1, 9),
+			FieldCell::new(0, 9),
+			FieldCell::new(5, 9),
+			FieldCell::new(6, 9),
+			FieldCell::new(7, 9),
+			FieldCell::new(8, 9),
+			FieldCell::new(9, 9),
+		];
 		assert_eq!(actual, goals);
 	}
 	#[test]
 	fn expand_portal_goals_west() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
-		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
+		let mut sector_portals = SectorPortals::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
-			portals.recalculate_portals(&sector_cost_fields, id, &map_dimensions)
+			portals.recalculate_portals(&sector_cost_fields_scaled, id, &map_dimensions)
 		}
 		let sector_id = SectorID::new(1, 1);
 		let portal_id = FieldCell::new(0, 4);
 		let neighbour_sector_id = SectorID::new(0, 1);
-		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, &map_dimensions);
+		let goals = sector_portals
+			.get()
+			.get(&sector_id)
+			.unwrap()
+			.expand_portal_into_goals(
+				&sector_cost_fields_scaled,
+				&sector_id,
+				&portal_id,
+				&neighbour_sector_id,
+				&map_dimensions,
+			);
 
 		let actual = vec![
-			FieldCell::new(0, 4), FieldCell::new(0, 3), FieldCell::new(0, 2), FieldCell::new(0, 1), FieldCell::new(0, 0), FieldCell::new(0, 5), FieldCell::new(0, 6), FieldCell::new(0, 7), FieldCell::new(0, 8), FieldCell::new(0, 9)
-			];
+			FieldCell::new(0, 4),
+			FieldCell::new(0, 3),
+			FieldCell::new(0, 2),
+			FieldCell::new(0, 1),
+			FieldCell::new(0, 0),
+			FieldCell::new(0, 5),
+			FieldCell::new(0, 6),
+			FieldCell::new(0, 7),
+			FieldCell::new(0, 8),
+			FieldCell::new(0, 9),
+		];
 		assert_eq!(actual, goals);
 	}
 	#[test]
 	fn expand_portal_goals_short_local() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
 		let sector_id = SectorID::new(1, 1);
 		let neighbour_sector_id = SectorID::new(1, 0);
-		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
-		sector_cost_fields.get_mut().get_mut(&sector_id).unwrap().set_field_cell_value(255, FieldCell::new(3, 0));
+		let mut sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
+		sector_cost_fields.set_field_cell_value(sector_id, 255, FieldCell::new(3, 0));
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
 
-		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let mut sector_portals = SectorPortals::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
-			portals.recalculate_portals(&sector_cost_fields, id, &map_dimensions)
+			portals.recalculate_portals(&sector_cost_fields_scaled, id, &map_dimensions)
 		}
-		
+
 		let portal_id = FieldCell::new(1, 0);
-		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, &map_dimensions);
+		let goals = sector_portals
+			.get()
+			.get(&sector_id)
+			.unwrap()
+			.expand_portal_into_goals(
+				&sector_cost_fields_scaled,
+				&sector_id,
+				&portal_id,
+				&neighbour_sector_id,
+				&map_dimensions,
+			);
 
 		let actual = vec![
-			FieldCell::new(1, 0), FieldCell::new(0, 0), FieldCell::new(2, 0)
-			];
+			FieldCell::new(1, 0),
+			FieldCell::new(0, 0),
+			FieldCell::new(2, 0),
+		];
 		assert_eq!(actual, goals);
 	}
 	#[test]
 	fn expand_portal_goals_short_adjacent() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
 		let sector_id = SectorID::new(1, 1);
 		let neighbour_sector_id = SectorID::new(1, 0);
-		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
-		sector_cost_fields.get_mut().get_mut(&neighbour_sector_id).unwrap().set_field_cell_value(255, FieldCell::new(3, 9));
+		let mut sector_cost_fields = SectorCostFields::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
+		sector_cost_fields.set_field_cell_value(neighbour_sector_id, 255, FieldCell::new(3, 9));
+		let sector_cost_fields_scaled =
+			SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
 
-		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let mut sector_portals = SectorPortals::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			map_dimensions.get_sector_resolution(),
+		);
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
-			portals.recalculate_portals(&sector_cost_fields, id, &map_dimensions)
+			portals.recalculate_portals(&sector_cost_fields_scaled, id, &map_dimensions)
 		}
-		
+
 		let portal_id = FieldCell::new(1, 0);
-		let goals = sector_portals.get().get(&sector_id).unwrap().expand_portal_into_goals(&sector_cost_fields, &sector_id, &portal_id, &neighbour_sector_id, &map_dimensions);
+		let goals = sector_portals
+			.get()
+			.get(&sector_id)
+			.unwrap()
+			.expand_portal_into_goals(
+				&sector_cost_fields_scaled,
+				&sector_id,
+				&portal_id,
+				&neighbour_sector_id,
+				&map_dimensions,
+			);
 
 		let actual = vec![
-			FieldCell::new(1, 0), FieldCell::new(0, 0), FieldCell::new(2, 0)
-			];
+			FieldCell::new(1, 0),
+			FieldCell::new(0, 0),
+			FieldCell::new(2, 0),
+		];
 		assert_eq!(actual, goals);
 	}
 }

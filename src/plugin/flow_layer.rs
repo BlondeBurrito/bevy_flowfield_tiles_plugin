@@ -42,12 +42,12 @@ pub fn handle_path_requests(
 		&mut RouteCache,
 		&PortalGraph,
 		&SectorPortals,
-		&SectorCostFields,
+		&SectorCostFieldsScaled,
 	)>,
 	time: Res<Time>,
 ) {
 	for event in events.iter() {
-		for (mut cache, graph, sector_portals, sector_cost_fields) in cache_q.iter_mut() {
+		for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut() {
 			//TODO maybe reinstate this after benchmarking - means less accurate route due to reuse but better perf
 			// // only run if the cache doesn't contain the route already
 			// if !cache.get().contains_key(&(
@@ -59,7 +59,7 @@ pub fn handle_path_requests(
 				(event.source_sector, event.source_field_cell),
 				(event.target_sector, event.target_goal),
 				sector_portals,
-				sector_cost_fields,
+				sector_cost_fields_scaled,
 			) {
 				debug!("Portal path found");
 				let mut path =
@@ -121,14 +121,14 @@ pub fn generate_flow_fields(
 			&mut FlowFieldCache,
 			&RouteCache,
 			&SectorPortals,
-			&SectorCostFields,
+			&SectorCostFieldsScaled,
 			&MapDimensions,
 		),
 		Changed<RouteCache>,
 	>,
 	time: Res<Time>,
 ) {
-	for (mut field_cache, route_cache, sector_portals, sector_cost_fields, map_dimensions) in
+	for (mut field_cache, route_cache, sector_portals, sector_cost_fields_scaled, map_dimensions) in
 		cache_q.iter_mut()
 	{
 		for (_key, portal_path) in route_cache.get().iter() {
@@ -152,7 +152,7 @@ pub fn generate_flow_fields(
 						.get(sector_id)
 						.unwrap()
 						.expand_portal_into_goals(
-							sector_cost_fields,
+							sector_cost_fields_scaled,
 							sector_id,
 							goal,
 							&neighbour_sector_id,
@@ -166,7 +166,7 @@ pub fn generate_flow_fields(
 			let mut sector_int_fields = Vec::new();
 			for (sector_id, goals) in sectors_expanded_goals.iter() {
 				let mut int_field = IntegrationField::new(goals);
-				let cost_field = sector_cost_fields.get().get(sector_id).unwrap();
+				let cost_field = sector_cost_fields_scaled.get().get(sector_id).unwrap();
 				int_field.calculate_field(goals, cost_field);
 				sector_int_fields.push((*sector_id, goals.clone(), int_field));
 			}

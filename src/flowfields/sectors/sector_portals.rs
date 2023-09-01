@@ -42,14 +42,14 @@ impl SectorPortals {
 	pub fn update_portals(
 		&mut self,
 		changed_cost_field_id: SectorID,
-		sector_cost_fields: &SectorCostFields,
+		sector_cost_fields_scaled: &SectorCostFieldsScaled,
 		map_dimensions: &MapDimensions,
 	) -> &mut Self {
 		let mut changed = map_dimensions.get_ids_of_neighbouring_sectors(&changed_cost_field_id);
 		changed.push(changed_cost_field_id);
 		for id in changed.iter() {
 			self.get_mut().get_mut(id).unwrap().recalculate_portals(
-				sector_cost_fields,
+				sector_cost_fields_scaled,
 				id,
 				map_dimensions,
 			);

@@ -66,7 +66,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
+	let actor_size = 16.0;
+	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
@@ -123,10 +124,12 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
+	let actor_size = 16.0;
 	cmds.spawn(FlowFieldTilesBundle::from_ron(
 		map_length,
 		map_depth,
 		sector_resolution,
+		actor_size,
 		&path,
 	));
 	// create the controllable actors

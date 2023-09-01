@@ -17,20 +17,23 @@ fn main() {
 /// Init world
 fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// calculate the fields
-	let map_dimensions = MapDimensions::new(30, 30, 10);
+	let map_dimensions = MapDimensions::new(30, 30, 10, 1.0);
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let sector_cost_fields = SectorCostFields::from_ron(path);
+	let sector_cost_fields_scaled =
+		SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
 	let mut sector_portals = SectorPortals::new(
 		map_dimensions.get_length(),
 		map_dimensions.get_depth(),
 		map_dimensions.get_sector_resolution(),
 	);
 	// update default portals for cost fields
-	for sector_id in sector_cost_fields.get().keys() {
-		sector_portals.update_portals(*sector_id, &sector_cost_fields, &map_dimensions);
+	for sector_id in sector_cost_fields_scaled.get().keys() {
+		sector_portals.update_portals(*sector_id, &sector_cost_fields_scaled, &map_dimensions);
 	}
 	// generate the portal graph
-	let portal_graph = PortalGraph::new(&sector_portals, &sector_cost_fields, &map_dimensions);
+	let portal_graph =
+		PortalGraph::new(&sector_portals, &sector_cost_fields_scaled, &map_dimensions);
 	//
 	let source_sector = SectorID::new(2, 0);
 	let source_field_cell = FieldCell::new(7, 3);
@@ -42,7 +45,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			(source_sector, source_field_cell),
 			(target_sector, target_field_cell),
 			&sector_portals,
-			&sector_cost_fields,
+			&sector_cost_fields_scaled,
 		)
 		.unwrap();
 	// convert to field cell and sector coords
@@ -81,7 +84,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				.get(sector_id)
 				.unwrap()
 				.expand_portal_into_goals(
-					&sector_cost_fields,
+					&sector_cost_fields_scaled,
 					sector_id,
 					goal,
 					&neighbour_sector_id,

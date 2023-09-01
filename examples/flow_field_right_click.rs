@@ -45,10 +45,12 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_depth = 640;
 	let sector_resolution = 640;
 	let sprite_dimension = 64.0;
+	let actor_size = 16.0;
 	cmds.spawn(FlowFieldTilesBundle::from_ron(
 		map_length,
 		map_depth,
 		sector_resolution,
+		actor_size,
 		&s_path,
 	));
 	// use the impression of the cost field to just init node images

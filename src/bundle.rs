@@ -11,6 +11,8 @@ use bevy::prelude::*;
 pub struct FlowFieldTilesBundle {
 	/// [CostField]s of all sectors
 	sector_cost_fields: SectorCostFields,
+	/// [CostField]s of all sectors where impassable cells are scaled based on actor size
+	sector_cost_fields_scaled: SectorCostFieldsScaled,
 	/// Portals for all sectors
 	sector_portals: SectorPortals,
 	/// Graph describing how to get from one sector to another
@@ -25,19 +27,23 @@ pub struct FlowFieldTilesBundle {
 
 impl FlowFieldTilesBundle {
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
-	pub fn new(map_length: u32, map_depth: u32, sector_resolution: u32) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
+	pub fn new(map_length: u32, map_depth: u32, sector_resolution: u32, actor_size: f32) -> Self {
+		let map_dimensions =
+			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
 		let cost_fields = SectorCostFields::new(map_length, map_depth, sector_resolution);
+		let cost_fields_scaled =
+			SectorCostFieldsScaled::new(&cost_fields, map_dimensions.get_actor_scale());
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
+			portals.update_portals(*sector_id, &cost_fields_scaled, &map_dimensions);
 		}
-		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
+		let graph = PortalGraph::new(&portals, &cost_fields_scaled, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {
 			sector_cost_fields: cost_fields,
+			sector_cost_fields_scaled: cost_fields_scaled,
 			sector_portals: portals,
 			portal_graph: graph,
 			map_dimensions,
@@ -47,9 +53,18 @@ impl FlowFieldTilesBundle {
 	}
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
 	#[cfg(feature = "ron")]
-	pub fn from_ron(map_length: u32, map_depth: u32, sector_resolution: u32, path: &str) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
+	pub fn from_ron(
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
+		actor_size: f32,
+		path: &str,
+	) -> Self {
+		let map_dimensions =
+			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
 		let cost_fields = SectorCostFields::from_ron(path.to_string());
+		let cost_fields_scaled =
+			SectorCostFieldsScaled::new(&cost_fields, map_dimensions.get_actor_scale());
 		if ((map_length * map_depth) / (sector_resolution * sector_resolution)) as usize
 			!= cost_fields.get().len()
 		{
@@ -58,13 +73,14 @@ impl FlowFieldTilesBundle {
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
+			portals.update_portals(*sector_id, &cost_fields_scaled, &map_dimensions);
 		}
-		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
+		let graph = PortalGraph::new(&portals, &cost_fields_scaled, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {
 			sector_cost_fields: cost_fields,
+			sector_cost_fields_scaled: cost_fields_scaled,
 			sector_portals: portals,
 			portal_graph: graph,
 			map_dimensions,
@@ -78,25 +94,30 @@ impl FlowFieldTilesBundle {
 		map_length: u32,
 		map_depth: u32,
 		sector_resolution: u32,
+		actor_size: f32,
 		directory: &str,
 	) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
+		let map_dimensions =
+			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
 		let cost_fields = SectorCostFields::from_csv_dir(
 			map_length,
 			map_depth,
 			sector_resolution,
 			directory.to_string(),
 		);
+		let cost_fields_scaled =
+			SectorCostFieldsScaled::new(&cost_fields, map_dimensions.get_actor_scale());
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get().keys() {
-			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
+			portals.update_portals(*sector_id, &cost_fields_scaled, &map_dimensions);
 		}
-		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
+		let graph = PortalGraph::new(&portals, &cost_fields_scaled, &map_dimensions);
 		let route_cache = RouteCache::default();
 		let cache = FlowFieldCache::default();
 		FlowFieldTilesBundle {
 			sector_cost_fields: cost_fields,
+			sector_cost_fields_scaled: cost_fields_scaled,
 			sector_portals: portals,
 			portal_graph: graph,
 			map_dimensions,
@@ -112,15 +133,15 @@ mod tests {
 	use super::*;
 	#[test]
 	fn valid_map_dimensions() {
-		let _map_dimsions = MapDimensions::new(10, 10, 10);
+		let _map_dimsions = MapDimensions::new(10, 10, 10, 0.5);
 	}
 	#[test]
 	#[should_panic]
 	fn invalid_map_dimensions() {
-		MapDimensions::new(99, 3, 10);
+		MapDimensions::new(99, 3, 10, 1.0);
 	}
 	#[test]
 	fn new_bundle() {
-		let _ = FlowFieldTilesBundle::new(30, 30, 10);
+		let _ = FlowFieldTilesBundle::new(30, 30, 10, 0.5);
 	}
 }
