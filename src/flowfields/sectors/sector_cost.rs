@@ -133,12 +133,16 @@ pub struct SectorCostFieldsScaled(BTreeMap<SectorID, CostField>);
 impl SectorCostFieldsScaled {
 	/// Create a new instance of [SectorCostFields] based on the map dimensions containing [CostField]
 	pub fn new(sector_cost_fields: &SectorCostFields, actor_scale: u32) -> Self {
-		let mut map = BTreeMap::new();
-		for (sector, field) in sector_cost_fields.get().iter() {
-			map.insert(*sector, field.clone());
+		let mut map = SectorCostFieldsScaled::default();
+		let duplicate = sector_cost_fields.clone();
+		for (sector, field) in duplicate.get().iter() {
+			if actor_scale > 1 {
+				scale_costfields(&mut map, sector_cost_fields, sector, field, actor_scale);
+			} else {
+				map.get_mut().insert(*sector, field.clone());
+			}
 		}
-		SectorCostFieldsScaled(map)
-		//TODO actuall scale
+		map
 	}
 	/// Get a reference to the map of scaled sectors and [CostField]
 	pub fn get(&self) -> &BTreeMap<SectorID, CostField> {
@@ -150,11 +154,21 @@ impl SectorCostFieldsScaled {
 	}
 	/// From an adjusted [CostField] recalculate the actor size based scaling
 	/// of impassable cells across the sector
-	pub fn update(&mut self, sector_id: &SectorID, field: &CostField, actor_scale: u32) {
-		self.get_mut().insert(*sector_id, field.clone());
-		//TODO scale
+	pub fn update(&mut self, sector_cost_fields: &SectorCostFields, sector_id: &SectorID, field: &CostField, actor_scale: u32) {
+		if actor_scale > 1 {
+			scale_costfields(self, sector_cost_fields, sector_id, field, actor_scale);
+		} else {
+			self.get_mut().insert(*sector_id, field.clone());
+		}
 	}
 }
+
+/// Inspects a sector for impassable cost values and based on an actor scale it expands any impassable costs into any neighbouring [FieldCell] to close off any gaps so that the actor won't try and path through a gap it can't fit
+fn scale_costfields(scaled: &mut SectorCostFieldsScaled, baseline: &SectorCostFields, sector_id: &SectorID, field: &CostField, actor_scale: u32) {}
+
+
+/// Inspects a sector for impassable cost values and based on an actor scale it expands any impassable costs into any neighbouring [FieldCell] to close off any gaps so that the actor won't try and path through a gap it can't fit
+fn scale_costfields_mut(scaled: &mut SectorCostFieldsScaled, baseline: &mut SectorCostFields, sector_id: &SectorID, field: &CostField, actor_scale: u32) {}
 
 // #[rustfmt::skip]
 #[cfg(test)]

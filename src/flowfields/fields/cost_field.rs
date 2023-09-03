@@ -136,9 +136,6 @@ impl CostField {
 		};
 		field
 	}
-	fn extend_impassable_by_actor_scale(&mut self, actor_scale: u32) {
-		todo!()
-	}
 }
 
 // #[rustfmt::skip]
