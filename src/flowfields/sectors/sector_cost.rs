@@ -93,7 +93,11 @@ impl SectorCostFields {
 	/// Inspects a sector for impassable cost values and based on an actor scale it expands any impassable costs into any neighbouring [FieldCell] to close off any gaps so that the actor won't try and path through a gap it can't fit
 	fn scale_costfield(&mut self, sector_id: &SectorID, map_dimensions: &MapDimensions) {
 		/// Helper updates a tracker of what cells/sectors have been processed
-		fn update_processed(processed: &mut BTreeMap<SectorID, Vec<FieldCell>>, field_cell: FieldCell, sector_id: &SectorID) {
+		fn update_processed(
+			processed: &mut BTreeMap<SectorID, Vec<FieldCell>>,
+			field_cell: FieldCell,
+			sector_id: &SectorID,
+		) {
 			if let Some(list) = processed.get_mut(&sector_id) {
 				list.push(field_cell);
 			} else {
@@ -214,20 +218,20 @@ impl SectorCostFields {
 							// adjust sizing to step through neightbour sector
 							for x in 0..=map_dimensions.get_actor_scale() as usize - i {
 								if 0 + x < FIELD_RESOLUTION {
-								let field_cell = FieldCell::new(0 + x, *row);
-								update_processed(&mut processed, field_cell, &n_sector);
-								let value = self
-									.get_baseline()
-									.get(&n_sector)
-									.unwrap()
-									.get_field_cell_value(field_cell);
-								// hit impassable before exceeding scale therefore
-								// gap too small for pathing
-								if value == 255 {
-									add_to_be_marked(&mut marks_as_impassable, &processed);
-									break 'ord;
+									let field_cell = FieldCell::new(0 + x, *row);
+									update_processed(&mut processed, field_cell, &n_sector);
+									let value = self
+										.get_baseline()
+										.get(&n_sector)
+										.unwrap()
+										.get_field_cell_value(field_cell);
+									// hit impassable before exceeding scale therefore
+									// gap too small for pathing
+									if value == 255 {
+										add_to_be_marked(&mut marks_as_impassable, &processed);
+										break 'ord;
+									}
 								}
-							}
 							}
 						} else {
 							// hit the edge of the world so actor can't fit through the gap
