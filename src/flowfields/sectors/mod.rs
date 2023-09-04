@@ -102,6 +102,9 @@ impl MapDimensions {
 				length, depth, sector_resolution
 			);
 		}
+		if actor_size < 0.0 {
+			panic!("Actor size cannot be less than zero");
+		}
 		let actor_scale = (actor_size / (sector_resolution as f32 / 10.0)).ceil() as u32;
 		MapDimensions {
 			size: (length, depth),
@@ -286,6 +289,106 @@ impl MapDimensions {
 			self.get_depth(),
 			self.get_sector_resolution(),
 		)
+	}
+	/// From an [Ordinal] get the ID of a neighbouring sector. Returns [None]
+	/// if the sector would be out of bounds
+	pub fn get_sector_id_from_ordinal(
+		&self,
+		ordinal: Ordinal,
+		sector_id: &SectorID,
+	) -> Option<SectorID> {
+		match ordinal {
+			Ordinal::North => {
+				if let Some(row) = sector_id.get_row().checked_sub(1) {
+					Some(SectorID::new(sector_id.get_column(), row))
+				} else {
+					None
+				}
+			}
+			Ordinal::East => {
+				if sector_id.get_column() + 1 < self.get_length() / self.get_sector_resolution() - 1
+				{
+					Some(SectorID::new(
+						sector_id.get_column() + 1,
+						sector_id.get_row(),
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::South => {
+				if sector_id.get_row() + 1 < self.get_depth() / self.get_sector_resolution() - 1 {
+					Some(SectorID::new(
+						sector_id.get_column(),
+						sector_id.get_row() + 1,
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::West => {
+				if let Some(column) = sector_id.get_column().checked_sub(1) {
+					Some(SectorID::new(column, sector_id.get_row()))
+				} else {
+					None
+				}
+			}
+			Ordinal::NorthEast => {
+				if let Some(row) = sector_id.get_row().checked_sub(1) {
+					if sector_id.get_column() + 1
+						< self.get_length() / self.get_sector_resolution() - 1
+					{
+						Some(SectorID::new(sector_id.get_column() + 1, row))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::SouthEast => {
+				if sector_id.get_row() + 1 < self.get_depth() / self.get_sector_resolution() - 1 {
+					if sector_id.get_column() + 1
+						< self.get_length() / self.get_sector_resolution() - 1
+					{
+						Some(SectorID::new(
+							sector_id.get_column() + 1,
+							sector_id.get_row() + 1,
+						))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::SouthWest => {
+				if sector_id.get_row() + 1 < self.get_depth() / self.get_sector_resolution() - 1 {
+					if let Some(column) = sector_id.get_column().checked_sub(1) {
+						Some(SectorID::new(column, sector_id.get_row() + 1))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::NorthWest => {
+				if let Some(row) = sector_id.get_row().checked_sub(1) {
+					if let Some(column) = sector_id.get_column().checked_sub(1) {
+						Some(SectorID::new(column, row))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::Zero => {
+				error!("`get_sector_id_from_ordinal` should never be called with `Ordinal::Zero`");
+				None
+			}
+		}
 	}
 }
 
@@ -478,5 +581,76 @@ mod tests {
 			(Ordinal::West, SectorID::new(4, 7)),
 		];
 		assert_eq!(actual, result);
+	}
+	#[test]
+	fn sector_id_ordinal_north() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
+		let actual = SectorID::new(1, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_east() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::East, &sector_id);
+		let actual = SectorID::new(2, 1);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_south() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::South, &sector_id);
+		let actual = SectorID::new(1, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_west() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::West, &sector_id);
+		let actual = SectorID::new(0, 1);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_northeast() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::NorthEast, &sector_id);
+		let actual = SectorID::new(2, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_southeast() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::SouthEast, &sector_id);
+		let actual = SectorID::new(2, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_southwest() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::SouthWest, &sector_id);
+		let actual = SectorID::new(0, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_northwest() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::NorthWest, &sector_id);
+		let actual = SectorID::new(0, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_oob() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 0);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
+		assert!(result.is_none())
 	}
 }

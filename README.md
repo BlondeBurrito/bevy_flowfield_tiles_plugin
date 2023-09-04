@@ -236,7 +236,7 @@ pic
 
 The smaller actor on the left can evidently pass through the gap between the impassable terrain. On the right however the actor is much larger and as such when processing a PathRequest only routes with suitable clearance should be considered.
 
-To handle this the overall `MapDimenions` component which defines the sizing of the various fields contains an `actor_max_scale` parameter
+To handle this the overall `MapDimenions` component which defines the sizing of the various fields contains an `actor_scale` parameter
 
 In a game with actors of multiple sizes you will want to create distinct entities of `FlowFieldTilesBundle` where each is configured to handle a certain size of actor.
 

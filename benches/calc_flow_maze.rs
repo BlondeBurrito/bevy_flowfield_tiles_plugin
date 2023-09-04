@@ -29,28 +29,20 @@ fn prepare_fields(
 	map_depth: u32,
 	sector_resolution: u32,
 	actor_size: f32,
-) -> (
-	SectorPortals,
-	SectorCostFieldsScaled,
-	MapDimensions,
-	RouteCache,
-) {
+) -> (SectorPortals, SectorCostFields, MapDimensions, RouteCache) {
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
 	let csv_dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/bench_costfields/maze/";
-	let cost_fields =
-		SectorCostFields::from_csv_dir(map_length, map_depth, sector_resolution, csv_dir);
-	let cost_fields_scaled =
-		SectorCostFieldsScaled::new(&cost_fields, map_dimensions.get_actor_scale());
+	let cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, csv_dir);
 	let mut portals = SectorPortals::new(
 		map_dimensions.get_length(),
 		map_dimensions.get_depth(),
 		map_dimensions.get_sector_resolution(),
 	);
 	// update default portals for cost fields
-	for sector_id in cost_fields.get().keys() {
-		portals.update_portals(*sector_id, &cost_fields_scaled, &map_dimensions);
+	for sector_id in cost_fields.get_scaled().keys() {
+		portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 	}
-	let graph = PortalGraph::new(&portals, &cost_fields_scaled, &map_dimensions);
+	let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
 
 	let mut route_cache = RouteCache::default();
 	// bottom left
@@ -64,7 +56,7 @@ fn prepare_fields(
 
 	// find the route
 	let node_route = graph
-		.find_best_path(source, target, &portals, &cost_fields_scaled)
+		.find_best_path(source, target, &portals, &cost_fields)
 		.unwrap();
 	let mut path = graph.convert_index_path_to_sector_portal_cells(node_route.1, &portals);
 	// println!("Path len: {}", path.len());
@@ -77,14 +69,14 @@ fn prepare_fields(
 		Duration::default(),
 		path,
 	);
-	(portals, cost_fields_scaled, map_dimensions, route_cache)
+	(portals, cost_fields, map_dimensions, route_cache)
 }
 
 /// Create the components of a FlowFieldTilesBundle and drive them with an actor in the top right
 /// corner pathing to the bottom left
 fn flow_maze(
 	portals: SectorPortals,
-	cost_fields_scaled: SectorCostFieldsScaled,
+	cost_fields: SectorCostFields,
 	map_dimensions: MapDimensions,
 	route_cache: RouteCache,
 ) {
@@ -111,7 +103,7 @@ fn flow_maze(
 					.get(sector_id)
 					.unwrap()
 					.expand_portal_into_goals(
-						&cost_fields_scaled,
+						&cost_fields,
 						sector_id,
 						goal,
 						&neighbour_sector_id,
@@ -125,7 +117,7 @@ fn flow_maze(
 		let mut sector_int_fields = Vec::new();
 		for (sector_id, goals) in sectors_expanded_goals.iter() {
 			let mut int_field = IntegrationField::new(goals);
-			let cost_field = cost_fields_scaled.get().get(sector_id).unwrap();
+			let cost_field = cost_fields.get_scaled().get(sector_id).unwrap();
 			int_field.calculate_field(goals, cost_field);
 			sector_int_fields.push((*sector_id, goals.clone(), int_field));
 		}
@@ -155,13 +147,12 @@ fn flow_maze(
 pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut group = c.benchmark_group("algorithm_use");
 	group.significance_level(0.05).sample_size(100);
-	let (portals, cost_fields_scaled, map_dimensions, route_cache) =
-		prepare_fields(1000, 1000, 10, 0.5);
+	let (portals, cost_fields, map_dimensions, route_cache) = prepare_fields(1000, 1000, 10, 0.5);
 	group.bench_function("calc_flow_maze", |b| {
 		b.iter(|| {
 			flow_maze(
 				black_box(portals.clone()),
-				black_box(cost_fields_scaled.clone()),
+				black_box(cost_fields.clone()),
 				black_box(map_dimensions),
 				black_box(route_cache.clone()),
 			)

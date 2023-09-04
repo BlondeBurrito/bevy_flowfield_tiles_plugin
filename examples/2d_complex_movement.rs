@@ -1,6 +1,6 @@
 //! Generates a 30x30 world where an actor can be told to move through a narrow snake-like path
 //!
-
+//TODO visualisation creates impassable blocks when route goes back on self
 use std::collections::HashMap;
 
 use bevy::{
@@ -75,9 +75,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
 	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
-	let sector_cost_fields =
-		SectorCostFields::from_csv_dir(map_length, map_depth, sector_resolution, dir);
-	let fields = sector_cost_fields.get();
+	let sector_cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, dir);
+	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
 		// iterate over the dimensions of the field
@@ -314,7 +313,7 @@ fn update_sprite_visuals_based_on_actor(
 				}
 			} else {
 				let value = sc_cache
-					.get()
+					.get_baseline()
 					.get(&SectorID::new(sector_label.0, sector_label.1))
 					.unwrap()
 					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));

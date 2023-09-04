@@ -31,15 +31,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
 	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
-	let sector_cost_fields = SectorCostFields::from_csv_dir(
-		map_dimensions.get_length(),
-		map_dimensions.get_depth(),
-		map_dimensions.get_sector_resolution(),
-		dir,
-	);
-	let sector_cost_fields_scaled =
-		SectorCostFieldsScaled::new(&sector_cost_fields, map_dimensions.get_actor_scale());
-	let fields = sector_cost_fields_scaled.get();
+	let sector_cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, dir);
+	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
 		// iterate over the dimensions of the field
@@ -66,8 +59,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		map_dimensions.get_sector_resolution(),
 	);
 	// update default portals for cost fields
-	for sector_id in sector_cost_fields_scaled.get().keys() {
-		portals.update_portals(*sector_id, &sector_cost_fields_scaled, &map_dimensions);
+	for sector_id in sector_cost_fields.get_scaled().keys() {
+		portals.update_portals(*sector_id, &sector_cost_fields, &map_dimensions);
 	}
 	cmds.spawn(portals);
 }

@@ -49,7 +49,6 @@ pub fn process_costfields_updates(
 		&mut PortalGraph,
 		&mut SectorPortals,
 		&mut SectorCostFields,
-		&mut SectorCostFieldsScaled,
 		&MapDimensions,
 	)>,
 	mut event_cache_clean: EventWriter<EventCleanCaches>,
@@ -60,29 +59,27 @@ pub fn process_costfields_updates(
 		let field_cell = event.get_cell();
 		let sector_id = event.get_sector();
 		let cost = event.get_cost_value();
-		for (
-			_portal_graph,
-			mut sector_portals,
-			mut sector_cost_fields,
-			mut sector_cost_fields_scaled,
-			dimensions,
-		) in query.iter_mut()
+		for (_portal_graph, mut sector_portals, mut sector_cost_fields, dimensions) in
+			query.iter_mut()
 		{
-			if let Some(field) = sector_cost_fields.get_mut().get_mut(&sector_id) {
-				field.set_field_cell_value(cost, field_cell);
-				sector_cost_fields_scaled.update(
-					&sector_cost_fields,
-					&sector_id,
-					field,
-					dimensions.get_actor_scale(),
-				);
-				// update the portals of the sector and around it
-				sector_portals.update_portals(
-					sector_id,
-					sector_cost_fields_scaled.as_ref(),
-					dimensions,
-				);
-			}
+			sector_cost_fields.set_field_cell_value(sector_id, cost, field_cell, &dimensions);
+			// update the portals of the sector and around it
+			sector_portals.update_portals(sector_id, sector_cost_fields.as_ref(), dimensions);
+			// if let Some(field) = sector_cost_fields.get_scaled_mut().get_mut(&sector_id) {
+			// 	field.set_field_cell_value(cost, field_cell);
+			// 	sector_cost_fields_scaled.update(
+			// 		&sector_cost_fields,
+			// 		&sector_id,
+			// 		field,
+			// 		dimensions.get_actor_scale(),
+			// 	);
+			// 	// update the portals of the sector and around it
+			// 	sector_portals.update_portals(
+			// 		sector_id,
+			// 		sector_cost_fields.as_ref(),
+			// 		dimensions,
+			// 	);
+			// }
 			// for (sector, field) in sector_cost_fields.get_mut().iter_mut() {
 			// 	if *sector == sector_id {
 			// 		field.set_field_cell_value(cost, field_cell);
@@ -106,19 +103,12 @@ pub fn process_costfields_updates(
 	}
 	for sector_id in coalesced_sectors.iter() {
 		debug!("Rebuilding fields of {:?}", sector_id.get());
-		for (
-			mut portal_graph,
-			sector_portals,
-			_sector_cost_fields,
-			sector_cost_fields_scaled,
-			dimensions,
-		) in query.iter_mut()
-		{
+		for (mut portal_graph, sector_portals, sector_cost_fields, dimensions) in query.iter_mut() {
 			// update the graph
 			portal_graph.update_graph(
 				*sector_id,
 				sector_portals.as_ref(),
-				sector_cost_fields_scaled.as_ref(),
+				sector_cost_fields.as_ref(),
 				dimensions,
 			);
 		}

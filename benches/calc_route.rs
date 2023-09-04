@@ -14,27 +14,25 @@ fn prepare_fields(
 	map_depth: u32,
 	sector_resolution: u32,
 	actor_size: f32,
-) -> (SectorPortals, SectorCostFieldsScaled, PortalGraph) {
+) -> (SectorPortals, SectorCostFields, PortalGraph) {
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-	let cost_fields = SectorCostFields::new(map_length, map_depth, sector_resolution);
-	let cost_fields_scaled =
-		SectorCostFieldsScaled::new(&cost_fields, map_dimensions.get_actor_scale());
+	let cost_fields = SectorCostFields::new(&map_dimensions);
 	let mut portals = SectorPortals::new(
 		map_dimensions.get_length(),
 		map_dimensions.get_depth(),
 		map_dimensions.get_sector_resolution(),
 	);
 	// update default portals for cost fields
-	for sector_id in cost_fields.get().keys() {
-		portals.update_portals(*sector_id, &cost_fields_scaled, &map_dimensions);
+	for sector_id in cost_fields.get_scaled().keys() {
+		portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 	}
-	let graph = PortalGraph::new(&portals, &cost_fields_scaled, &map_dimensions);
-	(portals, cost_fields_scaled, graph)
+	let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
+	(portals, cost_fields, graph)
 }
 
 /// Create the components of a FlowFieldTilesBundle and drive them with an actor in the top right
 /// corner pathing to the bottom left
-fn calc(portals: SectorPortals, cost_fields_scaled: SectorCostFieldsScaled, graph: PortalGraph) {
+fn calc(portals: SectorPortals, cost_fields: SectorCostFields, graph: PortalGraph) {
 	let mut route_cache = RouteCache::default();
 
 	// top right
@@ -48,7 +46,7 @@ fn calc(portals: SectorPortals, cost_fields_scaled: SectorCostFieldsScaled, grap
 
 	// find the route
 	let node_route = graph
-		.find_best_path(source, target, &portals, &cost_fields_scaled)
+		.find_best_path(source, target, &portals, &cost_fields)
 		.unwrap();
 	let mut path = graph.convert_index_path_to_sector_portal_cells(node_route.1, &portals);
 	filter_path(&mut path, target_goal);

@@ -87,8 +87,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	cmds.spawn(camera);
 	let path =
 		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let sector_cost_fields = SectorCostFields::from_ron(path);
-	let fields = sector_cost_fields.get();
+	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
+	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
 		// iterate over the dimensions of the field

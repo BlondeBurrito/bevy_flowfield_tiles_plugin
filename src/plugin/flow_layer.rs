@@ -42,7 +42,7 @@ pub fn handle_path_requests(
 		&mut RouteCache,
 		&PortalGraph,
 		&SectorPortals,
-		&SectorCostFieldsScaled,
+		&SectorCostFields,
 	)>,
 	time: Res<Time>,
 ) {
@@ -121,7 +121,7 @@ pub fn generate_flow_fields(
 			&mut FlowFieldCache,
 			&RouteCache,
 			&SectorPortals,
-			&SectorCostFieldsScaled,
+			&SectorCostFields,
 			&MapDimensions,
 		),
 		Changed<RouteCache>,
@@ -166,7 +166,10 @@ pub fn generate_flow_fields(
 			let mut sector_int_fields = Vec::new();
 			for (sector_id, goals) in sectors_expanded_goals.iter() {
 				let mut int_field = IntegrationField::new(goals);
-				let cost_field = sector_cost_fields_scaled.get().get(sector_id).unwrap();
+				let cost_field = sector_cost_fields_scaled
+					.get_scaled()
+					.get(sector_id)
+					.unwrap();
 				int_field.calculate_field(goals, cost_field);
 				sector_int_fields.push((*sector_id, goals.clone(), int_field));
 			}

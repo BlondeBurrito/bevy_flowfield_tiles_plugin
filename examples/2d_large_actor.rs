@@ -14,6 +14,8 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 const ACTOR_TIMESTEP: f32 = 1.0 / 60.0;
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
+/// Determines what areas are valid for pathing
+const ACTOR_SIZE: f32 = 96.0;
 
 fn main() {
 	App::new()
@@ -75,14 +77,13 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
-	let actor_size = 96.0;
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, ACTOR_SIZE);
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
-	let sector_cost_fields = SectorCostFields::from_ron(path);
-	let fields = sector_cost_fields.get();
+	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
+	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
 		// iterate over the dimensions of the field
@@ -139,12 +140,11 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
-	let actor_size = 96.0;
 	cmds.spawn(FlowFieldTilesBundle::from_ron(
 		map_length,
 		map_depth,
 		sector_resolution,
-		actor_size,
+		ACTOR_SIZE,
 		&path,
 	));
 	// create the controllable actor in the top right corner
@@ -158,7 +158,7 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	.insert(Pathing::default())
 	.with_children(|p| {
 		p.spawn(SpatialBundle {
-			transform: Transform::from_scale(Vec3::new(96.0, 16.0, 1.0)),
+			transform: Transform::from_scale(Vec3::new(ACTOR_SIZE, 16.0, 1.0)),
 			..default()
 		});
 	});
@@ -342,7 +342,7 @@ fn update_sprite_visuals_based_on_actor(
 				}
 			} else {
 				let value = sc_cache
-					.get()
+					.get_baseline()
 					.get(&SectorID::new(sector_label.0, sector_label.1))
 					.unwrap()
 					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
