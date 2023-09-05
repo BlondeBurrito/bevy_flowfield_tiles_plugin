@@ -228,17 +228,22 @@ Note that the data stored in the caches is timestamped - if a record lives longe
 
 ## Actor Sizes
 
-[TODO](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/2)
+<details>
+<summary>Click to expand!</summary>
 
-In a simulation you may have actors of different sizes, consider:
+In a simulation you may have actors of different sizes and a gap between impassable walls, consider these purple actors:
 
-pic
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/actor_size_pre.png" alt="asp" width="300"/>
 
-The smaller actor on the left can evidently pass through the gap between the impassable terrain. On the right however the actor is much larger and as such when processing a PathRequest only routes with suitable clearance should be considered.
+The smaller actor on the left can evidently pass through the gap between the impassable terrain. On the right however the actor is much larger and as such when processing a `PathRequest` only routes with suitable clearance should be considered (otherwise with a collision system in place it'd just bump into the walls to the side and never make it through).
 
-To handle this the overall `MapDimenions` component which defines the sizing of the various fields contains an `actor_scale` parameter
+To handle this the overall `MapDimenions` component which defines the sizing of the various fields contains an `actor_scale` parameter. This scaling is determined by the actor size and unit-size of a cell within a field. For instance a Sector with pixel dimensions of `640x640` means that each cell in the `(m, n) -> (10, 10)` fields represents a pixel area of `64x64`, if an actor is larger than `64` pixels in width then a ratio between actor size and cell size is applied to 'grow' impassable cells to close off gaps that would be too small for the actor to path through.
 
-In a game with actors of multiple sizes you will want to create distinct entities of `FlowFieldTilesBundle` where each is configured to handle a certain size of actor.
+In terms of what an actor 'sees' after requesting a route, the smaller actor on the left can path through the gap whereas the larger actor on the right would search for an alternate route:
+
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/actor_size_post.png" alt="aspo" width="300"/>
+
+In a game with actors of multiple sizes you will want to create distinct entities from `FlowFieldTilesBundle` where each is configured to handle a certain size of actor.
 
 ```rust
 #[derive(Component)]
@@ -247,20 +252,39 @@ struct ActorSmall
 struct ActorLarge
 
 fn setup () {
-	cmds.spawn(FlowFieldTilesBundle::new(param, param, param)).insert(ActorSmall)
-	cmds.spawn(FlowFieldTilesBundle::new(param, param, param)).insert(ActorLarge)
+    let map_length = 1920;
+    let map_depth = 1920;
+    let sector_resolution = 640;
+
+    let actor_size_small = 16.0;
+    cmds.spawn(FlowFieldTilesBundle::new(
+        map_length,
+        map_depth,
+        sector_resolution,
+        actor_size_small
+    )).insert(ActorSmall);
+
+    let actor_size_large = 78.0;
+    cmds.spawn(FlowFieldTilesBundle::new(
+        map_length,
+        map_depth,
+        sector_resolution,
+        actor_size_large
+    )).insert(ActorLarge);
 }
 
-fn navigation_small_actors(
-	actor_q: Query<&Actor, With<ActorSmall>>,
-	field_q: Query<&FlowCache, With<ActorSmall>>
+fn system_navigation_small_actors(
+    actor_q: Query<&Actor, With<ActorSmall>>,
+    field_q: Query<&FlowCache, With<ActorSmall>>
 ) {/* handling movement etc */}
 
-fn navigation_large_actors(
-	actor_q: Query<&Actor, With<ActorLarge>>,
-	field_q: Query<&FlowCache, With<ActorLarge>>
+fn system_navigation_large_actors(
+    actor_q: Query<&Actor, With<ActorLarge>>,
+    field_q: Query<&FlowCache, With<ActorLarge>>
 ) {/* handling movement etc */}
 ```
+
+</details>
 
 </details>
 </br>
@@ -312,7 +336,8 @@ fn my_system(mut cmds: Commands) {
     let map_length = 1920;
     let map_depth = 1920;
     let sector_resolution = 640;
-    cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth, sector_resolution));
+    let actor_size = 16.0;
+    cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth, sector_resolution, actor_size));
 }
 ```
 

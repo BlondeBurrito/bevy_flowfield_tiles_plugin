@@ -81,9 +81,21 @@ pub struct MapDimensions {
 	/// cells which they wouldn't be able to fit through - hence an alternative
 	/// route will be explored to go around small gaps
 	///
-	/// ## 3d //TODO
+	/// ## 3d
 	///
-	/// ## 2d //TODO
+	/// For a `(30, 30)` world with resolution `10` there would be `3x3`
+	/// Sectors, each 10 units in length and depth. A Sector uses
+	/// [FIELD_RESOLUTION] to create an `(m, n)` array of [FieldCell]. So each
+	/// cell within a field represents a `1x1` unit area - an actor size is
+	/// used to produce a scaling factor based on the unit area of a cell
+	///
+	/// ## 2d
+	///
+	/// For a `(1920, 1920)` world with resolution `640` there would be `3x3`
+	/// Sectors, each `640` pixels in length and depth. A Sector uses
+	/// [FIELD_RESOLUTION] to create an `(m, n)` array of [FieldCell]. So each
+	/// cell within a field represents a `64x64` pixel area - an actor size is
+	/// used to produce a scaling factor based on the unit area ofa  cell
 	actor_scale: u32,
 }
 
@@ -298,9 +310,10 @@ impl MapDimensions {
 		sector_id: &SectorID,
 	) -> Option<SectorID> {
 		match ordinal {
-			Ordinal::North => {
-				sector_id.get_row().checked_sub(1).map(|row| SectorID::new(sector_id.get_column(), row))
-			}
+			Ordinal::North => sector_id
+				.get_row()
+				.checked_sub(1)
+				.map(|row| SectorID::new(sector_id.get_column(), row)),
 			Ordinal::East => {
 				if sector_id.get_column() + 1 < self.get_length() / self.get_sector_resolution() - 1
 				{
@@ -322,9 +335,10 @@ impl MapDimensions {
 					None
 				}
 			}
-			Ordinal::West => {
-				sector_id.get_column().checked_sub(1).map(|column| SectorID::new(column, sector_id.get_row()))
-			}
+			Ordinal::West => sector_id
+				.get_column()
+				.checked_sub(1)
+				.map(|column| SectorID::new(column, sector_id.get_row())),
 			Ordinal::NorthEast => {
 				if let Some(row) = sector_id.get_row().checked_sub(1) {
 					if sector_id.get_column() + 1
@@ -356,14 +370,20 @@ impl MapDimensions {
 			}
 			Ordinal::SouthWest => {
 				if sector_id.get_row() + 1 < self.get_depth() / self.get_sector_resolution() - 1 {
-					sector_id.get_column().checked_sub(1).map(|column| SectorID::new(column, sector_id.get_row() + 1))
+					sector_id
+						.get_column()
+						.checked_sub(1)
+						.map(|column| SectorID::new(column, sector_id.get_row() + 1))
 				} else {
 					None
 				}
 			}
 			Ordinal::NorthWest => {
 				if let Some(row) = sector_id.get_row().checked_sub(1) {
-					sector_id.get_column().checked_sub(1).map(|column| SectorID::new(column, row))
+					sector_id
+						.get_column()
+						.checked_sub(1)
+						.map(|column| SectorID::new(column, row))
 				} else {
 					None
 				}
