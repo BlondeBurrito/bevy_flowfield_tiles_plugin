@@ -19,6 +19,7 @@ use bevy::prelude::*;
 )]
 #[derive(Component, Clone, Default)]
 pub struct SectorCostFields {
+	/// Initial costs based on the unit size of each field
 	baseline: BTreeMap<SectorID, CostField>,
 	/// Each [FieldCell] containing an impassable `255` value is scaled based on actor size to close off gaps which the actor could not path through
 	scaled: BTreeMap<SectorID, CostField>,
@@ -98,19 +99,19 @@ impl SectorCostFields {
 			field_cell: FieldCell,
 			sector_id: &SectorID,
 		) {
-			if let Some(list) = processed.get_mut(&sector_id) {
+			if let Some(list) = processed.get_mut(sector_id) {
 				list.push(field_cell);
 			} else {
 				processed.insert(*sector_id, vec![field_cell]);
 			}
 		}
-		// Helper that adds tracking data of what final cells to update in the scaled fields
+		/// Helper that adds tracking data of what final cells to update in the scaled fields
 		fn add_to_be_marked(
 			marks_as_impassable: &mut BTreeMap<SectorID, Vec<FieldCell>>,
 			processed: &BTreeMap<SectorID, Vec<FieldCell>>,
 		) {
 			for (sector, cell_list) in processed.iter() {
-				if let Some(list) = marks_as_impassable.get_mut(&sector) {
+				if let Some(list) = marks_as_impassable.get_mut(sector) {
 					list.extend(cell_list);
 				} else {
 					marks_as_impassable.insert(*sector, cell_list.clone());
@@ -125,6 +126,7 @@ impl SectorCostFields {
 				self.get_baseline().get(sector_id).unwrap().clone(),
 			);
 		} else {
+			//TODO init scaling to close edge case gaps?????
 			// identify all impassable cells
 			let mut impassable_indices = Vec::new();
 			let cost_field = self.get_baseline_mut().get(sector_id).unwrap();
@@ -217,8 +219,8 @@ impl SectorCostFields {
 							//TODO how to handle an actor that spands more then just the next sector?
 							// adjust sizing to step through neightbour sector
 							for x in 0..=map_dimensions.get_actor_scale() as usize - i {
-								if 0 + x < FIELD_RESOLUTION {
-									let field_cell = FieldCell::new(0 + x, *row);
+								if x < FIELD_RESOLUTION {
+									let field_cell = FieldCell::new(x, *row);
 									update_processed(&mut processed, field_cell, &n_sector);
 									let value = self
 										.get_baseline()
@@ -267,8 +269,8 @@ impl SectorCostFields {
 							//TODO how to handle an actor that spands more then just the next sector?
 							// adjust sizing to step through neightbour sector
 							for x in 0..=map_dimensions.get_actor_scale() as usize - i {
-								if 0 + x < FIELD_RESOLUTION {
-									let field_cell = FieldCell::new(*column, 0 + x);
+								if x < FIELD_RESOLUTION {
+									let field_cell = FieldCell::new(*column, x);
 									update_processed(&mut processed, field_cell, &n_sector);
 									let value = self
 										.get_baseline()

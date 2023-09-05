@@ -299,11 +299,7 @@ impl MapDimensions {
 	) -> Option<SectorID> {
 		match ordinal {
 			Ordinal::North => {
-				if let Some(row) = sector_id.get_row().checked_sub(1) {
-					Some(SectorID::new(sector_id.get_column(), row))
-				} else {
-					None
-				}
+				sector_id.get_row().checked_sub(1).map(|row| SectorID::new(sector_id.get_column(), row))
 			}
 			Ordinal::East => {
 				if sector_id.get_column() + 1 < self.get_length() / self.get_sector_resolution() - 1
@@ -327,11 +323,7 @@ impl MapDimensions {
 				}
 			}
 			Ordinal::West => {
-				if let Some(column) = sector_id.get_column().checked_sub(1) {
-					Some(SectorID::new(column, sector_id.get_row()))
-				} else {
-					None
-				}
+				sector_id.get_column().checked_sub(1).map(|column| SectorID::new(column, sector_id.get_row()))
 			}
 			Ordinal::NorthEast => {
 				if let Some(row) = sector_id.get_row().checked_sub(1) {
@@ -364,22 +356,14 @@ impl MapDimensions {
 			}
 			Ordinal::SouthWest => {
 				if sector_id.get_row() + 1 < self.get_depth() / self.get_sector_resolution() - 1 {
-					if let Some(column) = sector_id.get_column().checked_sub(1) {
-						Some(SectorID::new(column, sector_id.get_row() + 1))
-					} else {
-						None
-					}
+					sector_id.get_column().checked_sub(1).map(|column| SectorID::new(column, sector_id.get_row() + 1))
 				} else {
 					None
 				}
 			}
 			Ordinal::NorthWest => {
 				if let Some(row) = sector_id.get_row().checked_sub(1) {
-					if let Some(column) = sector_id.get_column().checked_sub(1) {
-						Some(SectorID::new(column, row))
-					} else {
-						None
-					}
+					sector_id.get_column().checked_sub(1).map(|column| SectorID::new(column, row))
 				} else {
 					None
 				}

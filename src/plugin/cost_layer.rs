@@ -62,40 +62,9 @@ pub fn process_costfields_updates(
 		for (_portal_graph, mut sector_portals, mut sector_cost_fields, dimensions) in
 			query.iter_mut()
 		{
-			sector_cost_fields.set_field_cell_value(sector_id, cost, field_cell, &dimensions);
+			sector_cost_fields.set_field_cell_value(sector_id, cost, field_cell, dimensions);
 			// update the portals of the sector and around it
 			sector_portals.update_portals(sector_id, sector_cost_fields.as_ref(), dimensions);
-			// if let Some(field) = sector_cost_fields.get_scaled_mut().get_mut(&sector_id) {
-			// 	field.set_field_cell_value(cost, field_cell);
-			// 	sector_cost_fields_scaled.update(
-			// 		&sector_cost_fields,
-			// 		&sector_id,
-			// 		field,
-			// 		dimensions.get_actor_scale(),
-			// 	);
-			// 	// update the portals of the sector and around it
-			// 	sector_portals.update_portals(
-			// 		sector_id,
-			// 		sector_cost_fields.as_ref(),
-			// 		dimensions,
-			// 	);
-			// }
-			// for (sector, field) in sector_cost_fields.get_mut().iter_mut() {
-			// 	if *sector == sector_id {
-			// 		field.set_field_cell_value(cost, field_cell);
-			// 		sector_cost_fields_scaled.update(
-			// 		&mut sector_cost_fields,
-			// 		&sector_id,
-			// 		field,
-			// 		dimensions.get_actor_scale(),
-			// 	);
-			// 	// update the portals of the sector and around it
-			// 	sector_portals.update_portals(
-			// 		sector_id,
-			// 		sector_cost_fields_scaled.as_ref(),
-			// 		dimensions,
-			// 	);
-			// }}
 		}
 		if !coalesced_sectors.contains(&sector_id) {
 			coalesced_sectors.push(sector_id);
