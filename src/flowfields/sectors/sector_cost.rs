@@ -80,7 +80,6 @@ impl SectorCostFields {
 	/// This can be expensive so should typically be used as part of data initialisation, i.e when loading [SectorCostFields] from a file or within a loading type of operation to a world
 	fn scale_all_costfields(&mut self, map_dimensions: &MapDimensions) {
 		let sector_ids: Vec<SectorID> = self.baseline.keys().cloned().collect();
-		//TODO multithread?
 		for sector_id in sector_ids.iter() {
 			self.scaled.insert(
 				*sector_id,
@@ -91,7 +90,10 @@ impl SectorCostFields {
 			self.scale_costfield(sector_id, map_dimensions);
 		}
 	}
-	/// Inspects a sector for impassable cost values and based on an actor scale it expands any impassable costs into any neighbouring [FieldCell] to close off any gaps so that the actor won't try and path through a gap it can't fit
+	/// Inspects a sector for impassable cost values and based on an actor
+	/// scale it expands any impassable costs into any neighbouring orthogonal
+	/// [FieldCell] to close off any gaps so that the actor won't try and path
+	/// through a gap it can't fit
 	fn scale_costfield(&mut self, sector_id: &SectorID, map_dimensions: &MapDimensions) {
 		/// Helper updates a tracker of what cells/sectors have been processed
 		fn update_processed(
@@ -120,13 +122,11 @@ impl SectorCostFields {
 		}
 
 		if map_dimensions.get_actor_scale() == 1 {
-			//TODO handle adjacent diagnonals where movement should be blocked?
 			self.scaled.insert(
 				*sector_id,
 				self.get_baseline().get(sector_id).unwrap().clone(),
 			);
 		} else {
-			//TODO init scaling to close edge case gaps?????
 			// identify all impassable cells
 			let mut impassable_indices = Vec::new();
 			let cost_field = self.get_baseline_mut().get(sector_id).unwrap();
@@ -161,14 +161,37 @@ impl SectorCostFields {
 							break 'ord;
 						}
 					} else {
-						// check next northerly sector if not on a boundary sector
-						// and actor size would straddle over a sector edge
-						if let Some(n_sector) =
-							map_dimensions.get_sector_id_from_ordinal(Ordinal::North, sector_id)
-						{
-							//TODO how to handle an actor that spands more then just the next sector?
+						// based on actor scale figure out how many possible neighbouring sectors might need to be explored
+						let neighbours = {
+							let mut n = Vec::new();
+							for factor in
+								0..=(map_dimensions.get_actor_scale() / FIELD_RESOLUTION as u32)
+							{
+								if let Some(n_sector) = map_dimensions.get_sector_id_from_ordinal(
+									Ordinal::North,
+									&SectorID::new(
+										sector_id.get_column(),
+										sector_id.get_row() - factor,
+									),
+								) {
+									n.push(n_sector);
+								}
+							}
+							n
+						};
+						if neighbours.len() == 0 {
+							// hit the edge of the world so actor can't fit through the gap
+							add_to_be_marked(&mut marks_as_impassable, &processed);
+							break 'ord;
+						}
+						// work through neighbours to see if a big enough gap exists
+						for (count, n_sector) in neighbours.iter().enumerate() {
 							// adjust sizing to step through neightbour sector
-							for x in 0..=map_dimensions.get_actor_scale() as usize - i {
+							// uses field resolution to account for previously
+							// covered sectors in this list
+							'inner: for x in 0..=map_dimensions.get_actor_scale() as usize
+								- i - (count * FIELD_RESOLUTION)
+							{
 								if let Some(n_row) = 9_usize.checked_sub(x) {
 									let field_cell = FieldCell::new(*column, n_row);
 									update_processed(&mut processed, field_cell, &n_sector);
@@ -183,12 +206,17 @@ impl SectorCostFields {
 										add_to_be_marked(&mut marks_as_impassable, &processed);
 										break 'ord;
 									}
+								} else {
+									// hit the edge of the world while there's scale left to check
+									// therefore actor cannot fit through the gap
+									if count + 1 == neighbours.len() {
+										add_to_be_marked(&mut marks_as_impassable, &processed);
+										break 'ord;
+									} else {
+										break 'inner;
+									}
 								}
 							}
-						} else {
-							// hit the edge of the world so actor can't fit through the gap
-							add_to_be_marked(&mut marks_as_impassable, &processed);
-							break 'ord;
 						}
 					}
 				}
@@ -211,14 +239,37 @@ impl SectorCostFields {
 							break 'ord;
 						}
 					} else {
-						// check next easterly sector if not on a boundary sector
-						// and actor size would straddle over a sector edge
-						if let Some(n_sector) =
-							map_dimensions.get_sector_id_from_ordinal(Ordinal::East, sector_id)
-						{
-							//TODO how to handle an actor that spands more then just the next sector?
+						// based on actor scale figure out how many possible neighbouring sectors might need to be explored
+						let neighbours = {
+							let mut n = Vec::new();
+							for factor in
+								0..=(map_dimensions.get_actor_scale() / FIELD_RESOLUTION as u32)
+							{
+								if let Some(n_sector) = map_dimensions.get_sector_id_from_ordinal(
+									Ordinal::East,
+									&SectorID::new(
+										sector_id.get_column() + factor,
+										sector_id.get_row(),
+									),
+								) {
+									n.push(n_sector);
+								}
+							}
+							n
+						};
+						if neighbours.len() == 0 {
+							// hit the edge of the world so actor can't fit through the gap
+							add_to_be_marked(&mut marks_as_impassable, &processed);
+							break 'ord;
+						}
+						// work through neighbours to see if a big enough gap exists
+						for (count, n_sector) in neighbours.iter().enumerate() {
 							// adjust sizing to step through neightbour sector
-							for x in 0..=map_dimensions.get_actor_scale() as usize - i {
+							// uses field resolution to account for previously
+							// covered sectors in this list
+							'inner: for x in 0..=map_dimensions.get_actor_scale() as usize
+								- i - (count * FIELD_RESOLUTION)
+							{
 								if x < FIELD_RESOLUTION {
 									let field_cell = FieldCell::new(x, *row);
 									update_processed(&mut processed, field_cell, &n_sector);
@@ -233,12 +284,17 @@ impl SectorCostFields {
 										add_to_be_marked(&mut marks_as_impassable, &processed);
 										break 'ord;
 									}
+								} else {
+									// hit the edge of the world while there's scale left to check
+									// therefore actor cannot fit through the gap
+									if count + 1 == neighbours.len() {
+										add_to_be_marked(&mut marks_as_impassable, &processed);
+										break 'ord;
+									} else {
+										break 'inner;
+									}
 								}
 							}
-						} else {
-							// hit the edge of the world so actor can't fit through the gap
-							add_to_be_marked(&mut marks_as_impassable, &processed);
-							break 'ord;
 						}
 					}
 				}
@@ -261,14 +317,37 @@ impl SectorCostFields {
 							break 'ord;
 						}
 					} else {
-						// check next southerly sector if not on a boundary sector
-						// and actor size would straddle over a sector edge
-						if let Some(n_sector) =
-							map_dimensions.get_sector_id_from_ordinal(Ordinal::South, sector_id)
-						{
-							//TODO how to handle an actor that spands more then just the next sector?
+						// based on actor scale figure out how many possible neighbouring sectors might need to be explored
+						let neighbours = {
+							let mut n = Vec::new();
+							for factor in
+								0..=(map_dimensions.get_actor_scale() / FIELD_RESOLUTION as u32)
+							{
+								if let Some(n_sector) = map_dimensions.get_sector_id_from_ordinal(
+									Ordinal::South,
+									&SectorID::new(
+										sector_id.get_column(),
+										sector_id.get_row() + factor,
+									),
+								) {
+									n.push(n_sector);
+								}
+							}
+							n
+						};
+						if neighbours.len() == 0 {
+							// hit the edge of the world so actor can't fit through the gap
+							add_to_be_marked(&mut marks_as_impassable, &processed);
+							break 'ord;
+						}
+						// work through neighbours to see if a big enough gap exists
+						for (count, n_sector) in neighbours.iter().enumerate() {
 							// adjust sizing to step through neightbour sector
-							for x in 0..=map_dimensions.get_actor_scale() as usize - i {
+							// uses field resolution to account for previously
+							// covered sectors in this list
+							'inner: for x in 0..=map_dimensions.get_actor_scale() as usize
+								- i - (count * FIELD_RESOLUTION)
+							{
 								if x < FIELD_RESOLUTION {
 									let field_cell = FieldCell::new(*column, x);
 									update_processed(&mut processed, field_cell, &n_sector);
@@ -283,12 +362,17 @@ impl SectorCostFields {
 										add_to_be_marked(&mut marks_as_impassable, &processed);
 										break 'ord;
 									}
+								} else {
+									// hit the edge of the world while there's scale left to check
+									// therefore actor cannot fit through the gap
+									if count + 1 == neighbours.len() {
+										add_to_be_marked(&mut marks_as_impassable, &processed);
+										break 'ord;
+									} else {
+										break 'inner;
+									}
 								}
 							}
-						} else {
-							// hit the edge of the world so actor can't fit through the gap
-							add_to_be_marked(&mut marks_as_impassable, &processed);
-							break 'ord;
 						}
 					}
 				}
@@ -311,14 +395,37 @@ impl SectorCostFields {
 							break 'ord;
 						}
 					} else {
-						// check next westerly sector if not on a boundary sector
-						// and actor size would straddle over a sector edge
-						if let Some(n_sector) =
-							map_dimensions.get_sector_id_from_ordinal(Ordinal::North, sector_id)
-						{
-							//TODO how to handle an actor that spands more then just the next sector?
+						// based on actor scale figure out how many possible neighbouring sectors might need to be explored
+						let neighbours = {
+							let mut n = Vec::new();
+							for factor in
+								0..=(map_dimensions.get_actor_scale() / FIELD_RESOLUTION as u32)
+							{
+								if let Some(n_sector) = map_dimensions.get_sector_id_from_ordinal(
+									Ordinal::West,
+									&SectorID::new(
+										sector_id.get_column() - factor,
+										sector_id.get_row(),
+									),
+								) {
+									n.push(n_sector);
+								}
+							}
+							n
+						};
+						if neighbours.len() == 0 {
+							// hit the edge of the world so actor can't fit through the gap
+							add_to_be_marked(&mut marks_as_impassable, &processed);
+							break 'ord;
+						}
+						// work through neighbours to see if a big enough gap exists
+						for (count, n_sector) in neighbours.iter().enumerate() {
 							// adjust sizing to step through neightbour sector
-							for x in 0..=map_dimensions.get_actor_scale() as usize - i {
+							// uses field resolution to account for previously
+							// covered sectors in this list
+							'inner: for x in 0..=map_dimensions.get_actor_scale() as usize
+								- i - (count * FIELD_RESOLUTION)
+							{
 								if let Some(n_column) = 9_usize.checked_sub(x) {
 									let field_cell = FieldCell::new(n_column, *row);
 									update_processed(&mut processed, field_cell, &n_sector);
@@ -333,12 +440,17 @@ impl SectorCostFields {
 										add_to_be_marked(&mut marks_as_impassable, &processed);
 										break 'ord;
 									}
+								} else {
+									// hit the edge of the world while there's scale left to check
+									// therefore actor cannot fit through the gap
+									if count + 1 == neighbours.len() {
+										add_to_be_marked(&mut marks_as_impassable, &processed);
+										break 'ord;
+									} else {
+										break 'inner;
+									}
 								}
 							}
-						} else {
-							// hit the edge of the world so actor can't fit through the gap
-							add_to_be_marked(&mut marks_as_impassable, &processed);
-							break 'ord;
 						}
 					}
 				}
