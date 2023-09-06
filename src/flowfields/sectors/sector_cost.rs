@@ -179,7 +179,7 @@ impl SectorCostFields {
 							}
 							n
 						};
-						if neighbours.len() == 0 {
+						if neighbours.is_empty() {
 							// hit the edge of the world so actor can't fit through the gap
 							add_to_be_marked(&mut marks_as_impassable, &processed);
 							break 'ord;
@@ -194,10 +194,10 @@ impl SectorCostFields {
 							{
 								if let Some(n_row) = 9_usize.checked_sub(x) {
 									let field_cell = FieldCell::new(*column, n_row);
-									update_processed(&mut processed, field_cell, &n_sector);
+									update_processed(&mut processed, field_cell, n_sector);
 									let value = self
 										.get_baseline()
-										.get(&n_sector)
+										.get(n_sector)
 										.unwrap()
 										.get_field_cell_value(field_cell);
 									// hit impassable before exceeding scale therefore
@@ -257,7 +257,7 @@ impl SectorCostFields {
 							}
 							n
 						};
-						if neighbours.len() == 0 {
+						if neighbours.is_empty() {
 							// hit the edge of the world so actor can't fit through the gap
 							add_to_be_marked(&mut marks_as_impassable, &processed);
 							break 'ord;
@@ -272,10 +272,10 @@ impl SectorCostFields {
 							{
 								if x < FIELD_RESOLUTION {
 									let field_cell = FieldCell::new(x, *row);
-									update_processed(&mut processed, field_cell, &n_sector);
+									update_processed(&mut processed, field_cell, n_sector);
 									let value = self
 										.get_baseline()
-										.get(&n_sector)
+										.get(n_sector)
 										.unwrap()
 										.get_field_cell_value(field_cell);
 									// hit impassable before exceeding scale therefore
@@ -335,7 +335,7 @@ impl SectorCostFields {
 							}
 							n
 						};
-						if neighbours.len() == 0 {
+						if neighbours.is_empty() {
 							// hit the edge of the world so actor can't fit through the gap
 							add_to_be_marked(&mut marks_as_impassable, &processed);
 							break 'ord;
@@ -350,10 +350,10 @@ impl SectorCostFields {
 							{
 								if x < FIELD_RESOLUTION {
 									let field_cell = FieldCell::new(*column, x);
-									update_processed(&mut processed, field_cell, &n_sector);
+									update_processed(&mut processed, field_cell, n_sector);
 									let value = self
 										.get_baseline()
-										.get(&n_sector)
+										.get(n_sector)
 										.unwrap()
 										.get_field_cell_value(field_cell);
 									// hit impassable before exceeding scale therefore
@@ -413,7 +413,7 @@ impl SectorCostFields {
 							}
 							n
 						};
-						if neighbours.len() == 0 {
+						if neighbours.is_empty() {
 							// hit the edge of the world so actor can't fit through the gap
 							add_to_be_marked(&mut marks_as_impassable, &processed);
 							break 'ord;
@@ -428,10 +428,10 @@ impl SectorCostFields {
 							{
 								if let Some(n_column) = 9_usize.checked_sub(x) {
 									let field_cell = FieldCell::new(n_column, *row);
-									update_processed(&mut processed, field_cell, &n_sector);
+									update_processed(&mut processed, field_cell, n_sector);
 									let value = self
 										.get_baseline()
-										.get(&n_sector)
+										.get(n_sector)
 										.unwrap()
 										.get_field_cell_value(field_cell);
 									// hit impassable before exceeding scale therefore
