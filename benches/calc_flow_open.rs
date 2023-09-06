@@ -49,16 +49,17 @@ fn prepare_fields(
 	map_length: u32,
 	map_depth: u32,
 	sector_resolution: u32,
+	actor_size: f32,
 ) -> (SectorPortals, SectorCostFields, MapDimensions, RouteCache) {
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
-	let cost_fields = SectorCostFields::new(map_length, map_depth, sector_resolution);
+	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+	let cost_fields = SectorCostFields::new(&map_dimensions);
 	let mut portals = SectorPortals::new(
 		map_dimensions.get_length(),
 		map_dimensions.get_depth(),
 		map_dimensions.get_sector_resolution(),
 	);
 	// update default portals for cost fields
-	for sector_id in cost_fields.get().keys() {
+	for sector_id in cost_fields.get_scaled().keys() {
 		portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 	}
 	let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
@@ -135,7 +136,7 @@ fn flow_open(
 		let mut sector_int_fields = Vec::new();
 		for (sector_id, goals) in sectors_expanded_goals.iter() {
 			let mut int_field = IntegrationField::new(goals);
-			let cost_field = cost_fields.get().get(sector_id).unwrap();
+			let cost_field = cost_fields.get_scaled().get(sector_id).unwrap();
 			int_field.calculate_field(goals, cost_field);
 			sector_int_fields.push((*sector_id, goals.clone(), int_field));
 		}
@@ -164,7 +165,7 @@ fn flow_open(
 pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut group = c.benchmark_group("algorithm_use");
 	group.significance_level(0.05).sample_size(100);
-	let (portals, cost_fields, map_dimensions, route_cache) = prepare_fields(1000, 1000, 10);
+	let (portals, cost_fields, map_dimensions, route_cache) = prepare_fields(1000, 1000, 10, 0.5);
 	group.bench_function("calc_flow_open", |b| {
 		b.iter(|| {
 			flow_open(

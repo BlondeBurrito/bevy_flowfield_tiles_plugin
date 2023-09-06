@@ -2,6 +2,7 @@
 //!
 
 use bevy::{
+	diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
 	prelude::*,
 	sprite::collide_aabb::{collide, Collision},
 };
@@ -15,16 +16,26 @@ const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 
 fn main() {
 	App::new()
-		.add_plugins(DefaultPlugins)
+		.add_plugins((DefaultPlugins, FrameTimeDiagnosticsPlugin))
 		.insert_resource(FixedTime::new_from_secs(ACTOR_TIMESTEP))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(
 			Startup,
-			(setup_visualisation, setup_navigation, create_wall_colliders),
+			(
+				setup_visualisation,
+				setup_navigation,
+				create_wall_colliders,
+				create_fps_counter,
+			),
 		)
 		.add_systems(
 			Update,
-			(actor_update_route, spawn_actors, despawn_at_destination),
+			(
+				actor_update_route,
+				spawn_actors,
+				despawn_at_destination,
+				update_fps_counter,
+			),
 		)
 		.add_systems(
 			FixedUpdate,
@@ -69,14 +80,15 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
+	let actor_size = 16.0;
+	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
 	let path =
 		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let sector_cost_fields = SectorCostFields::from_ron(path);
-	let fields = sector_cost_fields.get();
+	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
+	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
 		// iterate over the dimensions of the field
@@ -129,10 +141,12 @@ fn setup_navigation(mut cmds: Commands) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
+	let actor_size = 16.0;
 	cmds.spawn(FlowFieldTilesBundle::from_ron(
 		map_length,
 		map_depth,
 		sector_resolution,
+		actor_size,
 		&path,
 	));
 }
@@ -436,6 +450,35 @@ fn collision_detection(
 					}
 				}
 			}
+		}
+	}
+}
+
+/// Create an FPS ui element to provide feedback
+fn create_fps_counter(mut cmds: Commands) {
+	cmds.spawn(TextBundle::from_sections([
+		TextSection::new(
+			"FPS: ",
+			TextStyle {
+				font_size: 30.0,
+				color: Color::WHITE,
+				..default()
+			},
+		),
+		TextSection::from_style(TextStyle {
+			font_size: 30.0,
+			color: Color::WHITE,
+			..default()
+		}),
+	]));
+}
+
+/// Updates the FPS field ech tick
+fn update_fps_counter(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text>) {
+	let mut text = query.single_mut();
+	if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+		if let Some(val) = fps.average() {
+			text.sections[1].value = format!("{val:.2}");
 		}
 	}
 }

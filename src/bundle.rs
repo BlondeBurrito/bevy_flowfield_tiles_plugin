@@ -25,12 +25,13 @@ pub struct FlowFieldTilesBundle {
 
 impl FlowFieldTilesBundle {
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
-	pub fn new(map_length: u32, map_depth: u32, sector_resolution: u32) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
-		let cost_fields = SectorCostFields::new(map_length, map_depth, sector_resolution);
+	pub fn new(map_length: u32, map_depth: u32, sector_resolution: u32, actor_size: f32) -> Self {
+		let map_dimensions =
+			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+		let cost_fields = SectorCostFields::new(&map_dimensions);
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
-		for sector_id in cost_fields.get().keys() {
+		for sector_id in cost_fields.get_scaled().keys() {
 			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
 		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
@@ -47,17 +48,24 @@ impl FlowFieldTilesBundle {
 	}
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
 	#[cfg(feature = "ron")]
-	pub fn from_ron(map_length: u32, map_depth: u32, sector_resolution: u32, path: &str) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
-		let cost_fields = SectorCostFields::from_ron(path.to_string());
+	pub fn from_ron(
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
+		actor_size: f32,
+		path: &str,
+	) -> Self {
+		let map_dimensions =
+			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+		let cost_fields = SectorCostFields::from_ron(path.to_string(), &map_dimensions);
 		if ((map_length * map_depth) / (sector_resolution * sector_resolution)) as usize
-			!= cost_fields.get().len()
+			!= cost_fields.get_baseline().len()
 		{
-			panic!("Map size ({}, {}) with resolution {} produces ({}x{}) sectors. Ron file only produces {} sectors", map_length, map_depth, sector_resolution, map_length/sector_resolution, map_depth/sector_resolution, cost_fields.get().len());
+			panic!("Map size ({}, {}) with resolution {} produces ({}x{}) sectors. Ron file only produces {} sectors", map_length, map_depth, sector_resolution, map_length/sector_resolution, map_depth/sector_resolution, cost_fields.get_baseline().len());
 		}
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
-		for sector_id in cost_fields.get().keys() {
+		for sector_id in cost_fields.get_scaled().keys() {
 			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
 		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
@@ -78,18 +86,15 @@ impl FlowFieldTilesBundle {
 		map_length: u32,
 		map_depth: u32,
 		sector_resolution: u32,
+		actor_size: f32,
 		directory: &str,
 	) -> Self {
-		let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution);
-		let cost_fields = SectorCostFields::from_csv_dir(
-			map_length,
-			map_depth,
-			sector_resolution,
-			directory.to_string(),
-		);
+		let map_dimensions =
+			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+		let cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, directory.to_string());
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// update default portals for cost fields
-		for sector_id in cost_fields.get().keys() {
+		for sector_id in cost_fields.get_scaled().keys() {
 			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
 		}
 		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
@@ -112,15 +117,15 @@ mod tests {
 	use super::*;
 	#[test]
 	fn valid_map_dimensions() {
-		let _map_dimsions = MapDimensions::new(10, 10, 10);
+		let _map_dimsions = MapDimensions::new(10, 10, 10, 0.5);
 	}
 	#[test]
 	#[should_panic]
 	fn invalid_map_dimensions() {
-		MapDimensions::new(99, 3, 10);
+		MapDimensions::new(99, 3, 10, 1.0);
 	}
 	#[test]
 	fn new_bundle() {
-		let _ = FlowFieldTilesBundle::new(30, 30, 10);
+		let _ = FlowFieldTilesBundle::new(30, 30, 10, 0.5);
 	}
 }

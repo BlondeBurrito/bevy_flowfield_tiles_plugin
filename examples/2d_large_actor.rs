@@ -1,7 +1,7 @@
-//! Generates a 30x30 world where an actor can be told to move through a narrow snake-like path
+//! Generates a 30x30 world where a large actor demonstrates restricted navigation
 //!
-//TODO visualisation creates impassable blocks when route goes back on self
-use std::collections::HashMap;
+
+use std::{collections::HashMap, f32::consts::PI};
 
 use bevy::{
 	prelude::*,
@@ -14,6 +14,8 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 const ACTOR_TIMESTEP: f32 = 1.0 / 60.0;
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
+/// Determines what areas are valid for pathing
+const ACTOR_SIZE: f32 = 96.0;
 
 fn main() {
 	App::new()
@@ -28,7 +30,13 @@ fn main() {
 		.add_systems(Update, (update_sprite_visuals_based_on_actor,))
 		.add_systems(
 			FixedUpdate,
-			(actor_steering, collision_detection, apply_velocity).chain(),
+			(
+				actor_steering,
+				collision_detection,
+				apply_rotation,
+				apply_velocity,
+			)
+				.chain(),
 		)
 		.run();
 }
@@ -69,13 +77,12 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
-	let actor_size = 16.0;
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, ACTOR_SIZE);
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
-	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
-	let sector_cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, dir);
+	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
+	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
 	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
@@ -83,12 +90,18 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		for (i, column) in field.get().iter().enumerate() {
 			for (j, value) in column.iter().enumerate() {
 				// grid origin is always in the top left
+				let sprite_x = FIELD_SPRITE_DIMENSION;
+				let sprite_y = FIELD_SPRITE_DIMENSION;
 				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
-				let x = sector_offset.x + 32.0 + (FIELD_SPRITE_DIMENSION * i as f32);
-				let y = sector_offset.y - 32.0 - (FIELD_SPRITE_DIMENSION * j as f32);
+				let x = sector_offset.x + 32.0 + (sprite_x * i as f32);
+				let y = sector_offset.y - 32.0 - (sprite_y * j as f32);
 				// add colliders to impassable cells
 				if *value == 255 {
 					cmds.spawn(SpriteBundle {
+						sprite: Sprite {
+							custom_size: Some(Vec2::new(64.0, 64.0)),
+							..default()
+						},
 						texture: asset_server.load(get_basic_icon(*value)),
 						transform: Transform::from_xyz(x, y, 0.0),
 						..default()
@@ -123,22 +136,21 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// create the entity handling the algorithm
-	let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
+	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
-	let actor_size = 16.0;
-	cmds.spawn(FlowFieldTilesBundle::from_csv(
+	cmds.spawn(FlowFieldTilesBundle::from_ron(
 		map_length,
 		map_depth,
 		sector_resolution,
-		actor_size,
-		&dir,
+		ACTOR_SIZE,
+		&path,
 	));
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
-		texture: asset_server.load("2d/2d_actor_sprite.png"),
-		transform: Transform::from_xyz(-928.0, -928.0, 1.0),
+		texture: asset_server.load("2d/2d_actor_sprite_large.png"),
+		transform: Transform::from_xyz(866.0, 866.0, 1.0),
 		..default()
 	})
 	.insert(Actor)
@@ -146,7 +158,7 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	.insert(Pathing::default())
 	.with_children(|p| {
 		p.spawn(SpatialBundle {
-			transform: Transform::from_scale(Vec3::new(16.0, 16.0, 1.0)),
+			transform: Transform::from_scale(Vec3::new(ACTOR_SIZE, 16.0, 1.0)),
 			..default()
 		});
 	});
@@ -261,12 +273,29 @@ fn actor_steering(
 	}
 }
 
+/// Face the actor
+fn apply_rotation(mut actor_q: Query<(&Velocity, &mut Transform), With<Actor>>) {
+	for (velocity, mut tform) in actor_q.iter_mut() {
+		if velocity.0.length_squared() > 0.0 {
+			let delta_dir = velocity.0;
+			// let angle = velocity.0.angle_between(pos);
+			// let angle = delta_dir.angle_between(pos);
+			let angle = delta_dir.y.atan2(delta_dir.x) + PI / 2.0;
+			tform.rotation = Quat::from_rotation_z(angle)
+			// tform.rotate_z(angle);
+			// tform.look_at(velocity.0.extend(1.0), Vec3::Y);
+			// tform.look_to(velocity.0.extend(1.0), Vec3::NEG_Z);
+		}
+	}
+}
+
 /// Move the actor
 fn apply_velocity(mut actor_q: Query<(&Velocity, &mut Transform), With<Actor>>) {
 	for (velocity, mut tform) in actor_q.iter_mut() {
 		tform.translation += velocity.0.extend(0.0);
 	}
 }
+
 /// Get asset path to sprite icons
 fn get_basic_icon(value: u8) -> String {
 	if value == 255 {
@@ -443,6 +472,7 @@ fn collision_detection(
 							}
 						}
 						Collision::Bottom => {
+							info!("{:?}", collision);
 							velocity.0.y *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
 								velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;

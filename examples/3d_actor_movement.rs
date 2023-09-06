@@ -12,6 +12,8 @@ const MAP_LENGTH: u32 = 30;
 const MAP_DPETH: u32 = 30;
 /// Factor of sectors to create
 const SECTOR_RESOLUTION: u32 = 10;
+/// Size of the actor perpendicular to its forward direction
+const ACTOR_SIZE: f32 = 0.5;
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
@@ -73,6 +75,7 @@ fn setup_navigation(
 		MAP_LENGTH,
 		MAP_DPETH,
 		SECTOR_RESOLUTION,
+		ACTOR_SIZE,
 		&path,
 	));
 	// create the controllable actor in the top right corner

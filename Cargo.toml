@@ -53,7 +53,7 @@ ron = { workspace = true, optional = true}
 csv = { workspace = true, optional = true}
 
 [features]
-serde = ["dep:serde"]
+serde = ["dep:serde", "petgraph/serde-1"]
 ron = ["serde", "dep:ron"]
 csv = ["serde", "dep:csv"]
 2d = []
@@ -167,4 +167,9 @@ required-features = ["ron", "3d"]
 [[example]]
 name = "2d_continuous"
 path = "examples/2d_continuous.rs"
+required-features = ["ron", "2d"]
+
+[[example]]
+name = "2d_large_actor"
+path = "examples/2d_large_actor.rs"
 required-features = ["ron", "2d"]

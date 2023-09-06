@@ -76,11 +76,36 @@ pub struct MapDimensions {
 	/// be `30x30` sectors created where each field within a sector represents
 	/// a `6.4x6.4` pixel area in 2d space.
 	sector_resolution: u32,
+	/// Actor size influences the expansion of [CostField] impassable cells to
+	/// ensure that Actors avoid trying to path through small gaps between `255`
+	/// cells which they wouldn't be able to fit through - hence an alternative
+	/// route will be explored to go around small gaps
+	///
+	/// ## 3d
+	///
+	/// For a `(30, 30)` world with resolution `10` there would be `3x3`
+	/// Sectors, each 10 units in length and depth. A Sector uses
+	/// [FIELD_RESOLUTION] to create an `(m, n)` array of [FieldCell]. So each
+	/// cell within a field represents a `1x1` unit area - an actor size is
+	/// used to produce a scaling factor based on the unit area of a cell
+	///
+	/// ## 2d
+	///
+	/// For a `(1920, 1920)` world with resolution `640` there would be `3x3`
+	/// Sectors, each `640` pixels in length and depth. A Sector uses
+	/// [FIELD_RESOLUTION] to create an `(m, n)` array of [FieldCell]. So each
+	/// cell within a field represents a `64x64` pixel area - an actor size is
+	/// used to produce a scaling factor based on the unit area ofa  cell
+	actor_scale: u32,
 }
 
 impl MapDimensions {
-	/// Create a new instance of [MapDimensions]. In 2d the dimensions should be measured by the number of sprites that fit into the `x` (length) and `y` (depth) axes. For 3d the recommendation is for a `unit` of space to be 1 meter, thereby the world is `x` (length) meters by `z` (depth) meters
-	pub fn new(length: u32, depth: u32, sector_resolution: u32) -> Self {
+	/// Create a new instance of [MapDimensions]. In 2d the dimensions should
+	/// be measured by the number of sprites that fit into the `x` (length) and
+	/// `y` (depth) axes. For 3d the recommendation is for a `unit` of space to
+	/// be 1 meter, thereby the world is `x` (length) meters by `z` (depth)
+	/// meters
+	pub fn new(length: u32, depth: u32, sector_resolution: u32, actor_size: f32) -> Self {
 		let length_rem = length % sector_resolution;
 		let depth_rem = depth % sector_resolution;
 		if length_rem > 0 || depth_rem > 0 {
@@ -89,9 +114,14 @@ impl MapDimensions {
 				length, depth, sector_resolution
 			);
 		}
+		if actor_size < 0.0 {
+			panic!("Actor size cannot be less than zero");
+		}
+		let actor_scale = (actor_size / (sector_resolution as f32 / 10.0)).ceil() as u32;
 		MapDimensions {
 			size: (length, depth),
 			sector_resolution,
+			actor_scale,
 		}
 	}
 	pub fn get_size(&self) -> (u32, u32) {
@@ -105,6 +135,9 @@ impl MapDimensions {
 	}
 	pub fn get_sector_resolution(&self) -> u32 {
 		self.sector_resolution
+	}
+	pub fn get_actor_scale(&self) -> u32 {
+		self.actor_scale
 	}
 
 	/// From a position in 2D `x, y` space with an origin at `(0, 0)` and the
@@ -269,6 +302,98 @@ impl MapDimensions {
 			self.get_sector_resolution(),
 		)
 	}
+	/// From an [Ordinal] get the ID of a neighbouring sector. Returns [None]
+	/// if the sector would be out of bounds
+	pub fn get_sector_id_from_ordinal(
+		&self,
+		ordinal: Ordinal,
+		sector_id: &SectorID,
+	) -> Option<SectorID> {
+		match ordinal {
+			Ordinal::North => sector_id
+				.get_row()
+				.checked_sub(1)
+				.map(|row| SectorID::new(sector_id.get_column(), row)),
+			Ordinal::East => {
+				if sector_id.get_column() + 1 < self.get_length() / self.get_sector_resolution() - 1
+				{
+					Some(SectorID::new(
+						sector_id.get_column() + 1,
+						sector_id.get_row(),
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::South => {
+				if sector_id.get_row() + 1 < self.get_depth() / self.get_sector_resolution() - 1 {
+					Some(SectorID::new(
+						sector_id.get_column(),
+						sector_id.get_row() + 1,
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::West => sector_id
+				.get_column()
+				.checked_sub(1)
+				.map(|column| SectorID::new(column, sector_id.get_row())),
+			Ordinal::NorthEast => {
+				if let Some(row) = sector_id.get_row().checked_sub(1) {
+					if sector_id.get_column() + 1
+						< self.get_length() / self.get_sector_resolution() - 1
+					{
+						Some(SectorID::new(sector_id.get_column() + 1, row))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::SouthEast => {
+				if sector_id.get_row() + 1 < self.get_depth() / self.get_sector_resolution() - 1 {
+					if sector_id.get_column() + 1
+						< self.get_length() / self.get_sector_resolution() - 1
+					{
+						Some(SectorID::new(
+							sector_id.get_column() + 1,
+							sector_id.get_row() + 1,
+						))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::SouthWest => {
+				if sector_id.get_row() + 1 < self.get_depth() / self.get_sector_resolution() - 1 {
+					sector_id
+						.get_column()
+						.checked_sub(1)
+						.map(|column| SectorID::new(column, sector_id.get_row() + 1))
+				} else {
+					None
+				}
+			}
+			Ordinal::NorthWest => {
+				if let Some(row) = sector_id.get_row().checked_sub(1) {
+					sector_id
+						.get_column()
+						.checked_sub(1)
+						.map(|column| SectorID::new(column, row))
+				} else {
+					None
+				}
+			}
+			Ordinal::Zero => {
+				error!("`get_sector_id_from_ordinal` should never be called with `Ordinal::Zero`");
+				None
+			}
+		}
+	}
 }
 
 // #[rustfmt::skip]
@@ -277,7 +402,7 @@ mod tests {
 	use super::*;
 	#[test]
 	fn sector_costfields_top_left_sector_id_from_xyz() {
-		let map_dimensions = MapDimensions::new(20, 20, 10);
+		let map_dimensions = MapDimensions::new(20, 20, 10, 1.0);
 		let position = Vec3::new(-5.0, 0.0, -5.0);
 		let result = map_dimensions.get_sector_id_from_xyz(position).unwrap();
 		let actual: SectorID = SectorID::new(0, 0);
@@ -285,7 +410,7 @@ mod tests {
 	}
 	#[test]
 	fn sector_costfields_top_right_sector_id_from_xyz() {
-		let map_dimensions = MapDimensions::new(20, 20, 10);
+		let map_dimensions = MapDimensions::new(20, 20, 10, 1.0);
 		let position = Vec3::new(5.0, 0.0, -5.0);
 		let result = map_dimensions.get_sector_id_from_xyz(position).unwrap();
 		let actual: SectorID = SectorID::new(1, 0);
@@ -293,7 +418,7 @@ mod tests {
 	}
 	#[test]
 	fn sector_costfields_bottom_right_sector_id_from_xyz() {
-		let map_dimensions = MapDimensions::new(20, 20, 10);
+		let map_dimensions = MapDimensions::new(20, 20, 10, 1.0);
 		let position = Vec3::new(5.0, 0.0, 5.0);
 		let result = map_dimensions.get_sector_id_from_xyz(position).unwrap();
 		let actual: SectorID = SectorID::new(1, 1);
@@ -301,7 +426,7 @@ mod tests {
 	}
 	#[test]
 	fn sector_costfields_bottom_left_sector_id_from_xyz() {
-		let map_dimensions = MapDimensions::new(20, 20, 10);
+		let map_dimensions = MapDimensions::new(20, 20, 10, 1.0);
 		let position = Vec3::new(-5.0, 0.0, 5.0);
 		let result = map_dimensions.get_sector_id_from_xyz(position).unwrap();
 		let actual: SectorID = SectorID::new(0, 1);
@@ -309,7 +434,7 @@ mod tests {
 	}
 	#[test]
 	fn sector_from_xy_none() {
-		let map_dimensions = MapDimensions::new(1280, 1280, 640);
+		let map_dimensions = MapDimensions::new(1280, 1280, 640, 16.0);
 		let position = Vec2::new(-1500.0, 0.0);
 		let result = map_dimensions.get_sector_id_from_xy(position);
 
@@ -317,7 +442,7 @@ mod tests {
 	}
 	#[test]
 	fn sector_from_xy() {
-		let map_dimensions = MapDimensions::new(1280, 1280, 640);
+		let map_dimensions = MapDimensions::new(1280, 1280, 640, 16.0);
 		let position = Vec2::new(530.0, 75.0);
 		let result = map_dimensions.get_sector_id_from_xy(position);
 		let actual = SectorID::new(1, 0);
@@ -326,7 +451,7 @@ mod tests {
 	#[test]
 	fn sector_xyz_corner_zero() {
 		let sector_id = SectorID::new(0, 0);
-		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let map_dimensions = MapDimensions::new(30, 30, 10, 1.0);
 		let result = map_dimensions.get_sector_corner_xyz(sector_id);
 		let actual = Vec3::new(-15.0, 0.0, -15.0);
 		assert_eq!(actual, result)
@@ -334,7 +459,7 @@ mod tests {
 	#[test]
 	fn sector_xyz_corner_centre() {
 		let sector_id = SectorID::new(1, 1);
-		let map_dimensions = MapDimensions::new(30, 30, 10);
+		let map_dimensions = MapDimensions::new(30, 30, 10, 1.0);
 		let result = map_dimensions.get_sector_corner_xyz(sector_id);
 		let actual = Vec3::new(-5.0, 0.0, -5.0);
 		assert_eq!(actual, result)
@@ -342,7 +467,7 @@ mod tests {
 	#[test]
 	fn get_northern_sector_neighbours() {
 		let sector_id = SectorID::new(4, 0);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			SectorID::new(5, 0),
@@ -354,7 +479,7 @@ mod tests {
 	#[test]
 	fn get_eastern_sector_neighbours() {
 		let sector_id = SectorID::new(19, 3);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			SectorID::new(19, 2),
@@ -366,7 +491,7 @@ mod tests {
 	#[test]
 	fn get_southern_sector_neighbours() {
 		let sector_id = SectorID::new(5, 19);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			SectorID::new(5, 18),
@@ -378,7 +503,7 @@ mod tests {
 	#[test]
 	fn get_western_sector_neighbours() {
 		let sector_id = SectorID::new(0, 5);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			SectorID::new(0, 4),
@@ -390,7 +515,7 @@ mod tests {
 	#[test]
 	fn get_centre_sector_neighbours() {
 		let sector_id = SectorID::new(5, 7);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			SectorID::new(5, 6),
@@ -403,7 +528,7 @@ mod tests {
 	#[test]
 	fn get_northern_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(4, 0);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::East, SectorID::new(5, 0)),
@@ -415,7 +540,7 @@ mod tests {
 	#[test]
 	fn get_eastern_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(19, 3);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::North, SectorID::new(19, 2)),
@@ -427,7 +552,7 @@ mod tests {
 	#[test]
 	fn get_southern_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(5, 19);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::North, SectorID::new(5, 18)),
@@ -439,7 +564,7 @@ mod tests {
 	#[test]
 	fn get_western_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(0, 5);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::North, SectorID::new(0, 4)),
@@ -451,7 +576,7 @@ mod tests {
 	#[test]
 	fn get_centre_sector_neighbours_with_drection() {
 		let sector_id = SectorID::new(5, 7);
-		let map_dimensions = MapDimensions::new(200, 200, 10);
+		let map_dimensions = MapDimensions::new(200, 200, 10, 1.0);
 		let result = map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
 			(Ordinal::North, SectorID::new(5, 6)),
@@ -460,5 +585,76 @@ mod tests {
 			(Ordinal::West, SectorID::new(4, 7)),
 		];
 		assert_eq!(actual, result);
+	}
+	#[test]
+	fn sector_id_ordinal_north() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
+		let actual = SectorID::new(1, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_east() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::East, &sector_id);
+		let actual = SectorID::new(2, 1);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_south() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::South, &sector_id);
+		let actual = SectorID::new(1, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_west() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::West, &sector_id);
+		let actual = SectorID::new(0, 1);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_northeast() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::NorthEast, &sector_id);
+		let actual = SectorID::new(2, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_southeast() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::SouthEast, &sector_id);
+		let actual = SectorID::new(2, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_southwest() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::SouthWest, &sector_id);
+		let actual = SectorID::new(0, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_northwest() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 1);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::NorthWest, &sector_id);
+		let actual = SectorID::new(0, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_oob() {
+		let map_dimensions = MapDimensions::new(300, 300, 10, 0.5);
+		let sector_id = SectorID::new(1, 0);
+		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
+		assert!(result.is_none())
 	}
 }

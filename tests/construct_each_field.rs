@@ -8,15 +8,15 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 #[test]
 fn field_on_field() {
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
-	let map_dimensions = MapDimensions::new(30, 30, 10);
-	let sector_cost_fields = SectorCostFields::from_ron(path);
+	let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
 	let mut sector_portals = SectorPortals::new(
 		map_dimensions.get_length(),
 		map_dimensions.get_depth(),
 		map_dimensions.get_sector_resolution(),
 	);
 	// update default portals for cost fields
-	for sector_id in sector_cost_fields.get().keys() {
+	for sector_id in sector_cost_fields.get_scaled().keys() {
 		sector_portals.update_portals(*sector_id, &sector_cost_fields, &map_dimensions);
 	}
 	// generate the portal graph
@@ -75,7 +75,7 @@ fn field_on_field() {
 	let mut sector_int_fields = Vec::new();
 	for (sector_id, goals) in sector_goals.iter() {
 		let mut int_field = IntegrationField::new(goals);
-		let cost_field = sector_cost_fields.get().get(sector_id).unwrap();
+		let cost_field = sector_cost_fields.get_scaled().get(sector_id).unwrap();
 		int_field.calculate_field(goals, cost_field);
 		sector_int_fields.push((*sector_id, goals.clone(), int_field));
 	}

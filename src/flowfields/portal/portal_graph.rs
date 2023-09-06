@@ -98,7 +98,7 @@ impl PortalGraph {
 			self.build_internal_sector_edges(
 				sector_id,
 				portals,
-				sector_cost_fields.get().get(sector_id).unwrap(),
+				sector_cost_fields.get_scaled().get(sector_id).unwrap(),
 			);
 		}
 		self
@@ -280,7 +280,7 @@ impl PortalGraph {
 		}
 		// rebuild the nodes and  rebuild the edges within each sector
 		for sector_id in sectors_to_rebuild.iter() {
-			let cost_field = sector_cost_fields.get().get(sector_id).unwrap();
+			let cost_field = sector_cost_fields.get_scaled().get(sector_id).unwrap();
 			let portals = sector_portals
 				.get()
 				.get(sector_id)
@@ -390,7 +390,10 @@ impl PortalGraph {
 		let portals = sector_portals.get().get(&source_sector_id).unwrap();
 		for ordinal in portals.get().iter() {
 			for cell in ordinal.iter() {
-				let cost_field = sector_cost_fields.get().get(&source_sector_id).unwrap();
+				let cost_field = sector_cost_fields
+					.get_scaled()
+					.get(&source_sector_id)
+					.unwrap();
 				if cost_field
 					.can_internal_portal_pair_see_each_other(source_field_cell, *cell)
 					.0
@@ -406,7 +409,10 @@ impl PortalGraph {
 		let portals = sector_portals.get().get(&target_sector_id).unwrap();
 		for ordinal in portals.get().iter() {
 			for cell in ordinal.iter() {
-				let cost_field = sector_cost_fields.get().get(&target_sector_id).unwrap();
+				let cost_field = sector_cost_fields
+					.get_scaled()
+					.get(&target_sector_id)
+					.unwrap();
 				if cost_field
 					.can_internal_portal_pair_see_each_other(target_field_cell, *cell)
 					.0
@@ -550,11 +556,11 @@ use super::*;
 	#[test]
 	fn portal_graph_node_count() {
 		//init
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_cost_fields = SectorCostFields::new(&map_dimensions);
 		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
-		for (sector_id, _cost_fields) in sector_cost_fields.get().iter() {
+		for (sector_id, _cost_fields) in sector_cost_fields.get_scaled().iter() {
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
 				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, &map_dimensions),
@@ -573,11 +579,11 @@ use super::*;
 	#[test]
 	fn portal_graph_basic_sector_edge_count() {
 		//init
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_cost_fields = SectorCostFields::new(&map_dimensions);
 		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
-		for (sector_id, _cost_fields) in sector_cost_fields.get().iter() {
+		for (sector_id, _cost_fields) in sector_cost_fields.get_scaled().iter() {
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
 				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, &map_dimensions),
@@ -616,11 +622,11 @@ use super::*;
 	#[test]
 	fn portal_graph_basic_edge_count() {
 		//init
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_cost_fields = SectorCostFields::new(&map_dimensions);
 		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
-		for (sector_id, _cost_fields) in sector_cost_fields.get().iter() {
+		for (sector_id, _cost_fields) in sector_cost_fields.get_scaled().iter() {
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
 				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, &map_dimensions),
@@ -663,8 +669,8 @@ use super::*;
 	#[test]
 	fn update_graph_from_portals_change() {
 		//init
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let mut sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(&map_dimensions);
 		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
 		for (id, portals) in sector_portals.get_mut().iter_mut() {
@@ -698,8 +704,7 @@ use super::*;
 
 		// update the top-left CostFields and calculate new portals
 		let mutated_sector_id = SectorID::new(0, 0);
-		let field = sector_cost_fields.get_mut().get_mut(&mutated_sector_id).unwrap();
-		field.set_field_cell_value(255, FieldCell::new(4, 9));
+		sector_cost_fields.set_field_cell_value(mutated_sector_id, 255, FieldCell::new(4, 9), &map_dimensions);
 		sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, &map_dimensions);
 
 		// This produces a new representation with an extra portal, `x` denotes the impassable point
@@ -761,11 +766,11 @@ use super::*;
 	// }
 	#[test]
 	fn best_path_as_sector_portals() {
-		let map_dimensions = MapDimensions::new(30, 30, 10);
-		let sector_cost_fields = SectorCostFields::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_cost_fields = SectorCostFields::new(&map_dimensions);
 		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
 		// build portals
-		for (sector_id, _cost_fields) in sector_cost_fields.get().iter() {
+		for (sector_id, _cost_fields) in sector_cost_fields.get_scaled().iter() {
 			let portals = sector_portals.get_mut();
 			match portals.get_mut(sector_id) {
 				Some(portals) => portals.recalculate_portals(&sector_cost_fields, sector_id, &map_dimensions),
