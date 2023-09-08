@@ -64,12 +64,14 @@ struct Actor;
 struct Pathing {
 	source_sector: Option<SectorID>,
 	source_field_cell: Option<FieldCell>,
+	target_position: Option<Vec2>,
 	target_sector: Option<SectorID>,
 	target_goal: Option<FieldCell>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 	current_direction: Option<Vec2>,
 	/// Helps to steer the actor around corners when it is very close to an impassable field cell and reduces the likihood on tunneling
 	previous_direction: Option<Vec2>,
+	has_los: bool,
 }
 /// Dir and magnitude of actor movement
 #[derive(Component, Default)]
@@ -201,21 +203,25 @@ fn spawn_actors(
 	if let Some((sector_id, field)) =
 		map_data.get_sector_and_field_id_from_xy(Vec2::new(start_x, start_y))
 	{
+		let t_sector = SectorID::new(target_sector.0, target_sector.1);
+		let t_field = FieldCell::new(target_field_cell.0, target_field_cell.1);
 		let pathing = Pathing {
 			source_sector: Some(sector_id),
 			source_field_cell: Some(field),
-			target_sector: Some(SectorID::new(target_sector.0, target_sector.1)),
-			target_goal: Some(FieldCell::new(target_field_cell.0, target_field_cell.1)),
+			target_position: Some(map_data.get_xy_from_field_sector(t_sector, t_field).unwrap()),
+			target_sector: Some(t_sector),
+			target_goal: Some(t_field),
 			portal_route: None,
 			current_direction: None,
 			previous_direction: None,
+			has_los: false
 		};
 		// request a path
 		event.send(EventPathRequest::new(
 			sector_id,
 			field,
-			SectorID::new(target_sector.0, target_sector.1),
-			FieldCell::new(target_field_cell.0, target_field_cell.1),
+			t_sector,
+			t_field,
 		));
 		// spawn the actor which cna read the path later
 		cmds.spawn(SpriteBundle {
@@ -283,6 +289,12 @@ fn actor_steering(
 						if let Some(field) = flow_cache.get_field(*sector, *goal) {
 							// based on actor field cell find the directional vector it should move in
 							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+							if has_line_of_sight(cell_value) {
+								pathing.has_los = true;
+								let dir = pathing.target_position.unwrap() - tform.translation.truncate();
+								velocity.0 = dir.normalize() * SPEED * time_step.period.as_secs_f32();
+								break 'routes;
+							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 							if pathing.current_direction.is_none() {
 								pathing.current_direction = Some(dir);

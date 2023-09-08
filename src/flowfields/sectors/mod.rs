@@ -204,15 +204,85 @@ impl MapDimensions {
 		}
 		None
 	}
-	// /// From a field cell within a Sector retrieve the 2d Vec3 of its position.
-	// ///
-	// /// The `z` coordinate is defaulted to `1.0`.
-	// #[cfg(feature = "2d")]
-	// fn get_xyz_from_field_sector(&self, sector: SectorID, field: FieldCell) -> Option<Vec3> {
-	// 	let sector_column = sector.get_column();
-	// 	// minimum x
-	// 	let min_x = ( self.get_length() / 2) as f32;
-	// }
+	/// From a field cell within a Sector retrieve the 2d Vec2 of its
+	/// position. If the position sits outside of the world then [None] is
+	/// returned
+	#[cfg(feature = "2d")]
+	pub fn get_xy_from_field_sector(&self, sector: SectorID, field: FieldCell) -> Option<Vec2> {
+		// the sector grid always begins in the top left
+		// from real-space origin of (0,0) find the position of SectorID(0,0) in real space
+		let sector_grid_origin_offset = {
+			Vec2::new(self.get_length() as f32 / -2.0, self.get_depth() as f32 / 2.0)
+		};
+		// the sector grid starts top left at (0,0), based on the sector we want find its origin
+		// with how many units make up a sector and and sector mXn ID
+		// NB: use a negative Y here, as row ID goes from 0..n it's approaching the negative Y of real space
+		let sector_origin = Vec2::new(
+			(sector.get_column() * self.get_sector_resolution()) as f32,
+			(sector.get_row() * self.get_sector_resolution()) as f32 * -1.0
+		);
+		// now we know the real-space coordinates of the top left corner of the sector
+		let xy_of_sector_top_left = sector_grid_origin_offset + sector_origin;
+
+		// determine the unit size of a field cell
+		let cell_size = self.get_sector_resolution() as f32 / FIELD_RESOLUTION as f32;
+		// from a cell origin of (0, 0) find the cell position relative to the field grid
+		// NB: we add half of the cell size to each coord to obtain the centre position of the cell
+		// NB: use negative Y here, as row ID goes form 0..n it's approaching negative Y of real-space
+		let cell_position = Vec2::new(
+			field.get_column() as f32 * cell_size + cell_size /2.0,
+			(field.get_row() as f32 * cell_size + cell_size / 2.0) * -1.0
+		);
+
+		let real_space_pos = xy_of_sector_top_left + cell_position;
+		// ensure not outside world
+		if real_space_pos.x.abs() > self.get_length() as f32 / 2.0 || real_space_pos.y.abs() > self.get_depth() as f32 / 2.0 {
+			None
+		} else {
+			Some(real_space_pos)
+		}
+	}
+
+	/// From a field cell within a Sector retrieve the 2d (x-z) Vec3 of its
+	/// position. If the position is outside of the world then [None] is
+	/// returned
+	///
+	/// The `y` coordinate is defaulted to `0.0`.
+	#[cfg(feature = "3d")]
+	pub fn get_xyz_from_field_sector(&self, sector: SectorID, field: FieldCell) -> Option<Vec3> {
+		// the sector grid always begins in the top left
+		// from real-space origin of (0,0,0) find the position of SectorID(0,0) in real space
+		let sector_grid_origin_offset = {
+			Vec3::new(self.get_length() as f32 / -2.0, 0.0, self.get_depth() as f32 / -2.0)
+		};
+		// the sector grid starts top left at (0,0), based on the sector we want find its origin
+		// with how many units make up a sector and and sector mXn ID
+		let sector_origin = Vec3::new(
+			(sector.get_column() * self.get_sector_resolution()) as f32,
+			0.0,
+			(sector.get_row() * self.get_sector_resolution()) as f32
+		);
+		// now we know the real-space coordinates of the top left corner of the sector
+		let xyz_of_sector_top_left = sector_grid_origin_offset + sector_origin;
+
+		// determine the unit size of a field cell
+		let cell_size = self.get_sector_resolution() as f32 / FIELD_RESOLUTION as f32;
+		// from a cell origin of (0, 0) find the cell position relative to the field grid
+		// NB: we add half of the cell size to each coord to obtain the centre position of the cell
+		let cell_position = Vec3::new(
+			field.get_column() as f32 * cell_size + cell_size /2.0,
+			0.0,
+			field.get_row() as f32 * cell_size + cell_size / 2.0
+		);
+
+		let real_space_pos = xyz_of_sector_top_left + cell_position;
+		// ensure not outside world
+		if real_space_pos.x.abs() > self.get_length() as f32 / 2.0 || real_space_pos.z.abs() > self.get_depth() as f32 / 2.0 {
+			None
+		} else {
+			Some(real_space_pos)
+		}
+	}
 
 	/// From a position in `x, y, z` space and the dimensions of the map calculate
 	/// the sector ID that point resides in
@@ -656,5 +726,23 @@ mod tests {
 		let sector_id = SectorID::new(1, 0);
 		let result = map_dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
 		assert!(result.is_none())
+	}
+	#[test]
+	fn get_xy() {
+		let map_dimensions = MapDimensions::new(1920, 1920, 640, 16.0);
+		let sector_id = SectorID::new(2, 1);
+		let field_id = FieldCell::new(6, 2);
+		let actual = Vec2::new(736.0, 160.0);
+		let result = map_dimensions.get_xy_from_field_sector(sector_id, field_id).unwrap();
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_xyz() {
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let sector_id = SectorID::new(2, 1);
+		let field_id = FieldCell::new(6, 2);
+		let actual = Vec3::new(11.5, 0.0, -2.5);
+		let result = map_dimensions.get_xyz_from_field_sector(sector_id, field_id).unwrap();
+		assert_eq!(actual, result);
 	}
 }

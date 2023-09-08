@@ -100,6 +100,7 @@ impl IntegrationField {
 			self.set_field_cell_value(0, *goal);
 		}
 	}
+	//TODO: diamond like propagation and wasted extra lookups looking at previously calcualted neighbours, try fast marching method of solving Eikonal PDE for a spherical approx that visits each cell once
 	/// From a list of `goals` (the actual end target goal or portal field cells
 	/// to the next sector towards the goal sector) field cells iterate over
 	/// successive neighbouring cells and calculate the field values from the
