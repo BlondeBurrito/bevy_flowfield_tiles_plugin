@@ -65,7 +65,7 @@ impl FieldCell {
 		}
 	}
 	/// Using the Bresenham line algorithm get a list of [FieldCell] that lie along a line between two points
-	pub fn get_cells_between_points(&self, target: &FieldCell) -> Vec::<FieldCell> {
+	pub fn get_cells_between_points(&self, target: &FieldCell) -> Vec<FieldCell> {
 		let source_col = self.get_column() as i32;
 		let source_row = self.get_row() as i32;
 		let target_col = target.get_column() as i32;
@@ -102,26 +102,25 @@ impl FieldCell {
 			}
 		} else if (target_row - source_row).abs() < (target_col - source_col).abs() {
 			if source_col > target_col {
-				let mut fields = walk_bresenham(target_col, target_row, source_col, source_row);
+				let mut fields =
+					walk_bresenham_shallow(target_col, target_row, source_col, source_row);
 				// ensure list points in the direction of source to target
 				fields.reverse();
 				fields
 			} else {
-				walk_bresenham(source_col, source_row, target_col, target_row)
+				walk_bresenham_shallow(source_col, source_row, target_col, target_row)
 			}
+		} else if source_row > target_row {
+			let mut fields = walk_bresenham_steep(target_col, target_row, source_col, source_row);
+			fields.reverse();
+			fields
 		} else {
-			if source_row > target_row {
-				let mut fields = walk_bresenham2(target_col, target_row, source_col, source_row);
-				fields.reverse();
-				fields
-			} else {
-				walk_bresenham2(source_col, source_row, target_col, target_row)
-			}
+			walk_bresenham_steep(source_col, source_row, target_col, target_row)
 		}
 	}
 }
-
-fn walk_bresenham(col_0: i32, row_0: i32, col_1: i32, row_1:i32) -> Vec<FieldCell> {
+/// When finding a shallow raster representation of a line we step through the x-dimension and increment y based on an error bound which indicates which cells lie on the line
+fn walk_bresenham_shallow(col_0: i32, row_0: i32, col_1: i32, row_1: i32) -> Vec<FieldCell> {
 	let mut cells = Vec::new();
 
 	let delta_col = col_1 - col_0;
@@ -134,7 +133,7 @@ fn walk_bresenham(col_0: i32, row_0: i32, col_1: i32, row_1:i32) -> Vec<FieldCel
 	}
 	let mut difference = 2 * delta_row - delta_col;
 	let mut row = row_0;
-	
+
 	for col in col_0..=col_1 {
 		cells.push(FieldCell::new(col as usize, row as usize));
 		if difference > 0 {
@@ -146,8 +145,8 @@ fn walk_bresenham(col_0: i32, row_0: i32, col_1: i32, row_1:i32) -> Vec<FieldCel
 	}
 	cells
 }
-
-fn walk_bresenham2(col_0: i32, row_0: i32, col_1: i32, row_1:i32) -> Vec<FieldCell> {
+/// When finding a steep raster representation of a line we step through the y-dimension and increment x based on an error bound which indicates which cells lie on the line
+fn walk_bresenham_steep(col_0: i32, row_0: i32, col_1: i32, row_1: i32) -> Vec<FieldCell> {
 	let mut cells = Vec::new();
 
 	let mut delta_col = col_1 - col_0;
@@ -160,7 +159,7 @@ fn walk_bresenham2(col_0: i32, row_0: i32, col_1: i32, row_1:i32) -> Vec<FieldCe
 	}
 	let mut difference = 2 * delta_col - delta_row;
 	let mut col = col_0;
-	
+
 	for row in row_0..=row_1 {
 		cells.push(FieldCell::new(col as usize, row as usize));
 		if difference > 0 {
@@ -511,9 +510,7 @@ mod tests {
 		let source = FieldCell::new(3, 4);
 		let target = FieldCell::new(3, 4);
 		let result = source.get_cells_between_points(&target);
-		let actual: Vec<FieldCell> = vec![
-			FieldCell::new(3, 4),
-		];
+		let actual: Vec<FieldCell> = vec![FieldCell::new(3, 4)];
 		assert_eq!(actual, result);
 	}
 }

@@ -264,8 +264,10 @@ fn actor_steering(
 							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
 							if has_line_of_sight(cell_value) {
 								pathing.has_los = true;
-								let dir = pathing.target_position.unwrap() - tform.translation.truncate();
-								velocity.0 = dir.normalize() * SPEED * time_step.period.as_secs_f32();
+								let dir =
+									pathing.target_position.unwrap() - tform.translation.truncate();
+								velocity.0 =
+									dir.normalize() * SPEED * time_step.period.as_secs_f32();
 								break 'routes;
 							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);

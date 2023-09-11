@@ -208,21 +208,20 @@ fn spawn_actors(
 		let pathing = Pathing {
 			source_sector: Some(sector_id),
 			source_field_cell: Some(field),
-			target_position: Some(map_data.get_xy_from_field_sector(t_sector, t_field).unwrap()),
+			target_position: Some(
+				map_data
+					.get_xy_from_field_sector(t_sector, t_field)
+					.unwrap(),
+			),
 			target_sector: Some(t_sector),
 			target_goal: Some(t_field),
 			portal_route: None,
 			current_direction: None,
 			previous_direction: None,
-			has_los: false
+			has_los: false,
 		};
 		// request a path
-		event.send(EventPathRequest::new(
-			sector_id,
-			field,
-			t_sector,
-			t_field,
-		));
+		event.send(EventPathRequest::new(sector_id, field, t_sector, t_field));
 		// spawn the actor which cna read the path later
 		cmds.spawn(SpriteBundle {
 			texture: asset_server.load("2d/2d_actor_sprite.png"),
@@ -291,8 +290,10 @@ fn actor_steering(
 							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
 							if has_line_of_sight(cell_value) {
 								pathing.has_los = true;
-								let dir = pathing.target_position.unwrap() - tform.translation.truncate();
-								velocity.0 = dir.normalize() * SPEED * time_step.period.as_secs_f32();
+								let dir =
+									pathing.target_position.unwrap() - tform.translation.truncate();
+								velocity.0 =
+									dir.normalize() * SPEED * time_step.period.as_secs_f32();
 								break 'routes;
 							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);

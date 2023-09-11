@@ -262,7 +262,8 @@ fn actor_steering(
 						let cell_value = field.get_field_cell_value(curr_actor_field_cell);
 						if has_line_of_sight(cell_value) {
 							pathing.has_los = true;
-							let dir = pathing.target_position.unwrap() - tform.translation.truncate();
+							let dir =
+								pathing.target_position.unwrap() - tform.translation.truncate();
 							velocity.0 = dir.normalize() * SPEED * time_step.period.as_secs_f32();
 							break 'routes;
 						}
@@ -365,24 +366,24 @@ fn update_sprite_visuals_based_on_actor(
 /// Get the asset path to ordinal icons
 fn get_ord_icon(value: u8) -> String {
 	if is_goal(value) {
-		return String::from("ordinal_icons/goal.png");
+		String::from("ordinal_icons/goal.png")
 	} else if has_line_of_sight(value) {
-		return String::from("ordinal_icons/los.png");
+		String::from("ordinal_icons/los.png")
 	} else {
-	//
-	let ordinal = get_ordinal_from_bits(value);
-	match ordinal {
-		Ordinal::North => String::from("ordinal_icons/north.png"),
-		Ordinal::East => String::from("ordinal_icons/east.png"),
-		Ordinal::South => String::from("ordinal_icons/south.png"),
-		Ordinal::West => String::from("ordinal_icons/west.png"),
-		Ordinal::NorthEast => String::from("ordinal_icons/north_east.png"),
-		Ordinal::SouthEast => String::from("ordinal_icons/south_east.png"),
-		Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
-		Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
-		Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
+		//
+		let ordinal = get_ordinal_from_bits(value);
+		match ordinal {
+			Ordinal::North => String::from("ordinal_icons/north.png"),
+			Ordinal::East => String::from("ordinal_icons/east.png"),
+			Ordinal::South => String::from("ordinal_icons/south.png"),
+			Ordinal::West => String::from("ordinal_icons/west.png"),
+			Ordinal::NorthEast => String::from("ordinal_icons/north_east.png"),
+			Ordinal::SouthEast => String::from("ordinal_icons/south_east.png"),
+			Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
+			Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
+			Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
+		}
 	}
-}
 }
 
 /// Added to entities that should block actors

@@ -80,28 +80,28 @@ impl Ordinal {
 				} else {
 					None
 				}
-			},
+			}
 			Ordinal::East => {
 				if cell_id.get_column() < FIELD_RESOLUTION - 1 {
 					Some(FieldCell::new(cell_id.get_column() + 1, cell_id.get_row()))
 				} else {
 					None
 				}
-			},
+			}
 			Ordinal::South => {
 				if cell_id.get_row() < FIELD_RESOLUTION - 1 {
 					Some(FieldCell::new(cell_id.get_column(), cell_id.get_row() + 1))
 				} else {
 					None
 				}
-			},
+			}
 			Ordinal::West => {
 				if cell_id.get_column() > 0 {
 					Some(FieldCell::new(cell_id.get_column() - 1, cell_id.get_row()))
 				} else {
 					None
 				}
-			},
+			}
 			Ordinal::NorthEast => {
 				if cell_id.get_row() > 0 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
 					Some(FieldCell::new(
@@ -111,9 +111,11 @@ impl Ordinal {
 				} else {
 					None
 				}
-			},
+			}
 			Ordinal::SouthEast => {
-				if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
+				if cell_id.get_row() < FIELD_RESOLUTION - 1
+					&& cell_id.get_column() < FIELD_RESOLUTION - 1
+				{
 					Some(FieldCell::new(
 						cell_id.get_column() + 1,
 						cell_id.get_row() + 1,
@@ -121,7 +123,7 @@ impl Ordinal {
 				} else {
 					None
 				}
-			},
+			}
 			Ordinal::SouthWest => {
 				if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() > 0 {
 					Some(FieldCell::new(
@@ -131,7 +133,7 @@ impl Ordinal {
 				} else {
 					None
 				}
-			},
+			}
 			Ordinal::NorthWest => {
 				if cell_id.get_row() > 0 && cell_id.get_column() > 0 {
 					Some(FieldCell::new(
@@ -141,7 +143,7 @@ impl Ordinal {
 				} else {
 					None
 				}
-			},
+			}
 			Ordinal::Zero => None,
 		}
 	}
@@ -190,40 +192,52 @@ impl Ordinal {
 	pub fn get_all_cell_neighbours_with_ordinal(cell_id: FieldCell) -> Vec<(Ordinal, FieldCell)> {
 		let mut neighbours = Vec::new();
 		if cell_id.get_row() > 0 {
-			neighbours.push((Ordinal::North, FieldCell::new(cell_id.get_column(), cell_id.get_row() - 1))); // northern cell coords
+			neighbours.push((
+				Ordinal::North,
+				FieldCell::new(cell_id.get_column(), cell_id.get_row() - 1),
+			)); // northern cell coords
 		}
 		if cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push((Ordinal::East, FieldCell::new(cell_id.get_column() + 1, cell_id.get_row()))); // eastern cell coords
+			neighbours.push((
+				Ordinal::East,
+				FieldCell::new(cell_id.get_column() + 1, cell_id.get_row()),
+			)); // eastern cell coords
 		}
 		if cell_id.get_row() < FIELD_RESOLUTION - 1 {
-			neighbours.push((Ordinal::South, FieldCell::new(cell_id.get_column(), cell_id.get_row() + 1))); // southern cell coords
+			neighbours.push((
+				Ordinal::South,
+				FieldCell::new(cell_id.get_column(), cell_id.get_row() + 1),
+			)); // southern cell coords
 		}
 		if cell_id.get_column() > 0 {
-			neighbours.push((Ordinal::West, FieldCell::new(cell_id.get_column() - 1, cell_id.get_row()))); // western cell coords
+			neighbours.push((
+				Ordinal::West,
+				FieldCell::new(cell_id.get_column() - 1, cell_id.get_row()),
+			)); // western cell coords
 		}
 		if cell_id.get_row() > 0 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push((Ordinal::NorthEast, FieldCell::new(
-				cell_id.get_column() + 1,
-				cell_id.get_row() - 1,
-			))); // north-east cell
+			neighbours.push((
+				Ordinal::NorthEast,
+				FieldCell::new(cell_id.get_column() + 1, cell_id.get_row() - 1),
+			)); // north-east cell
 		}
 		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push((Ordinal::SouthEast, FieldCell::new(
-				cell_id.get_column() + 1,
-				cell_id.get_row() + 1,
-			))); // south-east cell
+			neighbours.push((
+				Ordinal::SouthEast,
+				FieldCell::new(cell_id.get_column() + 1, cell_id.get_row() + 1),
+			)); // south-east cell
 		}
 		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() > 0 {
-			neighbours.push((Ordinal::SouthWest, FieldCell::new(
-				cell_id.get_column() - 1,
-				cell_id.get_row() + 1,
-			))); // south-west cell
+			neighbours.push((
+				Ordinal::SouthWest,
+				FieldCell::new(cell_id.get_column() - 1, cell_id.get_row() + 1),
+			)); // south-west cell
 		}
 		if cell_id.get_row() > 0 && cell_id.get_column() > 0 {
-			neighbours.push((Ordinal::NorthWest, FieldCell::new(
-				cell_id.get_column() - 1,
-				cell_id.get_row() - 1,
-			))); // north-west cell
+			neighbours.push((
+				Ordinal::NorthWest,
+				FieldCell::new(cell_id.get_column() - 1, cell_id.get_row() - 1),
+			)); // north-west cell
 		}
 		neighbours
 	}
