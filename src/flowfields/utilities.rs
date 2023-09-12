@@ -42,7 +42,112 @@ impl Ordinal {
 		}
 		neighbours
 	}
-	/// Based on a field cells `(column, row)` position find all possible neighbours inclduing diagonal directions
+	/// Based on a field cells `(column, row)` position find its diagonal neighbours based on FIELD_RESOLUTION limits (up to 4)
+	pub fn get_diagonal_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
+		let mut neighbours = Vec::new();
+		if cell_id.get_row() > 0 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
+			neighbours.push(FieldCell::new(
+				cell_id.get_column() + 1,
+				cell_id.get_row() - 1,
+			)); // north-east cell
+		}
+		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
+			neighbours.push(FieldCell::new(
+				cell_id.get_column() + 1,
+				cell_id.get_row() + 1,
+			)); // south-east cell
+		}
+		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() > 0 {
+			neighbours.push(FieldCell::new(
+				cell_id.get_column() - 1,
+				cell_id.get_row() + 1,
+			)); // south-west cell
+		}
+		if cell_id.get_row() > 0 && cell_id.get_column() > 0 {
+			neighbours.push(FieldCell::new(
+				cell_id.get_column() - 1,
+				cell_id.get_row() - 1,
+			)); // north-west cell
+		}
+		neighbours
+	}
+	/// Based on a field cells `(column, row)` and an [Ordinal] direction find the neighbouring [FieldCell] if one exists
+	pub fn get_cell_neighbour(cell_id: FieldCell, ordinal: Ordinal) -> Option<FieldCell> {
+		match ordinal {
+			Ordinal::North => {
+				if cell_id.get_row() > 0 {
+					Some(FieldCell::new(cell_id.get_column(), cell_id.get_row() - 1))
+				} else {
+					None
+				}
+			}
+			Ordinal::East => {
+				if cell_id.get_column() < FIELD_RESOLUTION - 1 {
+					Some(FieldCell::new(cell_id.get_column() + 1, cell_id.get_row()))
+				} else {
+					None
+				}
+			}
+			Ordinal::South => {
+				if cell_id.get_row() < FIELD_RESOLUTION - 1 {
+					Some(FieldCell::new(cell_id.get_column(), cell_id.get_row() + 1))
+				} else {
+					None
+				}
+			}
+			Ordinal::West => {
+				if cell_id.get_column() > 0 {
+					Some(FieldCell::new(cell_id.get_column() - 1, cell_id.get_row()))
+				} else {
+					None
+				}
+			}
+			Ordinal::NorthEast => {
+				if cell_id.get_row() > 0 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
+					Some(FieldCell::new(
+						cell_id.get_column() + 1,
+						cell_id.get_row() - 1,
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::SouthEast => {
+				if cell_id.get_row() < FIELD_RESOLUTION - 1
+					&& cell_id.get_column() < FIELD_RESOLUTION - 1
+				{
+					Some(FieldCell::new(
+						cell_id.get_column() + 1,
+						cell_id.get_row() + 1,
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::SouthWest => {
+				if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() > 0 {
+					Some(FieldCell::new(
+						cell_id.get_column() - 1,
+						cell_id.get_row() + 1,
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::NorthWest => {
+				if cell_id.get_row() > 0 && cell_id.get_column() > 0 {
+					Some(FieldCell::new(
+						cell_id.get_column() - 1,
+						cell_id.get_row() - 1,
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::Zero => None,
+		}
+	}
+	/// Based on a field cells `(column, row)` position find all possible neighbours including diagonal directions
 	pub fn get_all_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
 		let mut neighbours = Vec::new();
 		if cell_id.get_row() > 0 {
@@ -79,6 +184,59 @@ impl Ordinal {
 			neighbours.push(FieldCell::new(
 				cell_id.get_column() - 1,
 				cell_id.get_row() - 1,
+			)); // north-west cell
+		}
+		neighbours
+	}
+	/// Based on a field cells `(column, row)` position find all possible neighbours including diagonal directions and the Ordinal they are found in
+	pub fn get_all_cell_neighbours_with_ordinal(cell_id: FieldCell) -> Vec<(Ordinal, FieldCell)> {
+		let mut neighbours = Vec::new();
+		if cell_id.get_row() > 0 {
+			neighbours.push((
+				Ordinal::North,
+				FieldCell::new(cell_id.get_column(), cell_id.get_row() - 1),
+			)); // northern cell coords
+		}
+		if cell_id.get_column() < FIELD_RESOLUTION - 1 {
+			neighbours.push((
+				Ordinal::East,
+				FieldCell::new(cell_id.get_column() + 1, cell_id.get_row()),
+			)); // eastern cell coords
+		}
+		if cell_id.get_row() < FIELD_RESOLUTION - 1 {
+			neighbours.push((
+				Ordinal::South,
+				FieldCell::new(cell_id.get_column(), cell_id.get_row() + 1),
+			)); // southern cell coords
+		}
+		if cell_id.get_column() > 0 {
+			neighbours.push((
+				Ordinal::West,
+				FieldCell::new(cell_id.get_column() - 1, cell_id.get_row()),
+			)); // western cell coords
+		}
+		if cell_id.get_row() > 0 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
+			neighbours.push((
+				Ordinal::NorthEast,
+				FieldCell::new(cell_id.get_column() + 1, cell_id.get_row() - 1),
+			)); // north-east cell
+		}
+		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
+			neighbours.push((
+				Ordinal::SouthEast,
+				FieldCell::new(cell_id.get_column() + 1, cell_id.get_row() + 1),
+			)); // south-east cell
+		}
+		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() > 0 {
+			neighbours.push((
+				Ordinal::SouthWest,
+				FieldCell::new(cell_id.get_column() - 1, cell_id.get_row() + 1),
+			)); // south-west cell
+		}
+		if cell_id.get_row() > 0 && cell_id.get_column() > 0 {
+			neighbours.push((
+				Ordinal::NorthWest,
+				FieldCell::new(cell_id.get_column() - 1, cell_id.get_row() - 1),
 			)); // north-west cell
 		}
 		neighbours

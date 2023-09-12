@@ -26,6 +26,7 @@ fn main() {
 				setup_navigation,
 				create_wall_colliders,
 				create_fps_counter,
+				create_actor_counter,
 			),
 		)
 		.add_systems(
@@ -35,6 +36,7 @@ fn main() {
 				spawn_actors,
 				despawn_at_destination,
 				update_fps_counter,
+				update_actor_counter,
 			),
 		)
 		.add_systems(
@@ -64,12 +66,14 @@ struct Actor;
 struct Pathing {
 	source_sector: Option<SectorID>,
 	source_field_cell: Option<FieldCell>,
+	target_position: Option<Vec2>,
 	target_sector: Option<SectorID>,
 	target_goal: Option<FieldCell>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 	current_direction: Option<Vec2>,
 	/// Helps to steer the actor around corners when it is very close to an impassable field cell and reduces the likihood on tunneling
 	previous_direction: Option<Vec2>,
+	has_los: bool,
 }
 /// Dir and magnitude of actor movement
 #[derive(Component, Default)]
@@ -201,22 +205,25 @@ fn spawn_actors(
 	if let Some((sector_id, field)) =
 		map_data.get_sector_and_field_id_from_xy(Vec2::new(start_x, start_y))
 	{
+		let t_sector = SectorID::new(target_sector.0, target_sector.1);
+		let t_field = FieldCell::new(target_field_cell.0, target_field_cell.1);
 		let pathing = Pathing {
 			source_sector: Some(sector_id),
 			source_field_cell: Some(field),
-			target_sector: Some(SectorID::new(target_sector.0, target_sector.1)),
-			target_goal: Some(FieldCell::new(target_field_cell.0, target_field_cell.1)),
+			target_position: Some(
+				map_data
+					.get_xy_from_field_sector(t_sector, t_field)
+					.unwrap(),
+			),
+			target_sector: Some(t_sector),
+			target_goal: Some(t_field),
 			portal_route: None,
 			current_direction: None,
 			previous_direction: None,
+			has_los: false,
 		};
 		// request a path
-		event.send(EventPathRequest::new(
-			sector_id,
-			field,
-			SectorID::new(target_sector.0, target_sector.1),
-			FieldCell::new(target_field_cell.0, target_field_cell.1),
-		));
+		event.send(EventPathRequest::new(sector_id, field, t_sector, t_field));
 		// spawn the actor which cna read the path later
 		cmds.spawn(SpriteBundle {
 			texture: asset_server.load("2d/2d_actor_sprite.png"),
@@ -273,8 +280,10 @@ fn actor_steering(
 				// this ensures it doesn't use a previous goal from
 				// a sector it has already been through when it needs
 				// to pass through it again as part of a different part of the route
-				if curr_actor_sector != route.first().unwrap().0 {
-					// route.remove(0);
+				if let Some(f) = route.first() {
+					if curr_actor_sector != f.0 {
+						// route.remove(0);
+					}
 				}
 				// lookup the relevant sector-goal of this sector
 				'routes: for (sector, goal) in route.iter() {
@@ -283,6 +292,15 @@ fn actor_steering(
 						if let Some(field) = flow_cache.get_field(*sector, *goal) {
 							// based on actor field cell find the directional vector it should move in
 							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+							if has_line_of_sight(cell_value) {
+								pathing.has_los = true;
+								let dir =
+									pathing.target_position.unwrap() - tform.translation.truncate();
+								velocity.0 =
+									dir.normalize() * SPEED * time_step.period.as_secs_f32();
+								// pathing.previous_direction = Some(-dir.normalize());
+								break 'routes;
+							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 							if pathing.current_direction.is_none() {
 								pathing.current_direction = Some(dir);
@@ -445,7 +463,10 @@ fn collision_detection(
 							}
 						}
 						Collision::Inside => {
-							velocity.0 *= -1.0;
+							// velocity.0 *= -1.0;
+							if let Some(dir) = pathing.previous_direction {
+								velocity.0 = dir * SPEED * time_step.period.as_secs_f32() * 3.0;
+							}
 						}
 					}
 				}
@@ -453,6 +474,10 @@ fn collision_detection(
 		}
 	}
 }
+
+/// Label the FPS counter
+#[derive(Component)]
+struct FPSCounter;
 
 /// Create an FPS ui element to provide feedback
 fn create_fps_counter(mut cmds: Commands) {
@@ -470,15 +495,56 @@ fn create_fps_counter(mut cmds: Commands) {
 			color: Color::WHITE,
 			..default()
 		}),
-	]));
+	]))
+	.insert(FPSCounter);
 }
 
 /// Updates the FPS field ech tick
-fn update_fps_counter(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text>) {
+fn update_fps_counter(
+	diagnostics: Res<DiagnosticsStore>,
+	mut query: Query<&mut Text, (With<FPSCounter>, Without<ActorCounter>)>,
+) {
 	let mut text = query.single_mut();
 	if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
 		if let Some(val) = fps.average() {
 			text.sections[1].value = format!("{val:.2}");
 		}
 	}
+}
+
+/// Label the FPS counter
+#[derive(Component)]
+struct ActorCounter;
+
+/// Create an FPS ui element to provide feedback
+fn create_actor_counter(mut cmds: Commands) {
+	cmds.spawn(TextBundle::from_sections([
+		TextSection::new(
+			"Actors: ",
+			TextStyle {
+				font_size: 30.0,
+				color: Color::WHITE,
+				..default()
+			},
+		),
+		TextSection::from_style(TextStyle {
+			font_size: 30.0,
+			color: Color::WHITE,
+			..default()
+		}),
+	]))
+	.insert(ActorCounter);
+}
+
+/// Updates the FPS field ech tick
+fn update_actor_counter(
+	actors: Query<&Actor>,
+	mut query: Query<&mut Text, (With<ActorCounter>, Without<FPSCounter>)>,
+) {
+	let mut text = query.single_mut();
+	let mut actor_count = 0;
+	for _ in actors.iter() {
+		actor_count += 1;
+	}
+	text.sections[1].value = format!("{actor_count:.2}");
 }

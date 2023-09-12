@@ -197,7 +197,7 @@ The directional bits are defined as:
 The assistant flags are defined as:
 
 * `0b0001_0000` - pathable
-* `0b0010_0000` - has line-of-sight to goal, an actor no longer needs to follow the field, it can move in a straight line to the goal. This avoids calculating field values that aren't actually needed (TODO UNIMPLEMENTED)
+* `0b0010_0000` - has line-of-sight to goal, an actor no longer needs to follow the field, it can move in a straight line to the goal. This avoids calculating field values that aren't actually needed and once an actor enters a cell with this flag then they no longer need to spend time looking up a `FlowField``
 * `0b0100_0000` - indicates the goal
 * `0b1000_0000` - indicates a portal goal leading to the next sector
 

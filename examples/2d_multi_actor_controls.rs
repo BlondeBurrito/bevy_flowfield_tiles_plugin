@@ -52,12 +52,14 @@ struct ActorB;
 struct Pathing {
 	source_sector: Option<SectorID>,
 	source_field_cell: Option<FieldCell>,
+	target_position: Option<Vec2>,
 	target_sector: Option<SectorID>,
 	target_goal: Option<FieldCell>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 	current_direction: Option<Vec2>,
 	/// Helps to steer the actor around corners when it is very close to an impassable field cell and reduces the likihood on tunneling
 	previous_direction: Option<Vec2>,
+	has_los: bool,
 }
 
 /// Dir and magnitude of actor movement
@@ -204,6 +206,7 @@ fn user_input(
 					// update the Actor pathing
 					pathing.source_sector = Some(source_sector_id);
 					pathing.source_field_cell = Some(source_field_cell);
+					pathing.target_position = Some(world_position);
 					pathing.target_sector = Some(target_sector_id);
 					pathing.target_goal = Some(goal_id);
 					pathing.portal_route = None;
@@ -248,6 +251,7 @@ fn user_input(
 					// update the Actor pathing
 					pathing.source_sector = Some(source_sector_id);
 					pathing.source_field_cell = Some(source_field_cell);
+					pathing.target_position = Some(world_position);
 					pathing.target_sector = Some(target_sector_id);
 					pathing.target_goal = Some(goal_id);
 					pathing.portal_route = None;
@@ -331,6 +335,14 @@ fn actor_steering(
 						if let Some(field) = flow_cache.get_field(*sector, *goal) {
 							// based on actor field cell find the directional vector it should move in
 							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+							if has_line_of_sight(cell_value) {
+								pathing.has_los = true;
+								let dir =
+									pathing.target_position.unwrap() - tform.translation.truncate();
+								velocity.0 =
+									dir.normalize() * SPEED * time_step.period.as_secs_f32();
+								break 'routes;
+							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 							if pathing.current_direction.is_none() {
 								pathing.current_direction = Some(dir);

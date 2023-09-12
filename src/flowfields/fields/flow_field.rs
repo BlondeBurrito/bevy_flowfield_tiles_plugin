@@ -112,23 +112,41 @@ impl FlowField {
 				} //TODO this sould never ever be none...
 			}
 		} else {
-			// set goal cells
-			self.set_field_cell_value(BITS_GOAL, goals[0]);
+			// set goal cells as this is the first flowfield i.e the end goal
+			let mut goal_value = 0;
+			goal_value |= BITS_HAS_LOS;
+			goal_value |= BITS_GOAL;
+			goal_value |= BITS_PATHABLE;
+			self.set_field_cell_value(goal_value, goals[0]);
+			self.calculate_line_of_sight(goals, integration_field);
 		}
 
 		for (i, column) in integration_field.get().iter().enumerate() {
 			for (j, _row) in column.iter().enumerate() {
-				if self.get_field_cell_value(FieldCell::new(i, j)) == BITS_DEFAULT {
-					let current_cost = integration_field.get_field_cell_value(FieldCell::new(i, j));
+				let field_cell = FieldCell::new(i, j);
+				if self.get_field_cell_value(field_cell) & BITS_DEFAULT == BITS_DEFAULT {
+					let current_cost = integration_field.get_field_cell_value(field_cell);
 					// mark impassable //TODO maybe skip? waste of time perhaps
 					if current_cost == u16::MAX {
-						self.set_field_cell_value(BITS_ZERO, FieldCell::new(i, j));
+						self.set_field_cell_value(BITS_ZERO, field_cell);
 					} else if current_cost != 0 {
 						// skip goals of zero
 						// store the cheapest node
 						let mut cheapest_value = u16::MAX;
 						let mut cheapest_neighbour = None;
-						let neighbours = Ordinal::get_all_cell_neighbours(FieldCell::new(i, j));
+						let mut neighbours = Ordinal::get_all_cell_neighbours(field_cell);
+
+						// find any diagonal cells which are flanked by impassable cells and so
+						// movement between them should be ignored/blocked, i.e
+						//   X ~ <- ignore diagonal from o
+						//   o X
+						//
+						let remove_diagonals =
+							find_blocked_diagonals(field_cell, integration_field);
+						for diag in remove_diagonals.iter() {
+							neighbours.retain(|&n| n != *diag);
+						}
+
 						for n in neighbours.iter() {
 							let neighbour_cost = integration_field.get_field_cell_value(*n);
 							if neighbour_cost < cheapest_value {
@@ -137,19 +155,87 @@ impl FlowField {
 							}
 						}
 						if let Some(target) = cheapest_neighbour {
-							let ord =
-								Ordinal::cell_to_cell_direction(*target, FieldCell::new(i, j));
+							let ord = Ordinal::cell_to_cell_direction(*target, field_cell);
 							let bit_ord = convert_ordinal_to_bits_dir(ord);
 							let mut value = 0;
 							value |= bit_ord;
 							value |= BITS_PATHABLE;
-							self.set_field_cell_value(value, FieldCell::new(i, j));
+							self.set_field_cell_value(value, field_cell);
 						} //TODO this should never ever be none...
 					}
 				}
 			}
 		}
 	}
+	/// From each [FieldCell] analyse a line to the goal to ascertain if the cell has a clear Line of Sight to the goal and if so toggle the bit flag
+	fn calculate_line_of_sight(&mut self, los_goals: &[FieldCell], int_field: &IntegrationField) {
+		for i in 0..FIELD_RESOLUTION {
+			for j in 0..FIELD_RESOLUTION {
+				let start_cell = FieldCell::new(i, j);
+				let path = start_cell.get_cells_between_points(&los_goals[0]);
+				let mut has_los = true;
+				'cells: for cell in path.iter() {
+					let blocked_diagonals = find_blocked_diagonals(*cell, int_field);
+					if int_field.get_field_cell_value(*cell) == u16::MAX
+						|| !blocked_diagonals.is_empty()
+					{
+						has_los = false;
+						break 'cells;
+					}
+				}
+				if has_los {
+					for cell in path.iter() {
+						let mut value = 0;
+						value |= BITS_HAS_LOS;
+						value |= BITS_PATHABLE;
+						self.set_field_cell_value(value, *cell);
+					}
+				}
+			}
+		}
+	}
+	// /// From the goals explore each [FieldCell] for the ordinal directions and set the [BITS_HAS_LOS] flag to indicate that a [FieldCell] has unobstructed sight of the goal. This means that an actor can transition to moving in a straight line vector to the goal instead of having to rely on the directional bits of the [FlowField]
+	// fn calculate_line_of_sight2(&mut self, los_goals: &[FieldCell], int_field: &IntegrationField) {
+	// 	let ordinals = [
+	// 		Ordinal::North,
+	// 		Ordinal::East,
+	// 		Ordinal::South,
+	// 		Ordinal::West,
+	// 		Ordinal::NorthEast,
+	// 		Ordinal::SouthEast,
+	// 		Ordinal::SouthWest,
+	// 		Ordinal::NorthWest,
+	// 	];
+	// 	for ord in ordinals.iter() {
+	// 		if let Some(neighbour) = Ordinal::get_cell_neighbour(los_goals[0], *ord) {
+	// 			// if not impassable then it has LOS
+	// 			if int_field.get_field_cell_value(neighbour) != u16::MAX {
+	// 				let mut value = 0;
+	// 				value |= BITS_HAS_LOS;
+	// 				value |= BITS_PATHABLE;
+	// 				self.set_field_cell_value(value, neighbour);
+	// 				self.explore_direction(neighbour, int_field, *ord);
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// fn explore_direction(
+	// 	&mut self,
+	// 	neighbour: FieldCell,
+	// 	int_field: &IntegrationField,
+	// 	ord: Ordinal,
+	// ) {
+	// 	if let Some(neighbour) = Ordinal::get_cell_neighbour(neighbour, ord) {
+	// 		// if not impassable then it has LOS
+	// 		if int_field.get_field_cell_value(neighbour) != u16::MAX {
+	// 			let mut value = 0;
+	// 			value |= BITS_HAS_LOS;
+	// 			value |= BITS_PATHABLE;
+	// 			self.set_field_cell_value(value, neighbour);
+	// 			self.explore_direction(neighbour, int_field, ord);
+	// 		}
+	// 	}
+	// }
 }
 /// Used by a [FlowField] calculation that needs to peek into the previous sectors [IntegrationField] to align portal goal directional bits to the most optimal integration costs
 fn lookup_portal_goal_neighbour_costs_in_previous_sector(
@@ -235,6 +321,64 @@ fn lookup_portal_goal_neighbour_costs_in_previous_sector(
 	}
 	adjacent_neighbours
 }
+
+/// Looks at the orthognal neighbours of a [FieldCell], determines whether any pairs are impassable and if so builds a list of any diagonal [FieldCell] which should be considered as unreachable from the inspected `field_cell`
+fn find_blocked_diagonals(
+	field_cell: FieldCell,
+	integration_field: &IntegrationField,
+) -> Vec<FieldCell> {
+	let mut diagonals = Vec::new();
+	if let Some(north) = Ordinal::get_cell_neighbour(field_cell, Ordinal::North) {
+		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
+			if integration_field.get_field_cell_value(north) == u16::MAX
+				&& integration_field.get_field_cell_value(east) == u16::MAX
+			{
+				if let Some(north_east) =
+					Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthEast)
+				{
+					diagonals.push(north_east);
+				}
+			}
+		}
+		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
+			if integration_field.get_field_cell_value(north) == u16::MAX
+				&& integration_field.get_field_cell_value(west) == u16::MAX
+			{
+				if let Some(north_west) =
+					Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthWest)
+				{
+					diagonals.push(north_west);
+				}
+			}
+		}
+	}
+	if let Some(south) = Ordinal::get_cell_neighbour(field_cell, Ordinal::South) {
+		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
+			if integration_field.get_field_cell_value(south) == u16::MAX
+				&& integration_field.get_field_cell_value(east) == u16::MAX
+			{
+				if let Some(south_east) =
+					Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthEast)
+				{
+					diagonals.push(south_east);
+				}
+			}
+		}
+		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
+			if integration_field.get_field_cell_value(south) == u16::MAX
+				&& integration_field.get_field_cell_value(west) == u16::MAX
+			{
+				if let Some(south_west) =
+					Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthWest)
+				{
+					diagonals.push(south_west);
+				}
+			}
+		}
+	}
+	diagonals
+}
+
 //TODO? high level steering within this plugin??
 // pub fn abc(cell_value: u8) {
 // 	let flag_filter = 0b1111_0000;
@@ -253,12 +397,26 @@ fn lookup_portal_goal_neighbour_costs_in_previous_sector(
 // 	}
 // }
 
+/// Indicates that a cell is pathable
+pub fn is_pathable(cell_value: u8) -> bool {
+	cell_value & BITS_PATHABLE == BITS_PATHABLE
+}
+
+/// Indicates that a cell is the target goal
+pub fn is_goal(cell_value: u8) -> bool {
+	cell_value & BITS_GOAL == BITS_GOAL
+}
+
+/// Indicates that a cell is a portal goal
+pub fn is_portal_goal(cell_value: u8) -> bool {
+	cell_value & BITS_PORTAL_GOAL == BITS_PORTAL_GOAL
+}
+
 /// If a cell has direct vision to the goal then the [FlowField] should be
 /// disregarded as the actor can move in a stright line to the goal
 pub fn has_line_of_sight(cell_value: u8) -> bool {
-	let flag_filter = 0b1111_0000;
-	let flag = cell_value & flag_filter;
-	flag == BITS_HAS_LOS
+	// let flag_filter = 0b1111_0000;
+	cell_value & BITS_HAS_LOS == BITS_HAS_LOS
 }
 /// From a pathable [FlowField] cell get the directional [Ordinal] of movement
 pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
@@ -327,7 +485,7 @@ mod tests {
 	#[test]
 	fn calculate_flow_target_south() {
 		let cost_field = CostField::default();
-		// int field pair pointing towards goal in orthognal west direction
+		// int field pair pointing towards goal in orthognal south direction
 		let ordinal_to_previous_sector = Ordinal::South;
 		let goals = vec![
 			FieldCell::new(0, 9),

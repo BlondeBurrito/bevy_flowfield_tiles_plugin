@@ -64,6 +64,112 @@ impl FieldCell {
 			panic!("{:?} does not sit along the boundary", self);
 		}
 	}
+	/// Using the Bresenham line algorithm get a list of [FieldCell] that lie along a line between two points
+	pub fn get_cells_between_points(&self, target: &FieldCell) -> Vec<FieldCell> {
+		let source_col = self.get_column() as i32;
+		let source_row = self.get_row() as i32;
+		let target_col = target.get_column() as i32;
+		let target_row = target.get_row() as i32;
+
+		// optimise for orthognal line (horizontal or vertical)
+		if source_col == target_col {
+			let mut fields = Vec::new();
+			if source_row < target_row {
+				for row in source_row..=target_row {
+					fields.push(FieldCell::new(source_col as usize, row as usize));
+				}
+				fields
+			} else {
+				for row in target_row..=source_row {
+					fields.push(FieldCell::new(source_col as usize, row as usize));
+				}
+				fields.reverse();
+				fields
+			}
+		} else if source_row == target_row {
+			let mut fields = Vec::new();
+			if source_col < target_col {
+				for col in source_col..=target_col {
+					fields.push(FieldCell::new(col as usize, source_row as usize));
+				}
+				fields
+			} else {
+				for col in target_col..=source_col {
+					fields.push(FieldCell::new(col as usize, source_row as usize));
+				}
+				fields.reverse();
+				fields
+			}
+		} else if (target_row - source_row).abs() < (target_col - source_col).abs() {
+			if source_col > target_col {
+				let mut fields =
+					walk_bresenham_shallow(target_col, target_row, source_col, source_row);
+				// ensure list points in the direction of source to target
+				fields.reverse();
+				fields
+			} else {
+				walk_bresenham_shallow(source_col, source_row, target_col, target_row)
+			}
+		} else if source_row > target_row {
+			let mut fields = walk_bresenham_steep(target_col, target_row, source_col, source_row);
+			fields.reverse();
+			fields
+		} else {
+			walk_bresenham_steep(source_col, source_row, target_col, target_row)
+		}
+	}
+}
+/// When finding a shallow raster representation of a line we step through the x-dimension and increment y based on an error bound which indicates which cells lie on the line
+fn walk_bresenham_shallow(col_0: i32, row_0: i32, col_1: i32, row_1: i32) -> Vec<FieldCell> {
+	let mut cells = Vec::new();
+
+	let delta_col = col_1 - col_0;
+	let mut delta_row = row_1 - row_0;
+
+	let mut row_increment = 1;
+	if delta_row < 0 {
+		row_increment = -1;
+		delta_row *= -1;
+	}
+	let mut difference = 2 * delta_row - delta_col;
+	let mut row = row_0;
+
+	for col in col_0..=col_1 {
+		cells.push(FieldCell::new(col as usize, row as usize));
+		if difference > 0 {
+			row += row_increment;
+			difference += 2 * (delta_row - delta_col);
+		} else {
+			difference += 2 * delta_row;
+		}
+	}
+	cells
+}
+/// When finding a steep raster representation of a line we step through the y-dimension and increment x based on an error bound which indicates which cells lie on the line
+fn walk_bresenham_steep(col_0: i32, row_0: i32, col_1: i32, row_1: i32) -> Vec<FieldCell> {
+	let mut cells = Vec::new();
+
+	let mut delta_col = col_1 - col_0;
+	let delta_row = row_1 - row_0;
+
+	let mut col_increment = 1;
+	if delta_col < 0 {
+		col_increment = -1;
+		delta_col *= -1;
+	}
+	let mut difference = 2 * delta_col - delta_row;
+	let mut col = col_0;
+
+	for row in row_0..=row_1 {
+		cells.push(FieldCell::new(col as usize, row as usize));
+		if difference > 0 {
+			col += col_increment;
+			difference += 2 * (delta_col - delta_row);
+		} else {
+			difference += 2 * delta_col;
+		}
+	}
+	cells
 }
 
 /// Describes the properties of a route
@@ -264,5 +370,147 @@ impl FlowFieldCache {
 	/// Remove a [FlowField] from the cache (when it needs regenerating from a [CostField] update)
 	pub fn remove_field(&mut self, flow_meta: FlowFieldMetadata) {
 		self.0.remove(&flow_meta);
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	#[test]
+	fn field_cell_line_horizontal() {
+		let source = FieldCell::new(3, 4);
+		let target = FieldCell::new(7, 4);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(3, 4),
+			FieldCell::new(4, 4),
+			FieldCell::new(5, 4),
+			FieldCell::new(6, 4),
+			FieldCell::new(7, 4),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_horizontal_reverse() {
+		let source = FieldCell::new(7, 4);
+		let target = FieldCell::new(3, 4);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(7, 4),
+			FieldCell::new(6, 4),
+			FieldCell::new(5, 4),
+			FieldCell::new(4, 4),
+			FieldCell::new(3, 4),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_vertical() {
+		let source = FieldCell::new(3, 4);
+		let target = FieldCell::new(3, 7);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(3, 4),
+			FieldCell::new(3, 5),
+			FieldCell::new(3, 6),
+			FieldCell::new(3, 7),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_vertical_reverse() {
+		let source = FieldCell::new(3, 7);
+		let target = FieldCell::new(3, 4);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(3, 7),
+			FieldCell::new(3, 6),
+			FieldCell::new(3, 5),
+			FieldCell::new(3, 4),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_vertical_steep() {
+		let source = FieldCell::new(3, 0);
+		let target = FieldCell::new(4, 9);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(3, 0),
+			FieldCell::new(3, 1),
+			FieldCell::new(3, 2),
+			FieldCell::new(3, 3),
+			FieldCell::new(3, 4),
+			FieldCell::new(4, 5),
+			FieldCell::new(4, 6),
+			FieldCell::new(4, 7),
+			FieldCell::new(4, 8),
+			FieldCell::new(4, 9),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_pos_gradient() {
+		let source = FieldCell::new(3, 4);
+		let target = FieldCell::new(7, 6);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(3, 4),
+			FieldCell::new(4, 4),
+			FieldCell::new(5, 5),
+			FieldCell::new(6, 5),
+			FieldCell::new(7, 6),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_pos_gradient_reverse() {
+		let source = FieldCell::new(7, 6);
+		let target = FieldCell::new(3, 4);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(7, 6),
+			FieldCell::new(6, 5),
+			FieldCell::new(5, 5),
+			FieldCell::new(4, 4),
+			FieldCell::new(3, 4),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_neg_gradient() {
+		let source = FieldCell::new(3, 4);
+		let target = FieldCell::new(7, 2);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(3, 4),
+			FieldCell::new(4, 4),
+			FieldCell::new(5, 3),
+			FieldCell::new(6, 3),
+			FieldCell::new(7, 2),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_neg_gradient_reverse() {
+		let source = FieldCell::new(7, 2);
+		let target = FieldCell::new(3, 4);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![
+			FieldCell::new(7, 2),
+			FieldCell::new(6, 3),
+			FieldCell::new(5, 3),
+			FieldCell::new(4, 4),
+			FieldCell::new(3, 4),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn field_cell_line_zero() {
+		let source = FieldCell::new(3, 4);
+		let target = FieldCell::new(3, 4);
+		let result = source.get_cells_between_points(&target);
+		let actual: Vec<FieldCell> = vec![FieldCell::new(3, 4)];
+		assert_eq!(actual, result);
 	}
 }

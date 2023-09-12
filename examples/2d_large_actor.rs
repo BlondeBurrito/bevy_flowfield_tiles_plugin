@@ -60,12 +60,14 @@ struct Actor;
 struct Pathing {
 	source_sector: Option<SectorID>,
 	source_field_cell: Option<FieldCell>,
+	target_position: Option<Vec2>,
 	target_sector: Option<SectorID>,
 	target_goal: Option<FieldCell>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 	current_direction: Option<Vec2>,
 	/// Helps to steer the actor around corners when it is very close to an impassable field cell and reduces the likihood on tunneling
 	previous_direction: Option<Vec2>,
+	has_los: bool,
 }
 
 /// Dir and magnitude of actor movement
@@ -199,6 +201,7 @@ fn user_input(
 				// update the actor pathing
 				pathing.source_sector = Some(source_sector_id);
 				pathing.source_field_cell = Some(source_field_cell);
+				pathing.target_position = Some(world_position);
 				pathing.target_sector = Some(target_sector_id);
 				pathing.target_goal = Some(goal_id);
 				pathing.portal_route = None;
@@ -257,6 +260,13 @@ fn actor_steering(
 					if let Some(field) = flow_cache.get_field(*sector, *goal) {
 						// based on actor field cell find the directional vector it should move in
 						let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+						if has_line_of_sight(cell_value) {
+							pathing.has_los = true;
+							let dir =
+								pathing.target_position.unwrap() - tform.translation.truncate();
+							velocity.0 = dir.normalize() * SPEED * time_step.period.as_secs_f32();
+							break 'routes;
+						}
 						let dir = get_2d_direction_unit_vector_from_bits(cell_value);
 						if pathing.current_direction.is_none() {
 							pathing.current_direction = Some(dir);
@@ -355,22 +365,24 @@ fn update_sprite_visuals_based_on_actor(
 }
 /// Get the asset path to ordinal icons
 fn get_ord_icon(value: u8) -> String {
-	// temp
-	if value == 64 {
-		return String::from("ordinal_icons/goal.png");
-	}
-	//
-	let ordinal = get_ordinal_from_bits(value);
-	match ordinal {
-		Ordinal::North => String::from("ordinal_icons/north.png"),
-		Ordinal::East => String::from("ordinal_icons/east.png"),
-		Ordinal::South => String::from("ordinal_icons/south.png"),
-		Ordinal::West => String::from("ordinal_icons/west.png"),
-		Ordinal::NorthEast => String::from("ordinal_icons/north_east.png"),
-		Ordinal::SouthEast => String::from("ordinal_icons/south_east.png"),
-		Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
-		Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
-		Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
+	if is_goal(value) {
+		String::from("ordinal_icons/goal.png")
+	} else if has_line_of_sight(value) {
+		String::from("ordinal_icons/los.png")
+	} else {
+		//
+		let ordinal = get_ordinal_from_bits(value);
+		match ordinal {
+			Ordinal::North => String::from("ordinal_icons/north.png"),
+			Ordinal::East => String::from("ordinal_icons/east.png"),
+			Ordinal::South => String::from("ordinal_icons/south.png"),
+			Ordinal::West => String::from("ordinal_icons/west.png"),
+			Ordinal::NorthEast => String::from("ordinal_icons/north_east.png"),
+			Ordinal::SouthEast => String::from("ordinal_icons/south_east.png"),
+			Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
+			Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
+			Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
+		}
 	}
 }
 
