@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2023-09-12
+
+### Features
+
+- [**breaking**] Scale impassable cells to close gaps too small for large actor pathing (#32)
+
+Added actor_scale factor to grow the baseline CostFields so that a very wide actor cannot retrieve any FlowFields which would guide them through a narrow gap between 255 impassable cells that's smaller than they are
+
+- Impl line of sight bit flag (#33)
+
+Added a line of sight calculation in the target sector of a PathRequest marking cells that have an unobstructed direct path to the goal. For any FieldCell where the LOS bit flag has been toggled an actor can abandon following the FlowField and move in a direct vector to the goal
+
+
+### Refactor
+
+- 2d examples make use of colliders and increased timestep (#31)
+
+2d examples have a primitive collider system - this allows for an increased timestep to be used to control actor movement and allowing for more fluid examples
+
+
 ## [0.3.0] - 2023-08-27
 
 ### Bug Fixes
