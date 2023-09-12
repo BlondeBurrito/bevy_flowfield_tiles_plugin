@@ -26,6 +26,7 @@ fn main() {
 				setup_navigation,
 				create_wall_colliders,
 				create_fps_counter,
+				create_actor_counter,
 			),
 		)
 		.add_systems(
@@ -35,6 +36,7 @@ fn main() {
 				spawn_actors,
 				despawn_at_destination,
 				update_fps_counter,
+				update_actor_counter,
 			),
 		)
 		.add_systems(
@@ -278,8 +280,10 @@ fn actor_steering(
 				// this ensures it doesn't use a previous goal from
 				// a sector it has already been through when it needs
 				// to pass through it again as part of a different part of the route
-				if curr_actor_sector != route.first().unwrap().0 {
-					// route.remove(0);
+				if let Some(f) = route.first() {
+					if curr_actor_sector != f.0 {
+						// route.remove(0);
+					}
 				}
 				// lookup the relevant sector-goal of this sector
 				'routes: for (sector, goal) in route.iter() {
@@ -294,6 +298,7 @@ fn actor_steering(
 									pathing.target_position.unwrap() - tform.translation.truncate();
 								velocity.0 =
 									dir.normalize() * SPEED * time_step.period.as_secs_f32();
+								// pathing.previous_direction = Some(-dir.normalize());
 								break 'routes;
 							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
@@ -458,7 +463,10 @@ fn collision_detection(
 							}
 						}
 						Collision::Inside => {
-							velocity.0 *= -1.0;
+							// velocity.0 *= -1.0;
+							if let Some(dir) = pathing.previous_direction {
+								velocity.0 = dir * SPEED * time_step.period.as_secs_f32() * 3.0;
+							}
 						}
 					}
 				}
@@ -466,6 +474,10 @@ fn collision_detection(
 		}
 	}
 }
+
+/// Label the FPS counter
+#[derive(Component)]
+struct FPSCounter;
 
 /// Create an FPS ui element to provide feedback
 fn create_fps_counter(mut cmds: Commands) {
@@ -483,15 +495,56 @@ fn create_fps_counter(mut cmds: Commands) {
 			color: Color::WHITE,
 			..default()
 		}),
-	]));
+	]))
+	.insert(FPSCounter);
 }
 
 /// Updates the FPS field ech tick
-fn update_fps_counter(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text>) {
+fn update_fps_counter(
+	diagnostics: Res<DiagnosticsStore>,
+	mut query: Query<&mut Text, (With<FPSCounter>, Without<ActorCounter>)>,
+) {
 	let mut text = query.single_mut();
 	if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
 		if let Some(val) = fps.average() {
 			text.sections[1].value = format!("{val:.2}");
 		}
 	}
+}
+
+/// Label the FPS counter
+#[derive(Component)]
+struct ActorCounter;
+
+/// Create an FPS ui element to provide feedback
+fn create_actor_counter(mut cmds: Commands) {
+	cmds.spawn(TextBundle::from_sections([
+		TextSection::new(
+			"Actors: ",
+			TextStyle {
+				font_size: 30.0,
+				color: Color::WHITE,
+				..default()
+			},
+		),
+		TextSection::from_style(TextStyle {
+			font_size: 30.0,
+			color: Color::WHITE,
+			..default()
+		}),
+	]))
+	.insert(ActorCounter);
+}
+
+/// Updates the FPS field ech tick
+fn update_actor_counter(
+	actors: Query<&Actor>,
+	mut query: Query<&mut Text, (With<ActorCounter>, Without<FPSCounter>)>,
+) {
+	let mut text = query.single_mut();
+	let mut actor_count = 0;
+	for _ in actors.iter() {
+		actor_count += 1;
+	}
+	text.sections[1].value = format!("{actor_count:.2}");
 }

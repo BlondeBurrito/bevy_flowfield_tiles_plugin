@@ -174,12 +174,13 @@ impl FlowField {
 				let start_cell = FieldCell::new(i, j);
 				let path = start_cell.get_cells_between_points(&los_goals[0]);
 				let mut has_los = true;
-				for cell in path.iter() {
+				'cells: for cell in path.iter() {
 					let blocked_diagonals = find_blocked_diagonals(*cell, int_field);
 					if int_field.get_field_cell_value(*cell) == u16::MAX
 						|| !blocked_diagonals.is_empty()
 					{
 						has_los = false;
+						break 'cells;
 					}
 				}
 				if has_los {
