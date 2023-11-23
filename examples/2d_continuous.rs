@@ -1,6 +1,8 @@
 //! Generates a 30x30 world and endlessly spawns actors with randomised destinations
 //!
 
+use std::time::Duration;
+
 use bevy::{
 	diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
 	prelude::*,
@@ -17,7 +19,9 @@ const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 fn main() {
 	App::new()
 		.add_plugins((DefaultPlugins, FrameTimeDiagnosticsPlugin))
-		.insert_resource(FixedTime::new_from_secs(ACTOR_TIMESTEP))
+		.insert_resource(Time::<Fixed>::from_duration(Duration::from_secs_f32(
+			ACTOR_TIMESTEP,
+		)))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(
 			Startup,
@@ -25,8 +29,7 @@ fn main() {
 				setup_visualisation,
 				setup_navigation,
 				create_wall_colliders,
-				create_fps_counter,
-				create_actor_counter,
+				create_counters,
 			),
 		)
 		.add_systems(
@@ -265,7 +268,7 @@ const SPEED: f32 = 250.0;
 fn actor_steering(
 	mut actor_q: Query<(&mut Velocity, &mut Transform, &mut Pathing), With<Actor>>,
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
-	time_step: Res<FixedTime>,
+	time_step: Res<Time>,
 ) {
 	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 	for (mut velocity, tform, mut pathing) in actor_q.iter_mut() {
@@ -296,8 +299,7 @@ fn actor_steering(
 								pathing.has_los = true;
 								let dir =
 									pathing.target_position.unwrap() - tform.translation.truncate();
-								velocity.0 =
-									dir.normalize() * SPEED * time_step.period.as_secs_f32();
+								velocity.0 = dir.normalize() * SPEED * time_step.delta_seconds();
 								// pathing.previous_direction = Some(-dir.normalize());
 								break 'routes;
 							}
@@ -308,7 +310,7 @@ fn actor_steering(
 								pathing.previous_direction = pathing.current_direction;
 								pathing.current_direction = Some(dir);
 							}
-							velocity.0 = dir * SPEED * time_step.period.as_secs_f32();
+							velocity.0 = dir * SPEED * time_step.delta_seconds();
 						}
 						break 'routes;
 					}
@@ -422,7 +424,7 @@ fn collision_detection(
 	actor_child_q: Query<&Transform>,
 	static_colliders: Query<(&Parent, &Transform), With<Collider>>,
 	parent_colliders: Query<&Transform>,
-	time_step: Res<FixedTime>,
+	time_step: Res<Time>,
 ) {
 	for (mut velocity, actor_tform, children, pathing) in actor_q.iter_mut() {
 		for (parent, child_collider_tform) in static_colliders.iter() {
@@ -441,31 +443,31 @@ fn collision_detection(
 						Collision::Left => {
 							velocity.0.x *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0.y = dir.y * SPEED * time_step.period.as_secs_f32() * 2.0;
+								velocity.0.y = dir.y * SPEED * time_step.delta_seconds() * 2.0;
 							}
 						}
 						Collision::Right => {
 							velocity.0.x *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0.y = dir.y * SPEED * time_step.period.as_secs_f32() * 2.0;
+								velocity.0.y = dir.y * SPEED * time_step.delta_seconds() * 2.0;
 							}
 						}
 						Collision::Top => {
 							velocity.0.y *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;
+								velocity.0.x = dir.x * SPEED * time_step.delta_seconds() * 2.0;
 							}
 						}
 						Collision::Bottom => {
 							velocity.0.y *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;
+								velocity.0.x = dir.x * SPEED * time_step.delta_seconds() * 2.0;
 							}
 						}
 						Collision::Inside => {
 							// velocity.0 *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0 = dir * SPEED * time_step.period.as_secs_f32() * 3.0;
+								velocity.0 = dir * SPEED * time_step.delta_seconds() * 3.0;
 							}
 						}
 					}
@@ -479,24 +481,57 @@ fn collision_detection(
 #[derive(Component)]
 struct FPSCounter;
 
-/// Create an FPS ui element to provide feedback
-fn create_fps_counter(mut cmds: Commands) {
-	cmds.spawn(TextBundle::from_sections([
-		TextSection::new(
-			"FPS: ",
-			TextStyle {
-				font_size: 30.0,
-				color: Color::WHITE,
-				..default()
-			},
-		),
-		TextSection::from_style(TextStyle {
-			font_size: 30.0,
-			color: Color::WHITE,
+/// Label the FPS counter
+#[derive(Component)]
+struct ActorCounter;
+
+/// Create UI counters to measure the FPS and number of actors
+fn create_counters(mut cmds: Commands) {
+	cmds.spawn(NodeBundle {
+		style: Style {
+			flex_direction: FlexDirection::Column,
 			..default()
-		}),
-	]))
-	.insert(FPSCounter);
+		},
+		..default()
+	})
+	.with_children(|p| {
+		p.spawn(NodeBundle::default()).with_children(|p| {
+			p.spawn(TextBundle::from_sections([
+				TextSection::new(
+					"FPS: ",
+					TextStyle {
+						font_size: 30.0,
+						color: Color::WHITE,
+						..default()
+					},
+				),
+				TextSection::from_style(TextStyle {
+					font_size: 30.0,
+					color: Color::WHITE,
+					..default()
+				}),
+			]))
+			.insert(FPSCounter);
+		});
+		p.spawn(NodeBundle::default()).with_children(|p| {
+			p.spawn(TextBundle::from_sections([
+				TextSection::new(
+					"Actors: ",
+					TextStyle {
+						font_size: 30.0,
+						color: Color::WHITE,
+						..default()
+					},
+				),
+				TextSection::from_style(TextStyle {
+					font_size: 30.0,
+					color: Color::WHITE,
+					..default()
+				}),
+			]))
+			.insert(ActorCounter);
+		});
+	});
 }
 
 /// Updates the FPS field ech tick
@@ -510,30 +545,6 @@ fn update_fps_counter(
 			text.sections[1].value = format!("{val:.2}");
 		}
 	}
-}
-
-/// Label the FPS counter
-#[derive(Component)]
-struct ActorCounter;
-
-/// Create an FPS ui element to provide feedback
-fn create_actor_counter(mut cmds: Commands) {
-	cmds.spawn(TextBundle::from_sections([
-		TextSection::new(
-			"Actors: ",
-			TextStyle {
-				font_size: 30.0,
-				color: Color::WHITE,
-				..default()
-			},
-		),
-		TextSection::from_style(TextStyle {
-			font_size: 30.0,
-			color: Color::WHITE,
-			..default()
-		}),
-	]))
-	.insert(ActorCounter);
 }
 
 /// Updates the FPS field ech tick

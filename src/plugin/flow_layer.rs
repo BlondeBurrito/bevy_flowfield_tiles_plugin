@@ -46,7 +46,7 @@ pub fn handle_path_requests(
 	)>,
 	time: Res<Time>,
 ) {
-	for event in events.iter() {
+	for event in events.read() {
 		for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut() {
 			//TODO maybe reinstate this after benchmarking - means less accurate route due to reuse but better perf
 			// // only run if the cache doesn't contain the route already

@@ -1,6 +1,8 @@
 //! Loads a 3d model with an actor represented by a blue sphere which can be moved with right click
 //!
 
+use std::time::Duration;
+
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
 /// Timestep of actor movement system
@@ -17,11 +19,13 @@ const ACTOR_SIZE: f32 = 0.5;
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
-		.insert_resource(FixedTime::new_from_secs(ACTOR_TIMESTEP))
+		.insert_resource(Time::<Fixed>::from_duration(Duration::from_secs_f32(
+			ACTOR_TIMESTEP,
+		)))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(Startup, (setup_visualisation, setup_navigation))
 		.add_systems(Update, (user_input, actor_update_route))
-		.add_systems(FixedUpdate, actor_steering)
+		.add_systems(FixedUpdate, (actor_steering, apply_velocity).chain())
 		.run();
 }
 
@@ -36,9 +40,11 @@ struct Actor;
 struct Pathing {
 	source_sector: Option<SectorID>,
 	source_field_cell: Option<FieldCell>,
+	target_position: Option<Vec3>,
 	target_sector: Option<SectorID>,
 	target_goal: Option<FieldCell>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
+	has_los: bool,
 }
 
 /// Spawn the map
@@ -62,6 +68,10 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		..default()
 	});
 }
+
+/// Dir and magnitude of actor movement
+#[derive(Component, Default)]
+struct Velocity(Vec3);
 
 /// Spawn navigation related entities
 fn setup_navigation(
@@ -94,6 +104,7 @@ fn setup_navigation(
 		..default()
 	})
 	.insert(Actor)
+	.insert(Velocity::default())
 	.insert(Pathing::default());
 }
 
@@ -145,6 +156,7 @@ fn user_input(
 				// update the actor pathing
 				pathing.source_sector = Some(source_sector_id);
 				pathing.source_field_cell = Some(source_field_cell);
+				pathing.target_position = Some(world_position);
 				pathing.target_sector = Some(target_sector_id);
 				pathing.target_goal = Some(goal_id);
 				pathing.portal_route = None;
@@ -174,10 +186,10 @@ const SPEED: f32 = 1.0;
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
 fn actor_steering(
-	mut actor_q: Query<(&mut Transform, &mut Pathing), With<Actor>>,
+	mut actor_q: Query<(&mut Velocity, &mut Transform, &mut Pathing), With<Actor>>,
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
 ) {
-	let (mut tform, mut pathing) = actor_q.get_single_mut().unwrap();
+	let (mut velocity, tform, mut pathing) = actor_q.get_single_mut().unwrap();
 	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 
 	if pathing.target_goal.is_some() {
@@ -202,16 +214,28 @@ fn actor_steering(
 					if let Some(field) = flow_cache.get_field(*sector, *goal) {
 						// based on actor field cell find the directional vector it should move in
 						let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+						if has_line_of_sight(cell_value) {
+							pathing.has_los = true;
+							let mut dir = pathing.target_position.unwrap() - tform.translation;
+							dir.y = 0.0;
+							velocity.0 = dir.normalize() * SPEED;
+							break 'routes;
+						}
 						let dir = get_3d_direction_unit_vector_from_bits(cell_value);
 						// info!("In sector {:?}, in field cell {:?}", sector, curr_actor_field_cell);
 						// info!("Direction to move: {}", dir);
-						let velocity = dir * SPEED;
-						// move the actor based on the velocity
-						tform.translation += velocity;
+						velocity.0 = dir * SPEED;
 					}
 					break 'routes;
 				}
 			}
 		}
+	}
+}
+
+/// Move the actor
+fn apply_velocity(mut actor_q: Query<(&Velocity, &mut Transform), With<Actor>>) {
+	for (velocity, mut tform) in actor_q.iter_mut() {
+		tform.translation += velocity.0;
 	}
 }
