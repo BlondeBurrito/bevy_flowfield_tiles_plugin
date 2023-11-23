@@ -27,7 +27,8 @@ fn main() {
 			(setup_visualisation, setup_navigation, create_wall_colliders),
 		)
 		.add_systems(Update, (user_input, actor_update_route))
-		.add_systems(Update, (update_sprite_visuals_based_on_actor,))
+		//TODO this system is updating sprite textures wrong, black boxes over tiles
+		// .add_systems(Update, (update_sprite_visuals_based_on_actor,))
 		.add_systems(
 			FixedUpdate,
 			(actor_steering, collision_detection, apply_velocity).chain(),
