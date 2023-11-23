@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2023-11-23
+
+### Features
+
+- Updating to bevy 0.12 and prepare 0.5.0 release (#40)
+
+
+
+
 ## [0.4.0] - 2023-09-12
 
 ### Features
