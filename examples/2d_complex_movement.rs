@@ -1,7 +1,7 @@
 //! Generates a 30x30 world where an actor can be told to move through a narrow snake-like path
 //!
 //TODO visualisation creates impassable blocks when route goes back on self
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use bevy::{
 	prelude::*,
