@@ -1,7 +1,7 @@
 //! Generates a 30x30 world where a large actor demonstrates restricted navigation
 //!
 
-use std::{collections::HashMap, f32::consts::PI};
+use std::{collections::HashMap, f32::consts::PI, time::Duration};
 
 use bevy::{
 	prelude::*,
@@ -20,7 +20,9 @@ const ACTOR_SIZE: f32 = 96.0;
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
-		.insert_resource(FixedTime::new_from_secs(ACTOR_TIMESTEP))
+		.insert_resource(Time::<Fixed>::from_duration(Duration::from_secs_f32(
+			ACTOR_TIMESTEP,
+		)))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(
 			Startup,
@@ -233,7 +235,7 @@ const SPEED: f32 = 250.0;
 fn actor_steering(
 	mut actor_q: Query<(&mut Velocity, &mut Transform, &mut Pathing), With<Actor>>,
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
-	time_step: Res<FixedTime>,
+	time_step: Res<Time>,
 ) {
 	let (mut velocity, tform, mut pathing) = actor_q.get_single_mut().unwrap();
 	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
@@ -264,7 +266,7 @@ fn actor_steering(
 							pathing.has_los = true;
 							let dir =
 								pathing.target_position.unwrap() - tform.translation.truncate();
-							velocity.0 = dir.normalize() * SPEED * time_step.period.as_secs_f32();
+							velocity.0 = dir.normalize() * SPEED * time_step.delta_seconds();
 							break 'routes;
 						}
 						let dir = get_2d_direction_unit_vector_from_bits(cell_value);
@@ -274,7 +276,7 @@ fn actor_steering(
 							pathing.previous_direction = pathing.current_direction;
 							pathing.current_direction = Some(dir);
 						}
-						velocity.0 = dir * SPEED * time_step.period.as_secs_f32();
+						velocity.0 = dir * SPEED * time_step.delta_seconds();
 					}
 					break 'routes;
 				}
@@ -449,7 +451,7 @@ fn collision_detection(
 	actor_child_q: Query<&Transform>,
 	static_colliders: Query<(&Parent, &Transform), With<Collider>>,
 	parent_colliders: Query<&Transform>,
-	time_step: Res<FixedTime>,
+	time_step: Res<Time>,
 ) {
 	for (mut velocity, actor_tform, children, pathing) in actor_q.iter_mut() {
 		for (parent, child_collider_tform) in static_colliders.iter() {
@@ -468,26 +470,26 @@ fn collision_detection(
 						Collision::Left => {
 							velocity.0.x *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0.y = dir.y * SPEED * time_step.period.as_secs_f32() * 2.0;
+								velocity.0.y = dir.y * SPEED * time_step.delta_seconds() * 2.0;
 							}
 						}
 						Collision::Right => {
 							velocity.0.x *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0.y = dir.y * SPEED * time_step.period.as_secs_f32() * 2.0;
+								velocity.0.y = dir.y * SPEED * time_step.delta_seconds() * 2.0;
 							}
 						}
 						Collision::Top => {
 							velocity.0.y *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;
+								velocity.0.x = dir.x * SPEED * time_step.delta_seconds() * 2.0;
 							}
 						}
 						Collision::Bottom => {
 							info!("{:?}", collision);
 							velocity.0.y *= -1.0;
 							if let Some(dir) = pathing.previous_direction {
-								velocity.0.x = dir.x * SPEED * time_step.period.as_secs_f32() * 2.0;
+								velocity.0.x = dir.x * SPEED * time_step.delta_seconds() * 2.0;
 							}
 						}
 						Collision::Inside => {

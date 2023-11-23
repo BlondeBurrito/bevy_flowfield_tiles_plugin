@@ -55,7 +55,7 @@ pub fn process_costfields_updates(
 ) {
 	// coalesce events to avoid processing duplicates
 	let mut coalesced_sectors = Vec::new();
-	for event in events.iter() {
+	for event in events.read() {
 		let field_cell = event.get_cell();
 		let sector_id = event.get_sector();
 		let cost = event.get_cost_value();
@@ -99,7 +99,7 @@ pub fn clean_cache(
 	// mut event_path_request: EventWriter<EventPathRequest>,
 ) {
 	let mut sectors = Vec::new();
-	for event in events.iter() {
+	for event in events.read() {
 		sectors.push(event.0);
 	}
 	if !sectors.is_empty() {
