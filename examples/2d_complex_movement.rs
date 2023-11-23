@@ -291,74 +291,74 @@ fn get_basic_icon(value: u8) -> String {
 	}
 }
 
-/// Whenever the actor has a path assigned attempt to get the current flowfield and update all the map sprites to visualise the directions of flow
-fn update_sprite_visuals_based_on_actor(
-	actor_q: Query<&Pathing, With<Actor>>,
-	flowfield_q: Query<&FlowFieldCache>,
-	costfield_q: Query<&SectorCostFields>,
-	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel, &SectorLabel)>,
-	asset_server: Res<AssetServer>,
-) {
-	let f_cache = flowfield_q.get_single().unwrap();
-	let sc_cache = costfield_q.get_single().unwrap();
-	let pathing = actor_q.get_single().unwrap();
-	if let Some(route) = &pathing.portal_route {
-		let mut route_map: HashMap<SectorID, FieldCell> = HashMap::new();
-		for (s, g) in route.iter() {
-			route_map.insert(*s, *g);
-		}
-		for (mut handle, field_cell_label, sector_label) in field_cell_q.iter_mut() {
-			// look for the value in the route_map if it's part of the flow, otherwise use the cost field
-			if route_map.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
-				let goal = route_map
-					.get(&SectorID::new(sector_label.0, sector_label.1))
-					.unwrap();
-				if let Some(flowfield) =
-					f_cache.get_field(SectorID::new(sector_label.0, sector_label.1), *goal)
-				{
-					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
-						field_cell_label.0,
-						field_cell_label.1,
-					));
-					let icon = get_ord_icon(flow_value);
-					let new_handle: Handle<Image> = asset_server.load(icon);
-					*handle = new_handle;
-				}
-			} else {
-				let value = sc_cache
-					.get_baseline()
-					.get(&SectorID::new(sector_label.0, sector_label.1))
-					.unwrap()
-					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
-				let icon = get_basic_icon(value);
-				let new_handle: Handle<Image> = asset_server.load(icon);
-				*handle = new_handle;
-			}
-		}
-	}
-}
-/// Get the asset path to ordinal icons
-fn get_ord_icon(value: u8) -> String {
-	if is_goal(value) {
-		String::from("ordinal_icons/goal.png")
-	} else if has_line_of_sight(value) {
-		String::from("ordinal_icons/los.png")
-	} else {
-		//
-		let ordinal = get_ordinal_from_bits(value);
-		match ordinal {
-			Ordinal::North => String::from("ordinal_icons/north.png"),
-			Ordinal::East => String::from("ordinal_icons/east.png"),
-			Ordinal::South => String::from("ordinal_icons/south.png"),
-			Ordinal::West => String::from("ordinal_icons/west.png"),
-			Ordinal::NorthEast => String::from("ordinal_icons/north_east.png"),
-			Ordinal::SouthEast => String::from("ordinal_icons/south_east.png"),
-			Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
-			Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
-			Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
-		}
-	}
-}
+// /// Whenever the actor has a path assigned attempt to get the current flowfield and update all the map sprites to visualise the directions of flow
+// fn update_sprite_visuals_based_on_actor(
+// 	actor_q: Query<&Pathing, With<Actor>>,
+// 	flowfield_q: Query<&FlowFieldCache>,
+// 	costfield_q: Query<&SectorCostFields>,
+// 	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel, &SectorLabel)>,
+// 	asset_server: Res<AssetServer>,
+// ) {
+// 	let f_cache = flowfield_q.get_single().unwrap();
+// 	let sc_cache = costfield_q.get_single().unwrap();
+// 	let pathing = actor_q.get_single().unwrap();
+// 	if let Some(route) = &pathing.portal_route {
+// 		let mut route_map: HashMap<SectorID, FieldCell> = HashMap::new();
+// 		for (s, g) in route.iter() {
+// 			route_map.insert(*s, *g);
+// 		}
+// 		for (mut handle, field_cell_label, sector_label) in field_cell_q.iter_mut() {
+// 			// look for the value in the route_map if it's part of the flow, otherwise use the cost field
+// 			if route_map.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
+// 				let goal = route_map
+// 					.get(&SectorID::new(sector_label.0, sector_label.1))
+// 					.unwrap();
+// 				if let Some(flowfield) =
+// 					f_cache.get_field(SectorID::new(sector_label.0, sector_label.1), *goal)
+// 				{
+// 					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
+// 						field_cell_label.0,
+// 						field_cell_label.1,
+// 					));
+// 					let icon = get_ord_icon(flow_value);
+// 					let new_handle: Handle<Image> = asset_server.load(icon);
+// 					*handle = new_handle;
+// 				}
+// 			} else {
+// 				let value = sc_cache
+// 					.get_baseline()
+// 					.get(&SectorID::new(sector_label.0, sector_label.1))
+// 					.unwrap()
+// 					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
+// 				let icon = get_basic_icon(value);
+// 				let new_handle: Handle<Image> = asset_server.load(icon);
+// 				*handle = new_handle;
+// 			}
+// 		}
+// 	}
+// }
+// /// Get the asset path to ordinal icons
+// fn get_ord_icon(value: u8) -> String {
+// 	if is_goal(value) {
+// 		String::from("ordinal_icons/goal.png")
+// 	} else if has_line_of_sight(value) {
+// 		String::from("ordinal_icons/los.png")
+// 	} else {
+// 		//
+// 		let ordinal = get_ordinal_from_bits(value);
+// 		match ordinal {
+// 			Ordinal::North => String::from("ordinal_icons/north.png"),
+// 			Ordinal::East => String::from("ordinal_icons/east.png"),
+// 			Ordinal::South => String::from("ordinal_icons/south.png"),
+// 			Ordinal::West => String::from("ordinal_icons/west.png"),
+// 			Ordinal::NorthEast => String::from("ordinal_icons/north_east.png"),
+// 			Ordinal::SouthEast => String::from("ordinal_icons/south_east.png"),
+// 			Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
+// 			Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
+// 			Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
+// 		}
+// 	}
+// }
 
 /// Added to entities that should block actors
 #[derive(Component)]
