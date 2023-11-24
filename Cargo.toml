@@ -15,6 +15,7 @@ exclude = [".github/", "crates/", "assets/", "docs/png/", "justfile"]
 members = ["crates/*"]
 exclude = ["crates/examples_utils"]
 
+
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
 bevy = { version = "0.12", default-features = false }
@@ -22,6 +23,12 @@ petgraph = "0.6"
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
 csv = { version = "1" }
+
+[workspace.lints.clippy]
+cargo_common_metadata = "deny"
+missing_docs_in_private_items = "deny"
+todo = "deny"
+unimplemented = "warn"
 
 [package]
 name = "bevy_flowfield_tiles_plugin"
@@ -51,6 +58,9 @@ petgraph = { workspace = true }
 serde = { workspace = true, optional = true}
 ron = { workspace = true, optional = true}
 csv = { workspace = true, optional = true}
+
+[lints]
+workspace = true
 
 [features]
 serde = ["dep:serde", "petgraph/serde-1"]
