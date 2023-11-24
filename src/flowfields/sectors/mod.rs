@@ -539,16 +539,18 @@ mod tests {
 		assert_eq!(actual_sector, result.0);
 		assert_eq!(actual_field, result.1);
 	}
-	// #[test]
-	// fn sector_fieldcell_id_from_xyz() {
-	// 	let map_dimensions = MapDimensions::new(300, 300, 100, 1.0);
-	// 	let position = Vec3::new(0.0, 0.0, 0.0);
-	// 	let result = map_dimensions
-	// 		.get_sector_and_field_cell_from_xyz(position)
-	// 		.unwrap();
-	// 	let actual = FieldCell::new(5, 5);
-	// 	assert_eq!(actual, result.1);
-	// }
+	#[test]
+	fn sector_fieldcell_id_from_xyz_large() {
+		let map_dimensions = MapDimensions::new(290, 290, 290, 1.0);
+		let position = Vec3::new(0.0, 0.0, 0.0);
+		let result = map_dimensions
+			.get_sector_and_field_cell_from_xyz(position)
+			.unwrap();
+		let actual_sector = SectorID::new(0, 0);
+		let actual_field = FieldCell::new(5, 5);
+		assert_eq!(actual_sector, result.0);
+		assert_eq!(actual_field, result.1);
+	}
 	#[test]
 	fn sector_from_xy_none() {
 		let map_dimensions = MapDimensions::new(1280, 1280, 640, 16.0);
