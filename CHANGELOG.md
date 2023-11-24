@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2023-11-24
+
+### Bug Fixes
+
+- Added ratio in feature 3d to convert Vec3 into sector and field (column, row) (#43)
+
+
+
+
 ## [0.5.0] - 2023-11-23
 
 ### Features
