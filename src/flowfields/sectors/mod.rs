@@ -350,8 +350,12 @@ impl MapDimensions {
 	) -> Option<(SectorID, FieldCell)> {
 		if let Some(sector_id) = self.get_sector_id_from_xyz(position) {
 			let sector_corner_origin = self.get_sector_corner_xyz(sector_id);
-			let field_id_0 = (position.x - sector_corner_origin.x).floor() as usize;
-			let field_id_1 = (position.z - sector_corner_origin.z).floor() as usize;
+			let resolution_by_field_dimension =
+				(self.get_sector_resolution() / FIELD_RESOLUTION as u32) as f32;
+			let field_id_0 = ((position.x - sector_corner_origin.x) / resolution_by_field_dimension)
+				.floor() as usize;
+			let field_id_1 = ((position.z - sector_corner_origin.z) / resolution_by_field_dimension)
+				.floor() as usize;
 			let field_id = FieldCell::new(field_id_0, field_id_1);
 			return Some((sector_id, field_id));
 		}
@@ -512,6 +516,16 @@ mod tests {
 		let result = map_dimensions.get_sector_id_from_xyz(position).unwrap();
 		let actual: SectorID = SectorID::new(0, 1);
 		assert_eq!(actual, result);
+	}
+	#[test]
+	fn sector_fieldcell_if_from_xyz() {
+		let map_dimensions = MapDimensions::new(300, 300, 100, 1.0);
+		let position = Vec3::new(0.0, 0.0, 0.0);
+		let result = map_dimensions
+			.get_sector_and_field_cell_from_xyz(position)
+			.unwrap();
+		let actual = FieldCell::new(5, 5);
+		assert_eq!(actual, result.1);
 	}
 	#[test]
 	fn sector_from_xy_none() {
