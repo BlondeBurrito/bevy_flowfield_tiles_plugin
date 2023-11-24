@@ -8,3 +8,5 @@ publish = false
 [dependencies]
 bevy = { version = "0.11", default-features = false }
 
+[lints]
+workspace = true
