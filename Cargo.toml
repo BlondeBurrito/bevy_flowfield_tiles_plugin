@@ -2,7 +2,7 @@
 version = "0.5.1"
 authors = ["BlondeBurrito"]
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.74"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
