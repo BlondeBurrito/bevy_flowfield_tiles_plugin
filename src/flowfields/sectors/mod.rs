@@ -49,19 +49,24 @@ pub struct MapDimensions {
 	size: (u32, u32),
 	/// The factor by which the `size` of world will be divided by to produce
 	/// the number of sectors. The world dimensions must be perfectly divisible
-	/// by this number.
+	/// by this number. This indicates the number of sectors and the amount of
+	/// distance between individual cells within the Fields of each Sector.
 	///
 	/// ## In 3d
 	///
 	/// This is the number of units that define a sector.
 	///
 	/// For a world size of `(30, 30)` and resolution `10` then there will be
-	/// `3x3` sectors created where each field within a sector represents a
-	/// `1x1` unit area in 3d space.
+	/// `3x3` sectors created. All Fields within a secgtor are sized `10x10`
+	/// so this tells us that the distance between each orthogonal-adjacent
+	/// cell in a field is `1`, and so each cell represents a `1x1` unit area
+	/// in 3d space.
 	///
 	/// For a world size of `(30, 30)` and resolution `3` then there will be
-	/// `10x10` sectors created where each field within a sector represents a
-	/// `0.3x0.3` unit area in 3d space.
+	/// `10x10` sectors created. All Fields within a secgtor are sized `10x10`
+	/// so this tells us that the distance between each orthogonal-adjacent
+	/// cell in a field is `0.3`, and so each cell represents a `0.3x0.3` unit
+	/// area in 3d space.
 	///
 	/// ## In 2d
 	///
