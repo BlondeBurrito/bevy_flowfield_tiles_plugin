@@ -168,7 +168,7 @@ Generating the fields for this path programmatically leads to:
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/generated_int_fields.png" alt="gif" width="75%"/>
 
-Notice that we don't bother generating the fields for sectors the actor doesn't need to path through. Also a Portal represents the midpoint of a traversable sector boundary, when generating the field we expand the portal to cover its entire segment - this increases efficiency so that an actor can more directly approach its goal rather than zig-zagging to points.
+Notice that we don't bother generating the fields for sectors the actor doesn't need to path through. Also a Portal represents the midpoint of a traversable sector boundary, when generating the field we expand the portal to cover its entire segment - this increases efficiency so that an actor can more directly approach its goal rather than zig-zagging to portal boundary points.
 
 From the `IntegrationFields` we can now build the final set of fields - `FlowFields`
 
@@ -207,7 +207,7 @@ Using the `IntegrationFields` generated before, with an actor in the top right t
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/generated_flow_fields.png" alt="gff"/>
 
-The thinner porition of each cell icon indicates the flow direction. The actor runs along the flow lines leading to the goal.
+The thinner porition of each cell icon indicates the flow direction. The actor runs along the flow lines leading to the goal. This means for a group of actors they will flow towards the goal with a formation-like behaviour along the flow lines.
 
 </details>
 
