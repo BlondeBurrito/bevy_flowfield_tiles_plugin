@@ -538,6 +538,7 @@ mod tests {
 		let v = flow_field.get_field_cell_value(FieldCell::new(0, 0));
 		assert_eq!(BITS_DEFAULT, v);
 	}
+	/// Flowfield of a single sector, all far southern cells are goals, verify direct paths from top to bottom
 	#[test]
 	fn calculate_flow_target_south() {
 		let cost_field = CostField::default();
@@ -576,6 +577,7 @@ mod tests {
 			}
 		}
 	}
+	/// Flowfield of a single sector, all far western cells are goals, verify direct paths from right to left
 	#[test]
 	fn calculate_flow_target_west() {
 		let cost_field = CostField::default();
