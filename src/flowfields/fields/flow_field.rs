@@ -96,6 +96,8 @@ impl FlowField {
 					lookup_portal_goal_neighbour_costs_in_previous_sector(goal, prev_field, ord);
 				let mut cheapest_value = u16::MAX;
 				let mut cheapest_ord = None;
+				//TODO moving left to right around a wall can cause a bump north
+				//TODO if <=, bottom to top aorund a wall can cause a siddeways bump
 				for n in possible_neighbours.iter() {
 					if n.1 < cheapest_value {
 						cheapest_value = n.1;
