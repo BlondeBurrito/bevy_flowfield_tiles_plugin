@@ -175,9 +175,9 @@ impl FlowField {
 				let path = start_cell.get_cells_between_points(&los_goals[0]);
 				let mut has_los = true;
 				'cells: for cell in path.iter() {
-					let blocked_diagonals = find_blocked_diagonals(*cell, int_field);
+					let has_blocked_diag = has_blocked_diagonals(*cell, int_field);
 					if int_field.get_field_cell_value(*cell) == u16::MAX
-						|| !blocked_diagonals.is_empty()
+						|| has_blocked_diag
 					{
 						has_los = false;
 						break 'cells;
@@ -377,6 +377,62 @@ fn find_blocked_diagonals(
 		}
 	}
 	diagonals
+}
+
+/// Looks at the orthogonal neighbours of a [FieldCell], determines whether any pairs are impassable and returns true if a diagonal field cell is blocked
+fn has_blocked_diagonals(
+	field_cell: FieldCell,
+	integration_field: &IntegrationField,
+) -> bool {
+	if let Some(north) = Ordinal::get_cell_neighbour(field_cell, Ordinal::North) {
+		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
+			if integration_field.get_field_cell_value(north) == u16::MAX
+				&& integration_field.get_field_cell_value(east) == u16::MAX
+			{
+				if let Some(_) =
+					Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthEast)
+				{
+					return true
+				}
+			}
+		}
+		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
+			if integration_field.get_field_cell_value(north) == u16::MAX
+				&& integration_field.get_field_cell_value(west) == u16::MAX
+			{
+				if let Some(_) =
+					Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthWest)
+				{
+					return true
+				}
+			}
+		}
+	}
+	if let Some(south) = Ordinal::get_cell_neighbour(field_cell, Ordinal::South) {
+		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
+			if integration_field.get_field_cell_value(south) == u16::MAX
+				&& integration_field.get_field_cell_value(east) == u16::MAX
+			{
+				if let Some(_) =
+					Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthEast)
+				{
+					return true
+				}
+			}
+		}
+		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
+			if integration_field.get_field_cell_value(south) == u16::MAX
+				&& integration_field.get_field_cell_value(west) == u16::MAX
+			{
+				if let Some(_) =
+					Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthWest)
+				{
+					return true
+				}
+			}
+		}
+	}
+	false
 }
 
 //TODO? high level steering within this plugin??
