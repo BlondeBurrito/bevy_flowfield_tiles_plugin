@@ -27,18 +27,20 @@ pub enum Ordinal {
 impl Ordinal {
 	/// Based on a field cells `(column, row)` position find its neighbours based on FIELD_RESOLUTION limits (up to 4)
 	pub fn get_orthogonal_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
+		let row = cell_id.get_row();
+		let column = cell_id.get_column();
 		let mut neighbours = Vec::new();
-		if cell_id.get_row() > 0 {
-			neighbours.push(FieldCell::new(cell_id.get_column(), cell_id.get_row() - 1)); // northern cell coords
+		if row > 0 {
+			neighbours.push(FieldCell::new(column, row - 1)); // northern cell coords
 		}
-		if cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(cell_id.get_column() + 1, cell_id.get_row())); // eastern cell coords
+		if column < FIELD_RESOLUTION - 1 {
+			neighbours.push(FieldCell::new(column + 1, row)); // eastern cell coords
 		}
-		if cell_id.get_row() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(cell_id.get_column(), cell_id.get_row() + 1)); // southern cell coords
+		if row < FIELD_RESOLUTION - 1 {
+			neighbours.push(FieldCell::new(column, row + 1)); // southern cell coords
 		}
-		if cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(cell_id.get_column() - 1, cell_id.get_row())); // western cell coords
+		if column > 0 {
+			neighbours.push(FieldCell::new(column - 1, row)); // western cell coords
 		}
 		neighbours
 	}
