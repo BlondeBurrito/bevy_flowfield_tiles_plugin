@@ -106,7 +106,6 @@ impl CostField {
 }
 
 /// Recursively process the cells to see if there's a path
-#[inline(always)]
 fn process_neighbours(
 	target: FieldCell,
 	queue: Vec<FieldCell>,
