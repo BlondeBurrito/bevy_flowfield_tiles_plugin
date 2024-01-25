@@ -134,7 +134,7 @@ impl PortalGraph {
 					let visible_pairs_with_cost = Arc::clone(&visible_pairs_with_cost);
 					let handle = std::thread::spawn(move || {
 						let is_visible =
-						cost_field.can_internal_portal_pair_see_each_other_arc(source, target);
+						cost_field.can_internal_portal_pair_see_each_other(source, target);
 						if is_visible.0 {
 							let mut locked_list = visible_pairs_with_cost.lock().unwrap();
 							locked_list.push(((source, target), is_visible.1));
