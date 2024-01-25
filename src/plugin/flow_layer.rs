@@ -67,6 +67,14 @@ pub fn handle_path_requests(
 				if !path.is_empty() {
 					filter_path(&mut path, event.target_goal);
 				}
+				// don't insert a path that's already in the cache (otherwise it poiintlessly replaces it)
+				if let Some(existing_path) =
+					cache.get_route(event.source_sector, event.target_sector, event.target_goal)
+				{
+					if path == *existing_path {
+						continue;
+					}
+				}
 				cache.insert_route(
 					event.source_sector,
 					event.target_sector,
@@ -128,6 +136,8 @@ pub fn generate_flow_fields(
 	>,
 	time: Res<Time>,
 ) {
+	use std::sync::{Arc, Mutex};
+
 	for (mut field_cache, route_cache, sector_portals, sector_cost_fields_scaled, map_dimensions) in
 		cache_q.iter_mut()
 	{
