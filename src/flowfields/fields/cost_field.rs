@@ -42,7 +42,7 @@
 //!
 
 use bevy::reflect::Reflect;
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use crate::prelude::*;
 
@@ -93,6 +93,22 @@ impl CostField {
 		let is_routable = process_neighbours(target, queue, visited, self, 0);
 		is_routable
 	}
+	/// Tests whether two portals can see each other within a sector (one might be boxed in by impassable cost field values), additionally returns the number of steps taken to find a route between the two - this can be used as an edge weight
+	pub fn can_internal_portal_pair_see_each_other_arc(
+		&self,
+		source: FieldCell,
+		target: FieldCell,
+	) -> (bool, i32) {
+		// instance of corner portals overlapping from cramped world
+		if source == target {
+			return (true, 0);
+		}
+		let queue = vec![source];
+		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
+		let visited = HashSet::new();
+		let is_routable = process_neighbours_arc(target, queue, visited, self, 0);
+		is_routable
+	}
 	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]
 	pub fn from_ron(path: String) -> Self {
@@ -134,6 +150,41 @@ fn process_neighbours(
 	}
 	if !next_neighbours.is_empty() {
 		process_neighbours(target, next_neighbours, visited, cost_field, steps_taken)
+	} else {
+		(false, steps_taken)
+	}
+}
+
+/// Recursively process the cells to see if there's a path
+fn process_neighbours_arc(
+	target: FieldCell,
+	queue: Vec<FieldCell>,
+	mut visited: HashSet<FieldCell>,
+	cost_field: &CostField,
+	mut steps_taken: i32,
+) -> (bool, i32) {
+	let mut next_neighbours = Vec::new();
+	// iterate over the queue calculating neighbour int costs
+	steps_taken += 1;
+	for cell in queue.iter() {
+		visited.insert(*cell);
+		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
+		// iterate over the neighbours to try and find the target
+		for n in neighbours.iter() {
+			let n = Arc::new(*n);
+			if *n == target {
+				return (true, steps_taken);
+			}
+			let cell_cost = cost_field.get_field_cell_value(*n);
+			// ignore impassable cells
+			if cell_cost != 255 && !visited.contains(&n) {
+				// keep exploring
+				next_neighbours.push(*n);
+			}
+		}
+	}
+	if !next_neighbours.is_empty() {
+		process_neighbours_arc(target, next_neighbours, visited, cost_field, steps_taken)
 	} else {
 		(false, steps_taken)
 	}

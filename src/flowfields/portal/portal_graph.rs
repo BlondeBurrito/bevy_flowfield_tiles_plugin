@@ -6,7 +6,7 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::{Arc, Mutex}};
 
 use bevy::prelude::*;
 use petgraph::{
@@ -98,52 +98,72 @@ impl PortalGraph {
 			self.build_internal_sector_edges(
 				sector_id,
 				portals,
-				sector_cost_fields.get_scaled().get(sector_id).unwrap(),
+				sector_cost_fields.get_arc_scaled_sector(sector_id),
 			);
 		}
 		self
 	}
+
 	/// Create graph edges between each portal of the Sector
 	fn build_internal_sector_edges(
 		&mut self,
 		sector_id: &SectorID,
 		portals: &Portals,
-		cost_field: &CostField,
+		cost_field: Arc<CostField>,
 	) -> &mut Self {
-		let graph = &mut self.graph;
-		let translator = &mut self.node_index_translation;
 		// create a combined list of portal points which can be iterated over to link a portal
 		// to all portals in the sector
-		let all_sector_portals = portals
+		let all_sector_portals = Arc::new(portals
 			.get()
 			.iter()
 			.flatten()
 			.cloned()
-			.collect::<Vec<FieldCell>>();
+			.collect::<Vec<FieldCell>>());
 		// create pairings of portals that can reach each other
-		let mut visible_pairs_with_cost = Vec::new();
+		let visible_pairs_with_cost = Arc::new(Mutex::new(Vec::new()));
+		let mut handles = vec![];
+		let all_sector_portals = Arc::clone(&all_sector_portals);
 		for (i, source) in all_sector_portals.iter().enumerate() {
 			for (j, target) in all_sector_portals.iter().enumerate() {
 				if i == j {
 					continue;
 				} else {
-					let is_visible =
-						cost_field.can_internal_portal_pair_see_each_other(*source, *target);
-					if is_visible.0 {
-						visible_pairs_with_cost.push(((source, target), is_visible.1));
-					}
+					let source = source.clone();
+					let target = target.clone();
+					let cost_field = Arc::clone(&cost_field);
+					let visible_pairs_with_cost = Arc::clone(&visible_pairs_with_cost);
+					let handle = std::thread::spawn(move || {
+						let is_visible =
+						cost_field.can_internal_portal_pair_see_each_other_arc(source, target);
+						if is_visible.0 {
+							let mut locked_list = visible_pairs_with_cost.lock().unwrap();
+							locked_list.push(((source, target), is_visible.1));
+						}
+					});
+					handles.push(handle);
+					// let is_visible =
+					// 	cost_field.can_internal_portal_pair_see_each_other(*source, *target);
+					// if is_visible.0 {
+					// 	visible_pairs_with_cost.push(((source, target), is_visible.1));
+					// }
 				}
 			}
 		}
+		for h in handles {
+			h.join().unwrap();
+		}
+		let graph = &mut self.graph;
+		let translator = &mut self.node_index_translation;
 		// convert the field cell positions to [NodeIndex]
 		let mut node_indices_to_edge = Vec::new();
-		for (pair, cost) in visible_pairs_with_cost.iter() {
+		let locked_list = visible_pairs_with_cost.lock().unwrap();
+		for (pair, cost) in locked_list.iter() {
 			let source_index = find_index_from_single_portal_and_portal_cell(
-				translator, portals, sector_id, pair.0,
+				translator, portals, sector_id, &pair.0,
 			)
 			.unwrap();
 			let target_index = find_index_from_single_portal_and_portal_cell(
-				translator, portals, sector_id, pair.1,
+				translator, portals, sector_id, &pair.1,
 			)
 			.unwrap();
 			node_indices_to_edge.push(((source_index, target_index), *cost));
@@ -280,7 +300,7 @@ impl PortalGraph {
 		}
 		// rebuild the nodes and  rebuild the edges within each sector
 		for sector_id in sectors_to_rebuild.iter() {
-			let cost_field = sector_cost_fields.get_scaled().get(sector_id).unwrap();
+			let cost_field = sector_cost_fields.get_arc_scaled_sector(sector_id);
 			let portals = sector_portals
 				.get()
 				.get(sector_id)
