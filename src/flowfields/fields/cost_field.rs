@@ -90,8 +90,7 @@ impl CostField {
 		let queue = vec![source];
 		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
 		let visited = HashSet::new();
-		let is_routable = process_neighbours(target, queue, visited, self, 0);
-		is_routable
+		process_neighbours(target, queue, visited, self, 0)
 	}
 	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]

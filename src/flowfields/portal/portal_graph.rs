@@ -6,7 +6,10 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use std::{collections::BTreeMap, sync::{Arc, Mutex}};
+use std::{
+	collections::BTreeMap,
+	sync::{Arc, Mutex},
+};
 
 use bevy::prelude::*;
 use petgraph::{
@@ -113,12 +116,14 @@ impl PortalGraph {
 	) -> &mut Self {
 		// create a combined list of portal points which can be iterated over to link a portal
 		// to all portals in the sector
-		let all_sector_portals = Arc::new(portals
-			.get()
-			.iter()
-			.flatten()
-			.cloned()
-			.collect::<Vec<FieldCell>>());
+		let all_sector_portals = Arc::new(
+			portals
+				.get()
+				.iter()
+				.flatten()
+				.cloned()
+				.collect::<Vec<FieldCell>>(),
+		);
 		// create pairings of portals that can reach each other
 		let visible_pairs_with_cost = Arc::new(Mutex::new(Vec::new()));
 		let mut handles = vec![];
@@ -128,13 +133,13 @@ impl PortalGraph {
 				if i == j {
 					continue;
 				} else {
-					let source = source.clone();
-					let target = target.clone();
+					let source = *source;
+					let target = *target;
 					let cost_field = Arc::clone(&cost_field);
 					let visible_pairs_with_cost = Arc::clone(&visible_pairs_with_cost);
 					let handle = std::thread::spawn(move || {
 						let is_visible =
-						cost_field.can_internal_portal_pair_see_each_other(source, target);
+							cost_field.can_internal_portal_pair_see_each_other(source, target);
 						if is_visible.0 {
 							let mut locked_list = visible_pairs_with_cost.lock().unwrap();
 							locked_list.push(((source, target), is_visible.1));
