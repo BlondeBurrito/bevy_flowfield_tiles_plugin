@@ -29,7 +29,6 @@ impl Ordinal {
 	pub fn get_orthogonal_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
 		let row = cell_id.get_row();
 		let column = cell_id.get_column();
-		let mut neighbours = Vec::new();
 		// 64 out of 100 field cells have 4 neighbours so this fast returns
 		// the neighbours - based on profiling
 		if row > 0 && column > 0 && row < FIELD_RESOLUTION - 1 && column < FIELD_RESOLUTION - 1 {
@@ -40,6 +39,7 @@ impl Ordinal {
 				FieldCell::new(column - 1, row)
 			]
 		}
+		let mut neighbours = Vec::new();
 		if row > 0 {
 			neighbours.push(FieldCell::new(column, row - 1)); // northern cell coords
 		}
