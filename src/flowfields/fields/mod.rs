@@ -373,6 +373,11 @@ impl RouteCache {
 	pub fn remove_route(&mut self, route_metadata: RouteMetadata) {
 		self.routes.remove(&route_metadata);
 	}
+	/// Remove a high-level route that has been queued (or just the end goal if
+	/// local sector pathing)
+	pub fn remove_queued_route(&mut self, route_metadata: RouteMetadata) {
+		self.route_queue.remove(&route_metadata);
+	}
 }
 /// Describes the properties of a [FlowField]
 #[derive(Clone, Copy, Reflect)]
@@ -511,9 +516,15 @@ impl FlowFieldCache {
 		};
 		self.flows.insert(flow_meta, field);
 	}
-	/// Remove a [FlowField] from the cache (when it needs regenerating from a [CostField] update)
+	/// Remove a [FlowField] from the cache (when it needs regenerating from a
+	/// [CostField] update)
 	pub fn remove_field(&mut self, flow_meta: FlowFieldMetadata) {
 		self.flows.remove(&flow_meta);
+	}
+	/// Remove a [RouteMetadata] from the cache integratino queue (when it
+	/// needs regenerating from a [CostField] update)
+	pub fn remove_queue_item(&mut self, route_meta: RouteMetadata) {
+		self.queue.remove(&route_meta);
 	}
 }
 

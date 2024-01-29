@@ -6,7 +6,6 @@
 
 use std::{
 	collections::HashSet,
-	ops::Deref,
 	sync::{Arc, Mutex},
 };
 
@@ -175,9 +174,9 @@ impl FlowField {
 			}
 		}
 	}
-	//TODO very very slow
+
 	/// Calculate the [FlowField] from an [IntegrationField], additionally for a sector in a chain of sectors along a path this will peak into the previous sectors [IntegrationField] to apply a directional optimisation to this sector's [FlowField]
-	fn calculate_arc(
+	pub fn calculate_arc(
 		&mut self,
 		goals: &[FieldCell],
 		previous_sector_ord_int: Option<(Ordinal, &IntegrationField)>,
