@@ -171,6 +171,7 @@ pub fn create_queued_integration_fields(
 
 /// Portals may represent multiple [FieldCell]s along a boundary, expand them
 /// to provide multiple goal [FieldCell]s for crossing from one secgtor to another
+#[cfg(not(tarpaulin_include))]
 fn exapnd_sector_portals(
 	path: &[(SectorID, FieldCell)],
 	sector_portals: &SectorPortals,
@@ -179,8 +180,6 @@ fn exapnd_sector_portals(
 ) -> Vec<(SectorID, Vec<FieldCell>)> {
 	let mut sectors_expanded_goals = Vec::new();
 	for (i, (sector_id, goal)) in path.iter().enumerate() {
-		// // only run if a FlowField hasn't been generated (BUGGY if enbaled)
-		// if !field_cache.get().contains_key(&(*sector_id, *goal)) {
 		// first element is always the end target, don't bother with portal expansion
 		if i == 0 {
 			sectors_expanded_goals.push((*sector_id, vec![*goal]));
@@ -202,13 +201,13 @@ fn exapnd_sector_portals(
 				);
 			sectors_expanded_goals.push((*sector_id, g));
 		}
-		// }
 	}
 	sectors_expanded_goals
 }
 
 /// Iterate over each sector with the expanded portal goals and calculate the
 /// [IntegrationField] for it
+#[cfg(not(tarpaulin_include))]
 fn build_integration_fields(
 	sectors_expanded_goals: &[(SectorID, Vec<FieldCell>)],
 	sector_cost_fields_scaled: &SectorCostFields,
