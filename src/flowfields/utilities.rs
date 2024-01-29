@@ -36,8 +36,8 @@ impl Ordinal {
 				FieldCell::new(column, row - 1),
 				FieldCell::new(column + 1, row),
 				FieldCell::new(column, row + 1),
-				FieldCell::new(column - 1, row)
-			]
+				FieldCell::new(column - 1, row),
+			];
 		}
 		let mut neighbours = Vec::new();
 		if row > 0 {

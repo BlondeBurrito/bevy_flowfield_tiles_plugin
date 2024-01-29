@@ -136,7 +136,10 @@ pub fn generate_flow_fields(
 	>,
 	time: Res<Time>,
 ) {
-	use std::sync::{Arc, Mutex};
+	use std::{
+		ops::Deref,
+		sync::{Arc, Mutex},
+	};
 
 	for (mut field_cache, route_cache, sector_portals, sector_cost_fields_scaled, map_dimensions) in
 		cache_q.iter_mut()
@@ -195,7 +198,11 @@ pub fn generate_flow_fields(
 					Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
 				{
 					let prev_int_field = &sector_int_fields[i - 1].2;
-					flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
+					flow_field.calculate(
+						goals,
+						Some((dir_prev_sector, prev_int_field)),
+						int_field,
+					);
 					//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own?
 					field_cache.insert_field(*sector_id, path[i].1, time.elapsed(), flow_field);
 				} else {
