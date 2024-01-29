@@ -286,16 +286,29 @@ impl RouteMetadata {
 }
 /// Each key makes use of custom Ord and Eq implementations based on comparing `(source_id, target_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
 #[derive(Component, Default, Clone)]
-pub struct RouteCache(BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>>);
+pub struct RouteCache {
+	/// A queue of high-level routes which get processed into the `routes` field
+	route_queue: BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>>,
+	/// High-level routes describing the path from an actor to an end goal
+	routes: BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>>,
+}
 
 impl RouteCache {
+	/// Get a refernce to the map of queued routes
+	pub fn get_queue(&self) -> &BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
+		&self.route_queue
+	}
+	/// Get a mutable reference to the map of queued routes
+	pub fn get_queue_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
+		&mut self.route_queue
+	}
 	/// Get the map of routes
 	pub fn get(&self) -> &BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
-		&self.0
+		&self.routes
 	}
 	/// Get a mutable reference to the map of routes
 	pub fn get_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
-		&mut self.0
+		&mut self.routes
 	}
 	/// Get a high-level sector to sector route. Returns [None] if it doesn't exist
 	pub fn get_route(
@@ -310,9 +323,26 @@ impl RouteCache {
 			target_goal: goal_id,
 			time_generated: Duration::default(),
 		};
-		let route = self.0.get(&route_data);
+		let route = self.routes.get(&route_data);
 		trace!("Route: {:?}", route);
 		route
+	}
+	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`
+	pub fn add_to_queue(
+		&mut self,
+		source_sector: SectorID,
+		target_sector: SectorID,
+		goal_id: FieldCell,
+		elapsed_duration: Duration,
+		route: Vec<(SectorID, FieldCell)>,
+	) {
+		let route_data = RouteMetadata {
+			source_sector,
+			target_sector,
+			target_goal: goal_id,
+			time_generated: elapsed_duration,
+		};
+		self.route_queue.insert(route_data, route);
 	}
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`
 	pub fn insert_route(
@@ -329,11 +359,19 @@ impl RouteCache {
 			target_goal: goal_id,
 			time_generated: elapsed_duration,
 		};
-		self.0.insert(route_data, route);
+		self.routes.insert(route_data, route);
+	}
+	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache` with an already created [RouteMetadata] structure
+	pub fn insert_route_with_metadata(
+		&mut self,
+		route_metadata: RouteMetadata,
+		route: Vec<(SectorID, FieldCell)>,
+	) {
+		self.routes.insert(route_metadata, route);
 	}
 	/// Remove a high-level  route of sector-portal paths (or just the end goal if local sector pathing) from the `route_cache`
 	pub fn remove_route(&mut self, route_metadata: RouteMetadata) {
-		self.0.remove(&route_metadata);
+		self.routes.remove(&route_metadata);
 	}
 }
 /// Describes the properties of a [FlowField]
@@ -383,20 +421,71 @@ impl PartialOrd for FlowFieldMetadata {
 	}
 }
 
+/// Grouping of high-level route from goal to actor where the integration
+/// fields get populated when the builder arrives at the front of the queue
+#[derive(Default)]
+pub struct IntegrationBuilder {
+	/// Sector and Portals describing the route from the target goal to the
+	/// origin sector of the actor
+	path: Vec<(SectorID, FieldCell)>,
+	//TODO shouldn't duplicate sector ids and cells
+	/// List of [IntegrationField] aligned with Sector and Portals whereby the `integration_fields` is initially `None` and gets built as the [FlowFieldCache] queue gets processed
+	integration_fields: Option<Vec<(SectorID, Vec<FieldCell>, IntegrationField)>>,
+}
+
+impl IntegrationBuilder {
+	pub fn new(path: Vec<(SectorID, FieldCell)>) -> Self {
+		IntegrationBuilder {
+			path,
+			integration_fields: None,
+		}
+	}
+	pub fn get_path(&self) -> &Vec<(SectorID, FieldCell)> {
+		&self.path
+	}
+	pub fn get_integration_fields(
+		&self,
+	) -> &Option<Vec<(SectorID, Vec<FieldCell>, IntegrationField)>> {
+		&self.integration_fields
+	}
+	pub fn is_pending(&self) -> bool {
+		self.integration_fields.is_none()
+	}
+	pub fn add_integration_fields(
+		&mut self,
+		fields: Vec<(SectorID, Vec<FieldCell>, IntegrationField)>,
+	) {
+		self.integration_fields = Some(fields);
+	}
+}
+
 /// Each generated [FlowField] is placed into this cache so that multiple actors can read from the same dataset.
 ///
 /// Each entry is given an ID of `(sector_id, goal_id)` and actors can poll the cache to retrieve the field once it's built and inserted. Note that `goal_id` can refer to the true end-goal or it can refer to a portal position when a path spans multiple sectors
 #[derive(Component, Default)]
-pub struct FlowFieldCache(BTreeMap<FlowFieldMetadata, FlowField>);
+pub struct FlowFieldCache {
+	/// Routes describing the sector path and [IntegrationField]s where the
+	/// integration and flow fields can be incrementally built
+	queue: BTreeMap<RouteMetadata, IntegrationBuilder>,
+	/// Created FlowFields that actors can use to pathfind
+	flows: BTreeMap<FlowFieldMetadata, FlowField>,
+}
 
 impl FlowFieldCache {
 	/// Get the map of [FlowField]s
 	pub fn get(&self) -> &BTreeMap<FlowFieldMetadata, FlowField> {
-		&self.0
+		&self.flows
 	}
 	/// Get a mutable reference to the map of [FlowField]s
 	pub fn get_mut(&mut self) -> &mut BTreeMap<FlowFieldMetadata, FlowField> {
-		&mut self.0
+		&mut self.flows
+	}
+	pub fn get_queue_mut(&mut self) -> &mut BTreeMap<RouteMetadata, IntegrationBuilder> {
+		&mut self.queue
+	}
+	pub fn add_to_queue(&mut self, metadata: RouteMetadata, path: Vec<(SectorID, FieldCell)>) {
+		let int_builder = IntegrationBuilder::new(path);
+		self.queue.insert(metadata, int_builder);
 	}
 	/// Get a [FlowField] based on the `sector_id` and `goal_id`. Returns [None] if the cache doesn't contain a record
 	pub fn get_field(&self, sector_id: SectorID, goal_id: FieldCell) -> Option<&FlowField> {
@@ -405,7 +494,7 @@ impl FlowFieldCache {
 			goal_id,
 			time_generated: Duration::default(),
 		};
-		self.0.get(&flow_meta)
+		self.flows.get(&flow_meta)
 	}
 	/// Insert a [FlowField] into the cache with a sector-goal ID
 	pub fn insert_field(
@@ -420,11 +509,11 @@ impl FlowFieldCache {
 			goal_id,
 			time_generated: elapsed_duration,
 		};
-		self.0.insert(flow_meta, field);
+		self.flows.insert(flow_meta, field);
 	}
 	/// Remove a [FlowField] from the cache (when it needs regenerating from a [CostField] update)
 	pub fn remove_field(&mut self, flow_meta: FlowFieldMetadata) {
-		self.0.remove(&flow_meta);
+		self.flows.remove(&flow_meta);
 	}
 }
 

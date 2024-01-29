@@ -5,7 +5,9 @@
 //!
 
 use std::{
-	collections::HashSet, ops::Deref, sync::{Arc, Mutex}
+	collections::HashSet,
+	ops::Deref,
+	sync::{Arc, Mutex},
 };
 
 use crate::prelude::*;

@@ -49,8 +49,6 @@
 //! So this encourages the pathing algorithm around obstacles and expensive regions.
 //!
 
-use std::sync::{mpsc, Arc, Mutex};
-
 use crate::prelude::*;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
