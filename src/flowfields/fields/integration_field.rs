@@ -116,6 +116,8 @@ impl IntegrationField {
 	}
 }
 
+/// Recursively expand the neighbours of a list of [FieldCell] and calculate
+/// their value in the [IntegrationField]
 fn process_neighbours(
 	int_field: &mut IntegrationField,
 	queue: Vec<(FieldCell, u16)>,

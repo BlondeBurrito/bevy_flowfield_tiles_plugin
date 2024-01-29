@@ -299,7 +299,7 @@ impl FlowField {
 		// let (tx, rx) = std::sync::mpsc::channel();
 		let los_cells = Arc::new(Mutex::new(HashSet::new()));
 		for i in 0..FIELD_RESOLUTION {
-			let int_field = Arc::clone(&int_field);
+			let int_field = Arc::clone(int_field);
 			let los_goal = Arc::clone(&los_goal);
 			let los_cells = Arc::clone(&los_cells);
 			// let tx = tx.clone();
