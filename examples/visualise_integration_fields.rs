@@ -31,13 +31,14 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	}
 	// generate the portal graph
 	let portal_graph = PortalGraph::new(&sector_portals, &sector_cost_fields, &map_dimensions);
+	println!("Graph: {:?}", portal_graph);
 	//
 	let source_sector = SectorID::new(2, 0);
 	let source_field_cell = FieldCell::new(7, 3);
 	let target_sector = SectorID::new(0, 2);
 	let target_field_cell = FieldCell::new(0, 6);
 	// path from actor to goal sectors
-	let node_path = portal_graph
+	let mut path = portal_graph
 		.find_best_path(
 			(source_sector, source_field_cell),
 			(target_sector, target_field_cell),
@@ -45,9 +46,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			&sector_cost_fields,
 		)
 		.unwrap();
-	// convert to field cell and sector coords
-	let mut path =
-		portal_graph.convert_index_path_to_sector_portal_cells(node_path.1, &sector_portals);
+	info!("path done {:?}", path);
 	let mut path_based_on_portal_exits = Vec::new();
 	// target sector and entry portal where we switch the entry portal cell to the goal
 	let mut end = path.pop().unwrap();

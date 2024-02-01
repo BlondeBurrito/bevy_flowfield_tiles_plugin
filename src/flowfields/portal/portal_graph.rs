@@ -6,269 +6,295 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use std::{
-	collections::BTreeMap,
-	sync::{Arc, Mutex},
-};
-
-use bevy::prelude::*;
-use petgraph::{
-	algo::astar,
-	stable_graph::{NodeIndex, StableGraph},
-};
-
-use crate::prelude::*;
+use std::collections::{BTreeMap, HashMap};
 
 use super::portals::Portals;
+use crate::prelude::*;
+use bevy::prelude::*;
 
-/// Each sector contains a series of Portals. A [StableGraph] allows a route to be calculated from one
-/// sector to another via the portal boundaries.
-///
-/// To enable responsiveness in moving actors around a world they should initially be given a
-/// route to navigate based upon moving between the Sectors of the world, later on once a
-/// [FlowField] has been generated they can be given a more accurate route to follow.
-/// [PortalGraph] enables a navigational route to be found between sectors using the [Portals]
-/// of sector boundaries to provide the responsiveness of "movement asked for, begin going in
-/// this direction, get a better route later"
-//TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))] https://github.com/petgraph/petgraph/pull/550
-#[derive(Component, Default, Clone)]
-pub struct PortalGraph {
-	/// The graph for storing nodes and edges
-	graph: StableGraph<u32, i32, petgraph::Directed>,
-	/// The `graph` cannot store portal [FieldCell]s directly instead it
-	/// records entries with a [NodeIndex]. Based on the vectors of each sector
-	/// in [SectorPortals] we create a means of storing [NodeIndex] in an
-	/// identical structure to [Portals]. This allows a portal [FieldCell] to be
-	/// mapped to a [NodeIndex] and vice versa.
-	///
-	/// The keys of the map correspond to the unique IDs of Sectors and the values are an [Ordinal] list structure which should be identical in structure for each sectors [Portals]
-	node_index_translation: BTreeMap<SectorID, [Vec<NodeIndex>; 4]>,
+const SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE: i32 = 5;
+
+/// A graph contains a series of [PortalNode] which denotes the Sector and FieldCell of a portal
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Default, Reflect, Clone, Copy, Debug, Hash)]
+struct PortalNode {
+	sector_id: SectorID,
+	portal_cell: FieldCell,
+	weight: i32,
 }
-//TODO need a means of chekcing graph capacity, if it's near usize, usize then rebuild it from scrtach to reset size
+
+impl PortalNode {
+	fn new(sector_id: SectorID, portal_cell: FieldCell, weight: i32) -> Self {
+		PortalNode {
+			sector_id,
+			portal_cell,
+			weight
+		}
+	}
+	/// Get the [SectorID]
+	fn get_sector(&self) -> &SectorID {
+		&self.sector_id
+	}
+	/// Get the portals [FieldCell] as a referance
+	fn get_portal_cell(&self) -> &FieldCell {
+		&self.portal_cell
+	}
+	/// Get the weight (how expensive) of traversing to the nodes
+	fn get_weight(&self) -> i32 {
+		self.weight
+	}
+}
+
+impl Ord for PortalNode {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		(self.sector_id, self.portal_cell).cmp(&(other.sector_id, other.portal_cell))
+	}
+}
+
+impl PartialOrd for PortalNode {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl PartialEq for PortalNode {
+	fn eq(&self, other: &Self) -> bool {
+		self.sector_id == other.sector_id && self.portal_cell == other.portal_cell
+	}
+}
+impl Eq for PortalNode {}
+
+/// An edge indicates a link between two [PortalNode]s
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Default, Reflect, Clone, Debug)]
+struct PortalEdge {
+	node: PortalNode,
+	distance: i32,
+}
+
+impl Ord for PortalEdge {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		(self.node).cmp(&(other.node))
+	}
+}
+
+impl PartialOrd for PortalEdge {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl PartialEq for PortalEdge {
+	fn eq(&self, other: &Self) -> bool {
+		self.node == other.node
+	}
+}
+impl Eq for PortalEdge {}
+
+impl PortalEdge {
+	/// Create a new [PortalEdge] with target portal `node` and a navigation weighting
+	fn new(node: PortalNode, distance: i32) -> Self {
+		PortalEdge { node, distance }
+	}
+	/// Get the node this edge points towards
+	fn get_node(&self) -> &PortalNode {
+		&self.node
+	}
+	/// Get the distance ([FieldCell] count) to this edge
+	fn get_distance(&self) -> i32 {
+		self.distance
+	}
+}
+//TODO? map of map? outer map = SectorID, inner map FieldCell/(the portal) => Vec
+//TODO reflect
+///
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Component, Default, Clone, Debug)]
+// #[reflect(Component)]
+pub struct PortalGraph {
+	graph: BTreeMap<PortalNode, Vec<PortalEdge>>,
+}
+
 impl PortalGraph {
+	/// Get a reference to the graph map
+	fn get_graph(&self) -> &BTreeMap<PortalNode, Vec<PortalEdge>> {
+		&self.graph
+	}
+	/// Get a mutable reference to the graph map
+	fn get_graph_mut(&mut self) -> &mut BTreeMap<PortalNode, Vec<PortalEdge>> {
+		&mut self.graph
+	}
+	/// For the given `sector_id` identify any nodes in the graph that correspond to it
+	fn get_nodes_containg_sector(&self, sector_id: &SectorID) -> Vec<&PortalNode> {
+		let mut nodes = vec![];
+		for (node, _) in self.get_graph().iter() {
+			if *sector_id == *node.get_sector() {
+				nodes.push(node);
+			}
+		}
+		nodes
+	}
+	/// For the given `sector_id` identify any nodes in the graph that correspond to it
+	fn get_nodes_containg_sector_mut(&mut self, sector_id: &SectorID) -> Vec<&PortalNode> {
+		let mut nodes = vec![];
+		for (node, _) in self.get_graph_mut().iter_mut() {
+			if *sector_id == *node.get_sector() {
+				nodes.push(node);
+			}
+		}
+		nodes
+	}
+	/// Add an edge to a graph node
+	fn insert_edge(&mut self, node: &PortalNode, edge: PortalEdge) {
+		let graph = self.get_graph_mut();
+		let edges = graph.get_mut(node).expect(&format!("Could not get edges for node {:?}", node));
+		//TODO shortcut used by update_graph in reaplce_old_neighbours, expensive?
+		if !edges.contains(&edge) {
+			edges.push(edge);
+		}
+	}
 	/// Create a new instance of [PortalGraph] with inital nodes and edges built
 	pub fn new(
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
 		map_dimensions: &MapDimensions,
 	) -> Self {
-		let mut portal_graph = PortalGraph::default();
-		portal_graph.build_graph_nodes(sector_portals);
-		portal_graph.build_edges_within_each_sector(sector_portals, sector_cost_fields);
-		portal_graph.build_edges_between_sectors(sector_portals, map_dimensions);
-		portal_graph
+		let mut graph = PortalGraph::default();
+		graph.insert_all_portal_nodes(sector_portals, sector_cost_fields);
+		graph.build_all_internal_sector_edges(sector_portals, sector_cost_fields);
+		graph.build_all_external_sector_edges(sector_portals, sector_cost_fields, map_dimensions);
+		graph
 	}
-	/// Builds the [StableGraph] nodes for each portal within a sector
-	fn build_graph_nodes(&mut self, sector_portals: &SectorPortals) -> &mut Self {
-		for (sector_id, portals) in sector_portals.get().iter() {
-			self.build_sector_nodes(sector_id, portals);
-		}
-		self
-	}
-	/// For the given Sector [Portals] add a node to the graph for each portal [FieldCell]
-	fn build_sector_nodes(&mut self, sector_id: &SectorID, portals: &Portals) -> &mut Self {
-		let graph = &mut self.graph;
-		let translator = &mut self.node_index_translation;
-		// initialise the sector within the translator
-		translator.insert(*sector_id, [vec![], vec![], vec![], vec![]]);
-		// iterate over the array of portals where each element corresponds to a particular [Ordinal],
-		// we use enumeration here to represent each [Ordinal] of the sector edges, the Northern,
-		// Eastern, Southern and Western, as enumeration index 0..3
-		for (ordinal_index, portal_node_list) in portals.get().iter().enumerate() {
-			for _portal_node in portal_node_list.iter() {
-				// add a node representing the portal being processed
-				let node_index = graph.add_node(1);
-				// update the translator with this [NodeIndex] to enable mapping a value in a
-				// sector of [Portals] to a node in the graph
-				match translator.get_mut(sector_id) {
-					Some(ordinal_array) => {
-						ordinal_array[ordinal_index].push(node_index);
-					}
-					None => panic!("Translator doesn't contain sector {:?}", sector_id),
+	/// Iterate over the calcualted portals and insert a [PortalNode] for each
+	fn insert_all_portal_nodes(&mut self, sector_portals: &SectorPortals, sector_cost_fields: &SectorCostFields) {
+		let portals_map = sector_portals.get();
+		for (sector_id, portals) in portals_map {
+			for p in portals.get().iter() {
+				for cell in p {
+					let weight = sector_cost_fields.get_scaled().get(sector_id).unwrap().get_field_cell_value(*cell) as i32;
+					let portal_node = PortalNode::new(*sector_id, *cell, weight);
+					// info!("Inserting {:?}", portal_node);
+					// info!("Current graph {:?}", self);
+					self.insert_portal_node(portal_node);
 				}
 			}
 		}
-		self
 	}
-	/// Builds the edges between each portal within every sector
-	fn build_edges_within_each_sector(
+	fn insert_portal_node(&mut self, node: PortalNode){
+		// should never contian one already?
+		if self.get_graph_mut().contains_key(&node) {
+			// TODO diagonal case?
+		} else {
+			self.get_graph_mut().insert(node, vec![]);
+		}
+		// if let Some(v) = self.get_graph_mut().insert(node, vec![]) {
+		// 	panic!("Graph already contains {:?} with value {:?}", node, v);
+		// }
+	}
+	/// Create [PortalEdge]s between portals within all sectors
+	fn build_all_internal_sector_edges(
 		&mut self,
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
-	) -> &mut Self {
-		// for each sector create edges
-		for (sector_id, portals) in sector_portals.get().iter() {
-			self.build_internal_sector_edges(
-				sector_id,
-				portals,
-				sector_cost_fields.get_arc_scaled_sector(sector_id),
-			);
+	) {
+		for (sector_id, portals) in sector_portals.get() {
+			// get the cost field for this sector
+			let cost_field = sector_cost_fields.get_scaled().get(sector_id).unwrap();
+			// create a combined list of portal points which can be iterated over to link a portal
+			// to all portals in the sector
+			let all_sector_portals = portals.get_all();
+			// create edges between portals that can see each other
+			self.build_sector_internal_edges(sector_id, cost_field, &all_sector_portals);
 		}
-		self
 	}
-
-	/// Create graph edges between each portal of the Sector
-	fn build_internal_sector_edges(
+	/// Create [PortalEdge]s between the [Portals] of the supplied `sector_id`
+	fn build_sector_internal_edges(
 		&mut self,
 		sector_id: &SectorID,
-		portals: &Portals,
-		cost_field: Arc<CostField>,
-	) -> &mut Self {
-		// create a combined list of portal points which can be iterated over to link a portal
-		// to all portals in the sector
-		let all_sector_portals = Arc::new(
-			portals
-				.get()
-				.iter()
-				.flatten()
-				.cloned()
-				.collect::<Vec<FieldCell>>(),
-		);
-		// create pairings of portals that can reach each other
-		let visible_pairs_with_cost = Arc::new(Mutex::new(Vec::new()));
-		let mut handles = vec![];
-		let all_sector_portals = Arc::clone(&all_sector_portals);
-		for (i, source) in all_sector_portals.iter().enumerate() {
-			for (j, target) in all_sector_portals.iter().enumerate() {
+		cost_field: &CostField,
+		portals: &Vec<FieldCell>,
+	) {
+		// create edges between portals that can see each other
+		for (i, source) in portals.iter().enumerate() {
+			for (j, target) in portals.iter().enumerate() {
 				if i == j {
 					continue;
 				} else {
-					let source = *source;
-					let target = *target;
-					let cost_field = Arc::clone(&cost_field);
-					let visible_pairs_with_cost = Arc::clone(&visible_pairs_with_cost);
-					let handle = std::thread::spawn(move || {
-						let is_visible =
-							cost_field.can_internal_portal_pair_see_each_other(source, target);
-						if is_visible.0 {
-							let mut locked_list = visible_pairs_with_cost.lock().unwrap();
-							locked_list.push(((source, target), is_visible.1));
-						}
-					});
-					handles.push(handle);
-					// let is_visible =
-					// 	cost_field.can_internal_portal_pair_see_each_other(*source, *target);
-					// if is_visible.0 {
-					// 	visible_pairs_with_cost.push(((source, target), is_visible.1));
-					// }
+					let is_visible =
+						cost_field.can_internal_portal_pair_see_each_other(*source, *target);
+					if is_visible.0 {
+						// create the edge
+						let weight = cost_field.get_field_cell_value(*target) as i32;
+						let edge_node = PortalNode::new(*sector_id, *target, weight);
+						let distance = is_visible.1;
+						let edge = PortalEdge::new(edge_node, distance);
+						// add edge to graph
+						let node = PortalNode::new(*sector_id, *source, weight);
+						self.insert_edge(&node, edge)
+					}
 				}
 			}
 		}
-		for h in handles {
-			h.join().unwrap();
-		}
-		let graph = &mut self.graph;
-		let translator = &mut self.node_index_translation;
-		// convert the field cell positions to [NodeIndex]
-		let mut node_indices_to_edge = Vec::new();
-		let locked_list = visible_pairs_with_cost.lock().unwrap();
-		for (pair, cost) in locked_list.iter() {
-			let source_index = find_index_from_single_portal_and_portal_cell(
-				translator, portals, sector_id, &pair.0,
-			)
-			.unwrap();
-			let target_index = find_index_from_single_portal_and_portal_cell(
-				translator, portals, sector_id, &pair.1,
-			)
-			.unwrap();
-			node_indices_to_edge.push(((source_index, target_index), *cost));
-		}
-
-		for (index_pair, cost) in node_indices_to_edge.iter() {
-			graph.update_edge(index_pair.0, index_pair.1, *cost);
-		}
-		self
 	}
-
-	/// Builds the edges from each sector boundary to another
-	fn build_edges_between_sectors(
+	/// Create [PortalEdge]s at the portal crossing/boundary [FieldCell]s for each neighbouring sector
+	fn build_all_external_sector_edges(
 		&mut self,
 		sector_portals: &SectorPortals,
+		sector_cost_fields: &SectorCostFields,
 		map_dimensions: &MapDimensions,
-	) -> &mut Self {
-		for (sector_id, _portals) in sector_portals.get().iter() {
-			self.build_external_sector_edges(sector_id, map_dimensions);
+	) {
+		for (sector_id, portals) in sector_portals.get() {
+			// sectors bordering this one
+			let sector_neighbours =
+				map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(sector_id);
+			self.build_sector_external_edges(sector_portals, sector_cost_fields, sector_id, portals, sector_neighbours);
 		}
-		self
 	}
-	/// Create edges along the boundary of the chosen Sector portal [FieldCell]s to its neighbouring
-	/// sector boundary portal [FieldCell]s
-	fn build_external_sector_edges(
+	/// Create [PortalEdge]s from the `portals` of this `sector_id` to its neighbour portals
+	fn build_sector_external_edges(
 		&mut self,
+		sector_portals: &SectorPortals,
+		sector_cost_fields: &SectorCostFields,
 		sector_id: &SectorID,
-		map_dimensions: &MapDimensions,
-	) -> &mut Self {
-		let graph = &mut self.graph;
-		let translator = &mut self.node_index_translation;
-		let sector_neighbours =
-			map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(sector_id);
+		portals: &Portals,
+		sector_neighbours: Vec<(Ordinal, SectorID)>,
+	) {
 		for (ordinal, neighbour_id) in sector_neighbours.iter() {
-			match ordinal {
-				Ordinal::North => {
-					// use the northern boundary of this sector to connect portals to the southern
-					// boundary of the neighbour
-					// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
-					let this_sector_portals = &translator.get(sector_id).unwrap()[0];
-					let neighbour_portals = &translator.get(neighbour_id).unwrap()[2];
-					for (i, portal_index) in this_sector_portals.iter().enumerate() {
-						if let Some(neighbour) = neighbour_portals.get(i) {
-							if graph.contains_node(*portal_index) && graph.contains_node(*neighbour)
-							{
-								graph.update_edge(*portal_index, *neighbour, 1);
-							}
-						}
-					}
-				}
-				Ordinal::East => {
-					// use the eastern boundary of this sector to connect portals to the western
-					// boundary of the neighbour
-					// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
-					let this_sector_portals = &translator.get(sector_id).unwrap()[1];
-					let neighbour_portals = &translator.get(neighbour_id).unwrap()[3];
-					for (i, portal_index) in this_sector_portals.iter().enumerate() {
-						if let Some(neighbour) = neighbour_portals.get(i) {
-							if graph.contains_node(*portal_index) && graph.contains_node(*neighbour)
-							{
-								graph.update_edge(*portal_index, *neighbour, 1);
-							}
-						}
-					}
-				}
-				Ordinal::South => {
-					// use the southern boundary of this sector to connect portals to the northern
-					// boundary of the neighbour
-					// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
-					let this_sector_portals = &translator.get(sector_id).unwrap()[2];
-					let neighbour_portals = &translator.get(neighbour_id).unwrap()[0];
-					for (i, portal_index) in this_sector_portals.iter().enumerate() {
-						if let Some(neighbour) = neighbour_portals.get(i) {
-							if graph.contains_node(*portal_index) && graph.contains_node(*neighbour)
-							{
-								graph.update_edge(*portal_index, *neighbour, 1);
-							}
-						}
-					}
-				}
-				Ordinal::West => {
-					// use the western boundary of this sector to connect portals to the eastern
-					// boundary of the neighbour
-					// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
-					let this_sector_portals = &translator.get(sector_id).unwrap()[3];
-					let neighbour_portals = &translator.get(neighbour_id).unwrap()[1];
-					for (i, portal_index) in this_sector_portals.iter().enumerate() {
-						if let Some(neighbour) = neighbour_portals.get(i) {
-							if graph.contains_node(*portal_index) && graph.contains_node(*neighbour)
-							{
-								graph.update_edge(*portal_index, *neighbour, 1);
-							}
-						}
-					}
-				}
-				_ => panic!("Cannot create diagonals between sectors"),
+			let cost_field = sector_cost_fields.get_scaled().get(neighbour_id).unwrap();
+			// get portals along boundary of current sector being worked on
+			let boundary_portals = portals.get_portals_for_side(ordinal);
+			// get inverse ordinal portals along boundary of the neighbour
+			let neighbour_portals = sector_portals.get().get(neighbour_id).unwrap();
+			let neighbour_boundary_portals =
+				neighbour_portals.get_portals_for_side(&ordinal.inverse());
+			// create edges between the portals
+			for (i, cell) in boundary_portals.iter().enumerate() {
+				let weight = cost_field.get_field_cell_value(*cell) as i32;
+				let node = PortalNode::new(*sector_id, *cell, weight);
+				// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
+				let neighbour_portal = neighbour_boundary_portals[i];
+				let edge_node = PortalNode::new(*neighbour_id, neighbour_portal, weight);
+				let edge = PortalEdge::new(edge_node, SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE);
+				self.insert_edge(&node, edge)
 			}
 		}
+	}
+	/// Replaces the current graph with a fresh one
+	pub fn reset_graph(
+		&mut self,
+		sector_portals: &SectorPortals,
+		sector_cost_fields: &SectorCostFields,
+		map_dimensions: &MapDimensions,
+	) -> &mut Self {
+		self.get_graph_mut().clear();
+		self.insert_all_portal_nodes(sector_portals, sector_cost_fields);
+		self.build_all_internal_sector_edges(sector_portals, sector_cost_fields);
+		self.build_all_external_sector_edges(sector_portals, sector_cost_fields, map_dimensions);
 		self
 	}
+}
+
+impl PortalGraph {
 	/// When a [CostField] is updated the corresponding [Portals] should be updated. This means that
 	/// the [PortalGraph]'s `graph` may no longer accurately reflect how to move from one sector to
 	/// another. This method will recalculate the nodes and edges of the supplied sector and
@@ -282,124 +308,178 @@ impl PortalGraph {
 		sector_cost_fields: &SectorCostFields,
 		map_dimensions: &MapDimensions,
 	) -> &mut Self {
-		let mut sectors_to_rebuild =
-			map_dimensions.get_ids_of_neighbouring_sectors(&changed_sector);
-		let graph = &mut self.graph;
-		let translator = &mut self.node_index_translation;
-		// remove the nodes from the sector and its neighbours
-		sectors_to_rebuild.push(changed_sector);
-		for sector_id in sectors_to_rebuild.iter() {
-			// lookup the [NodeIndex]s of each sector
-			let ordinal_node_indices = translator
-				.get(sector_id)
-				.expect("PortalGraph is missing a unique sector ID");
-			// iterate over each node in each ordinal and remove them from the graph
-			for ordinal in ordinal_node_indices.iter() {
-				for node_index in ordinal.iter() {
-					let removed = graph.remove_node(*node_index);
-					if removed.is_none() {
-						panic!("[PortalGraph] `node_index_translation` is not syncronised with the `graph`. Attempted to remove a portal within sector {:?}", sector_id);
+		let sectors_to_rebuild =
+			map_dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&changed_sector);
+		// remove old neighbour nodes along the boundary of the changed sector
+		// and insert new nodes for the new portals
+		self.replace_old_neighbour_nodes(&sectors_to_rebuild, sector_portals, sector_cost_fields);
+		// remove all PortalNodes using the changed sector, replace them with
+		// new nodes and calcualte the internal edges of the sector
+		self.replace_changed_sector_nodes(&changed_sector, sector_portals, sector_cost_fields);
+		// rebuild edges from neighbours to the changed sector and from changed to neighbour
+		for (ordinal, neighbour_id) in sectors_to_rebuild {
+			// get new portals along the changed sectors bounary
+			let portals_array_changed_sector = sector_portals.get().get(&changed_sector).unwrap();
+			let portals_changed = portals_array_changed_sector.get_portals_for_side(&ordinal);
+			let cost_field_changed = sector_cost_fields.get_scaled().get(&changed_sector).unwrap();
+			// get portals changed along neighbours boundary
+			let ord_pointing_at_changed = ordinal.inverse();
+			let portals_array_neighbour = sector_portals.get().get(&neighbour_id).unwrap();
+			let portals_neighbour = portals_array_neighbour.get_portals_for_side(&ord_pointing_at_changed);
+			let cost_field_neighbour = sector_cost_fields.get_scaled().get(&neighbour_id).unwrap();
+			// create edges from changed sector to neighbour
+			for (i, cell) in portals_changed.iter().enumerate() {
+				let weight_changed = cost_field_changed.get_field_cell_value(*cell) as i32;
+				let node = PortalNode::new(changed_sector, *cell, weight_changed);
+				// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
+				let neighbour_portal = portals_neighbour[i];
+				let weight_neighbour = cost_field_neighbour.get_field_cell_value(neighbour_portal) as i32;
+				let edge_node = PortalNode::new(neighbour_id, neighbour_portal, weight_neighbour);
+				let edge = PortalEdge::new(edge_node, SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE);
+				self.insert_edge(&node, edge)
+			}
+			// create edges from neighbour to changed sector
+			for (i, cell) in portals_neighbour.iter().enumerate() {
+				let weight_neighbour = cost_field_neighbour.get_field_cell_value(*cell) as i32;
+				let node = PortalNode::new(neighbour_id, *cell, weight_neighbour);
+				// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
+				let changed_portal = portals_changed[i];
+				let weight_changed = cost_field_changed.get_field_cell_value(changed_portal) as i32;
+				let edge_node = PortalNode::new(changed_sector, changed_portal, weight_changed);
+				let edge = PortalEdge::new(edge_node, SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE);
+				self.insert_edge(&node, edge)
+			}
+		}
+		self
+	}
+
+	/// Iterate through the graph finding neighbouring [PortalNode]s with edges
+	/// to the updated sector and remove them from the graph and insert new
+	/// nodes to reflect new portals and rebuild their internal edges
+	fn replace_old_neighbour_nodes(&mut self, sectors_to_rebuild: &Vec<(Ordinal, SectorID)>, sector_portals: &SectorPortals, sector_cost_fields: &SectorCostFields,) {
+		// remove portal nodes in neighbours that point towards the changed sector and
+		// based on the new portals create new nodes
+		let mut graph_copy = self.clone();
+		for (ordinal, neighbour_id) in sectors_to_rebuild.iter() {
+			// get the ordinal going from the neighbour to the changed sector
+			// this can be used to find if an edge in the neighbour that links
+			// to the changed sector
+			let ord_pointing_at_changed = ordinal.inverse();
+			// remove edges that reference the portals along a boundary
+			let mut edge_node_to_remove = vec![];
+			// remove the portals themselves - !! if they are no longer portals in sector_portals (otherwise subsequent updates may cause portals to be deleted and re-added with missing edges from corner adjacent sectors)
+			let portals_array = sector_portals.get().get(&neighbour_id).unwrap();
+			let portals = portals_array.get_portals_for_side(&ord_pointing_at_changed);
+			let mut nodes_to_remove = vec![];
+			match ord_pointing_at_changed {
+				Ordinal::North => {
+					for node in graph_copy.get_graph_mut().keys() {
+						if *node.get_sector() == *neighbour_id {
+							if node.get_portal_cell().get_row() == 0 {
+								// self.get_graph_mut().remove(node).unwrap();
+								edge_node_to_remove.push(node);
+								if !portals.contains(node.get_portal_cell()) {
+									nodes_to_remove.push(node);
+								}
+							}
+						}
 					}
 				}
+				Ordinal::East => {
+					for node in graph_copy.get_graph_mut().keys() {
+						if *node.get_sector() == *neighbour_id {
+							if node.get_portal_cell().get_column() == FIELD_RESOLUTION - 1 {
+								// self.get_graph_mut().remove(node).unwrap();
+								edge_node_to_remove.push(node);
+								if !portals.contains(node.get_portal_cell()) {
+									nodes_to_remove.push(node);
+								}
+							}
+						}
+					}
+				}
+				Ordinal::South => {
+					for node in graph_copy.get_graph_mut().keys() {
+						if *node.get_sector() == *neighbour_id {
+							if node.get_portal_cell().get_row() == FIELD_RESOLUTION - 1 {
+								// self.get_graph_mut().remove(node).unwrap();
+								edge_node_to_remove.push(node);
+								if !portals.contains(node.get_portal_cell()) {
+									nodes_to_remove.push(node);
+								}
+							}
+						}
+					}
+				}
+				Ordinal::West => {
+					for node in graph_copy.get_graph_mut().keys() {
+						if *node.get_sector() == *neighbour_id {
+							if node.get_portal_cell().get_column() == 0 {
+								// self.get_graph_mut().remove(node).unwrap();
+								edge_node_to_remove.push(node);
+								if !portals.contains(node.get_portal_cell()) {
+									nodes_to_remove.push(node);
+								}
+							}
+						}
+					}
+				}
+				_ => panic!("Diagonals shouldn't exist between sectors in the PortalGraph"),
+			}
+			for node in edge_node_to_remove {
+				// remove edges that reference these nodes
+				for (_nodes, edges) in self.get_graph_mut().iter_mut() {
+					edges.retain(|e| e.get_node() != node);
+				}
+			}
+			for node in nodes_to_remove {
+				// remove the old nodes
+				self.get_graph_mut().remove(node).unwrap();
+			}
+			// add new nodes to replace the ones removed in the neighbour
+			let portals_array = sector_portals.get().get(&neighbour_id).unwrap();
+			let portals = portals_array.get_portals_for_side(&ord_pointing_at_changed);
+			let cost_field = sector_cost_fields.get_scaled().get(neighbour_id).unwrap();
+			for cell in portals {
+				let weight = cost_field.get_field_cell_value(*cell) as i32;
+				let new_node = PortalNode::new(*neighbour_id, *cell, weight);
+				self.insert_portal_node(new_node);
+			}
+			//TODO see self.insert_edge
+			// recreate the internal edges of the neighbour sector
+			let all_portals = sector_portals.get().get(&neighbour_id).unwrap().get_all(); 
+			self.build_sector_internal_edges(neighbour_id, cost_field, &all_portals);
+		}
+	}
+	/// Remove [PortalNode]s of a mutated sector and place new nodes reflecting the updated [Portals], additioanlly create new internal edges between the new [Portals]
+	fn replace_changed_sector_nodes(&mut self, changed_sector: &SectorID, sector_portals: &SectorPortals,
+		sector_cost_fields: &SectorCostFields,) {
+		// remove all PortalNodes using the changed sector
+		let mut graph_copy = self.clone();
+		let nodes_to_remove = graph_copy.get_nodes_containg_sector_mut(&changed_sector);
+		for n in nodes_to_remove {
+			self.get_graph_mut().remove(n);
+		}
+		let cost_field = sector_cost_fields
+			.get_scaled()
+			.get(&changed_sector)
+			.unwrap();
+		let portals_array = sector_portals.get().get(&changed_sector).unwrap();
+		// rebuild the changed sectors nodes
+		for p in portals_array.get() {
+			for cell in p {
+				let weight = cost_field.get_field_cell_value(*cell) as i32;
+				let portal_node = PortalNode::new(*changed_sector, *cell, weight);
+				self.insert_portal_node(portal_node);
 			}
 		}
-		// rebuild the nodes and  rebuild the edges within each sector
-		for sector_id in sectors_to_rebuild.iter() {
-			let cost_field = sector_cost_fields.get_arc_scaled_sector(sector_id);
-			let portals = sector_portals
-				.get()
-				.get(sector_id)
-				.expect("SectorPortals is missing a sector ID");
-			self.build_sector_nodes(sector_id, portals);
-			self.build_internal_sector_edges(sector_id, portals, cost_field);
-		}
-		// rebuild the edges between each sector
-		for sector_id in sectors_to_rebuild.iter() {
-			self.build_external_sector_edges(sector_id, map_dimensions);
-		}
-		// Note the adjacent sectors that were completely rebuilt have destroyed !their!
-		// neighbours connectivity. Rebuild them too
-		sectors_to_rebuild.pop(); // don't need to rebuild the one that had its cost fields changed
-		for sector_id in sectors_to_rebuild.iter() {
-			let neighbours_neighbour = map_dimensions.get_ids_of_neighbouring_sectors(sector_id);
-			for id in neighbours_neighbour.iter() {
-				self.build_external_sector_edges(id, map_dimensions);
-			}
-		}
-		self
+		// rebuild the changed sectors internal edges
+		let all_portals = portals_array.get_all();
+		self.build_sector_internal_edges(&changed_sector, cost_field, &all_portals);
 	}
-	/// Replaces the current graph with a fresh one
-	pub fn reset_graph(
-		&mut self,
-		sector_portals: &SectorPortals,
-		sector_cost_fields: &SectorCostFields,
-		map_dimensions: &MapDimensions,
-	) -> &mut Self {
-		let mut graph = PortalGraph::default();
-		graph
-			.build_graph_nodes(sector_portals)
-			.build_edges_within_each_sector(sector_portals, sector_cost_fields)
-			.build_edges_between_sectors(sector_portals, map_dimensions);
-		self.graph = graph.graph;
-		self
-	}
-	/// From the [NodeIndex] of a starting portal attempt to find a path to a
-	/// target portal [NodeIndex]. If successful the total cost of the path
-	/// and a list of portal [NodeIndex]s making up the path is returned
-	fn find_path_of_portals(
-		&self,
-		source: NodeIndex,
-		target: NodeIndex,
-		estimate_cost: i32,
-	) -> Option<(i32, Vec<NodeIndex>)> {
-		astar(
-			&self.graph,
-			source,
-			|fin| fin == target,
-			|e| *e.weight(),
-			|_| estimate_cost,
-		)
-	}
-	pub fn find_path_between_sector_portals(
-		&self,
-		source: (SectorID, FieldCell),
-		target: (SectorID, FieldCell),
-		sector_portals: &SectorPortals,
-	) -> Option<(i32, Vec<NodeIndex>)> {
-		if let Some(source_index) = self.find_index_from_sector_portals_and_portal_cell(
-			sector_portals,
-			&source.0,
-			&source.1,
-		) {
-			if let Some(target_index) = self.find_index_from_sector_portals_and_portal_cell(
-				sector_portals,
-				&target.0,
-				&target.1,
-			) {
-				let estimate_cost = {
-					(target.0.get_column() as i32 - source.0.get_column() as i32).pow(2)
-						+ (target.0.get_row() as i32 - source.0.get_row() as i32).pow(2)
-				};
-				return self.find_path_of_portals(source_index, target_index, estimate_cost);
-			}
-		}
-		None
-	}
-	/// Using a path of portal [NodeIndex]s convert them into a list of sector portal pairings. Note that the first element contains the starting sector with the portal to leave and enter a different sector, the last element contains the goal sector and goal portal cell, and all the other elements are in duos whereby defining the entry and exit points of sectors along the way
-	pub fn convert_index_path_to_sector_portal_cells(
-		&self,
-		portal_path: Vec<NodeIndex>,
-		sector_portals: &SectorPortals,
-	) -> Vec<(SectorID, FieldCell)> {
-		let mut path = Vec::new();
-		for node in portal_path.iter() {
-			let (sector_id, cell_id) = self
-				.find_portal_sector_id_and_cell_position_from_graph_index(sector_portals, node)
-				.unwrap();
-			path.push((sector_id, cell_id));
-		}
-		path
-	}
+}
+
+impl PortalGraph {
 	/// From any field cell at a `source` sector find any pathable portals witihn that sector and generate a path from each portal to the target. Compare the results and return the path with the best cost associated with it
 	pub fn find_best_path(
 		&self,
@@ -407,10 +487,11 @@ impl PortalGraph {
 		target: (SectorID, FieldCell),
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
-	) -> Option<(i32, Vec<NodeIndex>)> {
+	) -> Option<Vec<(SectorID, FieldCell)>> {
 		// find portals reachable by the source actor position
 		let source_sector_id = source.0;
 		let source_field_cell = source.1;
+		let source_weight = sector_cost_fields.get_scaled().get(&source_sector_id).unwrap().get_field_cell_value(source_field_cell) as i32;
 		let mut source_portals = Vec::new();
 		let portals = sector_portals.get().get(&source_sector_id).unwrap();
 		for ordinal in portals.get().iter() {
@@ -430,6 +511,7 @@ impl PortalGraph {
 		// find portals that can reach the target/goal
 		let target_sector_id = target.0;
 		let target_field_cell = target.1;
+		let target_weight = sector_cost_fields.get_scaled().get(&target_sector_id).unwrap().get_field_cell_value(target_field_cell) as i32;
 		let mut target_portals = Vec::new();
 		let portals = sector_portals.get().get(&target_sector_id).unwrap();
 		for ordinal in portals.get().iter() {
@@ -446,14 +528,15 @@ impl PortalGraph {
 				}
 			}
 		}
-		// find multiple paths from every source to target
+		// iterate over the source and target portals to find a series of paths
 		let mut paths = Vec::new();
 		for source_portal in source_portals.iter() {
 			for target_portal in target_portals.iter() {
+				let source_portal_node = PortalNode::new(source_sector_id, *source_portal, source_weight);
+				let target_portal_node = PortalNode::new(target_sector_id, *target_portal, target_weight);
 				if let Some(path) = self.find_path_between_sector_portals(
-					(source_sector_id, *source_portal),
-					(target_sector_id, *target_portal),
-					sector_portals,
+					source_portal_node,
+					target_portal_node,
 				) {
 					paths.push(path);
 				}
@@ -461,115 +544,156 @@ impl PortalGraph {
 		}
 		// find and return the best
 		let mut best_cost = i32::MAX;
-		let mut best_path: Option<(i32, Vec<NodeIndex>)> = None;
+		let mut best_path: Option<Vec<(SectorID, FieldCell)>> = None;
 		for path in paths.iter() {
 			if path.0 < best_cost {
 				best_cost = path.0;
-				best_path = Some(path.clone());
+				best_path = Some(path.1.clone());
 			}
 		}
 		best_path
 	}
-	// /// Iterate over the "translator" (`self.node_index_translation`) and search for a portal's `search_index`
-	// /// ([NodeIndex]), if found return the `sector_id` it is located in
-	// fn find_sector_id_from_graph_index(&self, search_index: &NodeIndex) -> Option<SectorID> {
-	// 	let translator = &self.node_index_translation;
-	// 	for (sector_id, node_ordinals) in translator.iter() {
-	// 		for nodes in node_ordinals.iter() {
-	// 			for n in nodes.iter() {
-	// 				if *search_index == *n {
-	// 					return Some(*sector_id);
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// 	None
-	// }
-	/// Iterate over the "translator" (`self.node_index_translation`) and search for a field cell of
-	/// `search_index` and identify the sector it resides in and the cell
-	/// position of it within that sector
-	fn find_portal_sector_id_and_cell_position_from_graph_index(
-		&self,
-		sector_portals: &SectorPortals,
-		search_index: &NodeIndex,
-	) -> Option<(SectorID, FieldCell)> {
-		let translator = &self.node_index_translation;
-		for (sector_id, node_ordinals) in translator.iter() {
-			for (i, nodes) in node_ordinals.iter().enumerate() {
-				for (j, n) in nodes.iter().enumerate() {
-					if *search_index == *n {
-						let cell = sector_portals.get().get(sector_id).unwrap().get()[i][j];
-						return Some((*sector_id, cell));
-					}
-				}
+	/// Find a path from a source [PortalNode] to a target [PortalNode] if it
+	/// exists and return the path with a weighting of how expensive it is
+	fn find_path_between_sector_portals(&self, source_node: PortalNode, target_node: PortalNode) -> Option<(i32, Vec<(SectorID, FieldCell)>)> {
+		if let Some(path) = astar(self.get_graph(), source_node, target_node) {
+			let total_weight = path.0;
+			let mut p = Vec::new();
+			// extract portal node into a <sector, field_cell> representation
+			for node in path.1 {
+				p.push((node.get_sector().clone(), node.get_portal_cell().clone()));
 			}
+			Some((total_weight, p))
+		} else {
+			None
 		}
-		None
 	}
-	/// Iterate through the [SectorPortals] using the `sector_id` and `portal_cell` to identify the lookup indices to find the portals [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
-	fn find_index_from_sector_portals_and_portal_cell(
-		&self,
-		sector_portals: &SectorPortals,
-		sector_id: &SectorID,
-		portal_cell: &FieldCell,
-	) -> Option<NodeIndex> {
-		let translator = &self.node_index_translation;
-		// locate the indices within sector_portals which can be used to access the
-		// right elements of the translator
-		for (i, ordinals) in sector_portals
-			.get()
-			.get(sector_id)
-			.unwrap()
-			.get()
-			.iter()
-			.enumerate()
-		{
-			for (j, portal) in ordinals.iter().enumerate() {
-				if *portal == *portal_cell {
-					return Some(translator.get(sector_id).unwrap()[i][j]);
-				}
-			}
-		}
-		None
-	}
-	// /// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular field portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
-	// fn find_index_from_single_portal_and_portal_cell(
-	// 	&self,
-	// 	portals: &Portals,
-	// 	sector_id: &SectorID,
-	// 	portal_cell: &FieldCell,
-	// ) -> Option<NodeIndex> {
-	// 	let translator = &self.node_index_translation;
-	// 	// locate the indices within sector_portals which can be used to access the
-	// 	// right elements of the translator
-	// 	for (i, ordinals) in portals.get().iter().enumerate() {
-	// 		for (j, portal) in ordinals.iter().enumerate() {
-	// 			if portal.get_column_row() == *portal_cell {
-	// 				return Some(translator.get(sector_id).unwrap()[i][j]);
-	// 			}
-	// 		}
-	// 	}
-	// 	None
-	// }
 }
 
-/// Iterate through the [Portals] [Ordinal] lists to locate the graph positional indices of a particular field portal position, these indices are then used to find the  [NodeIndex] from its recorded position in the "translator" (`self.node_index_translation`)
-fn find_index_from_single_portal_and_portal_cell(
-	translator: &BTreeMap<SectorID, [Vec<NodeIndex>; 4]>,
-	portals: &Portals,
-	sector_id: &SectorID,
-	portal_cell: &FieldCell,
-) -> Option<NodeIndex> {
-	// locate the indices within sector_portals which can be used to access the
-	// right elements of the translator
-	for (i, ordinals) in portals.get().iter().enumerate() {
-		for (j, portal) in ordinals.iter().enumerate() {
-			if *portal == *portal_cell {
-				return Some(translator.get(sector_id).unwrap()[i][j]);
+/// Based on https://github.com/BlondeBurrito/pathfinding_astar
+fn astar(graph: &BTreeMap<PortalNode, Vec<PortalEdge>>, source_node: PortalNode, target_node: PortalNode) -> Option<(i32, Vec<PortalNode>)> {
+	// ensure nodes data contains start and end points
+	if !graph.contains_key(&source_node) {
+		panic!("Node data does not contain start node {:?}", source_node);
+	}
+	if !graph.contains_key(&target_node) {
+		panic!("Node data does not contain end node {:?}", target_node);
+	}
+	// retreive the weight of the start point
+	let start_weight: i32 = source_node.get_weight();
+
+	// Every time we process a new node we add it to a map.
+	// If a node has already been recorded then we replace it if it has a better a-star score (smaller number)
+	// otherwise we discard it.
+	// This is used to optimise the searching whereby if we find a new path to a previously
+	// processed node we can quickly decide to discard or explore the new route
+	let mut node_astar_scores: HashMap<PortalNode, i32> = HashMap::new();
+
+	// add starting node a-star score to data set (starting node score is just its weight)
+	node_astar_scores.insert(source_node, start_weight);
+
+	// create a queue of nodes to be processed based on discovery
+	// of form (current_node, a_star_score, vec_previous_nodes_traversed, total_distance_traversed)
+	// start by add starting node to queue
+	let mut queue = vec![(
+		source_node,
+		start_weight, // we haven't moved so starting node score is just its weight
+		Vec::<PortalNode>::new(),
+		0,
+	)];
+
+	// If a path exists then the end node will shift to the beginning of the queue and we can return it.
+	// If a path does not exist the `queue` will shrink to length 0 and we return `None` through a check
+	// at the end of each loop iteration.
+	while queue[0].0 != target_node {
+		// info!("Curr queue {:?}", queue);
+		// Remove the first element ready for processing
+		let current_path = queue.swap_remove(0);
+		// Grab the neighbours with their distances from the current path so we can explore each
+		let neightbours = match graph.get(&current_path.0) {
+			Some(x) => x,
+			None => panic!(
+				"Node {:?} is not a key in the `nodes` data set",
+				current_path.0
+			),
+		};
+		// Process each new path
+		for n in neightbours.iter() {
+			let distance_traveled_so_far: i32 = current_path.3;
+			let distance_to_this_neighbour: i32 = n.get_distance();
+			// Calculate the total distance from the start to this neighbour node
+			let distance_traveled = distance_traveled_so_far + distance_to_this_neighbour;
+			let node_weight: i32 = n.get_node().get_weight();
+			// Now we know the overall distance traveled and the weight of where we're going to we can score it
+			let astar_score = a_star_score(distance_traveled, node_weight);
+			// Create a vector of the nodes traversed to get to this `n`
+			let mut previous_nodes_traversed = current_path.2.clone();
+			previous_nodes_traversed.push(current_path.0);
+			// Update the a-star data set.
+			// If it already has a record of this node we choose to either update it or ignore this new path as it is worse than what we have calculated in a previous iteration
+			if node_astar_scores.contains_key(&n.get_node()) {
+				if node_astar_scores.get(&n.get_node()) >= Some(&astar_score) {
+					// `node_astar_scores` contains a worse score so update the map with the better score
+					node_astar_scores.insert(n.get_node().clone(), astar_score);
+					// Search the queue to see if we already have a route to this node.
+					// If we do but this new path is better then replace it, otherwise discard
+					let mut new_queue_item_required_for_node = true;
+					for q in queue.iter_mut() {
+						if q.0 == *n.get_node() {
+							// If existing score is worse (higher) then replace the queue item and
+							// don't allow a fresh queue item to be added
+							if q.1 >= astar_score {
+								new_queue_item_required_for_node = false;
+								q.1 = astar_score;
+								q.2 = previous_nodes_traversed.clone();
+								q.3 = distance_traveled;
+							}
+						}
+					}
+					// Queue doesn't contain a route to this node, as we have now found a better route
+					// update the queue with it so it can be explored
+					if new_queue_item_required_for_node {
+						queue.push((
+							n.get_node().clone(),
+							astar_score,
+							previous_nodes_traversed,
+							distance_traveled,
+						));
+					}
+				}
+			} else {
+				// No record of node therefore this is the first time it has been visted
+				// Update the a-star score data
+				node_astar_scores.insert(n.get_node().clone(), astar_score);
+				// Update the queue with this new route to process later
+				queue.push((
+					n.get_node().clone(),
+					astar_score,
+					previous_nodes_traversed,
+					distance_traveled,
+				));
 			}
 		}
+
+		// Sort the queue by a-star sores so each loop processes the current best path
+		queue.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+		// As the `queue` is processed elements are removed, neighbours discovered and scores calculated.
+		//If the `queue` length becomes zero then it means there are no routes to the `end_node` and we return `None`
+		if queue.len() == 0 {
+			return None;
+		}
 	}
-	None
+	let score = queue[0].1;
+	let mut best_path = queue[0].2.clone();
+	// add end node to data
+	best_path.push(target_node);
+	Some((score, best_path))
+}
+
+/// Determines a score to rank a chosen path, lower scores are better
+fn a_star_score(distance: i32, weighting: i32) -> i32 {
+	distance + weighting
 }
 
 #[rustfmt::skip]
@@ -593,9 +717,9 @@ use super::*;
 			}
 		}
 		// build the graph
-		let mut portal_graph = PortalGraph::default();
-		portal_graph.build_graph_nodes(&sector_portals);
-		let result = portal_graph.graph.node_count();
+		let mut graph = PortalGraph::default();
+		graph.insert_all_portal_nodes(&sector_portals, &sector_cost_fields);
+		let result = graph.get_graph().len();
 
 		let portal_count = 24; // sum of portals for each sector in the 3x3 sector grid
 		let actual = portal_count;
@@ -618,10 +742,16 @@ use super::*;
 		
 		// build the graph
 		let mut portal_graph = PortalGraph::default();
-		portal_graph.build_graph_nodes(&sector_portals);
+		portal_graph.insert_all_portal_nodes(&sector_portals, &sector_cost_fields);
 		// build the edges within each sector
-		portal_graph.build_edges_within_each_sector(&sector_portals, &sector_cost_fields);
-		let result = portal_graph.graph.edge_count();
+		portal_graph.build_all_internal_sector_edges(&sector_portals, &sector_cost_fields);
+		let result = {
+			let mut edge_count = 0;
+			for (_, edges) in portal_graph.graph.iter() {
+				edge_count += edges.len();
+			}
+			edge_count
+		};
 
 		// _______________________________
 		// |         |         |         |
@@ -645,7 +775,7 @@ use super::*;
 		assert_eq!(actual, result);
 	}
 	#[test]
-	fn portal_graph_basic_edge_count() {
+	fn portal_graph_basic_node_count() {
 		//init
 		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
 		let sector_cost_fields = SectorCostFields::new(&map_dimensions);
@@ -661,12 +791,18 @@ use super::*;
 		
 		// build the graph
 		let mut portal_graph = PortalGraph::default();
-		portal_graph.build_graph_nodes(&sector_portals);
+		portal_graph.insert_all_portal_nodes(&sector_portals, &sector_cost_fields);
 		// build the edges within each sector
-		portal_graph.build_edges_within_each_sector(&sector_portals, &sector_cost_fields);
+		portal_graph.build_all_internal_sector_edges(&sector_portals, &sector_cost_fields);
 		// build the edges between sectors
-		portal_graph.build_edges_between_sectors(&sector_portals, &map_dimensions);
-		let result = portal_graph.graph.edge_count();
+		portal_graph.build_all_external_sector_edges(&sector_portals, &sector_cost_fields, &map_dimensions);
+		let result = {
+			let mut edge_count = 0;
+			for (_, edges) in portal_graph.graph.iter() {
+				edge_count += edges.len();
+			}
+			edge_count
+		};
 
 		// _______________________________
 		// |         |         |         |
@@ -692,7 +828,7 @@ use super::*;
 		assert_eq!(actual, result);
 	}
 	#[test]
-	fn update_graph_from_portals_change() {
+	fn update_graph_from_portals_change_node_count() {
 		//init
 		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
 		let mut sector_cost_fields = SectorCostFields::new(&map_dimensions);
@@ -704,11 +840,79 @@ use super::*;
 		
 		// build the graph
 		let mut portal_graph = PortalGraph::default();
-		portal_graph.build_graph_nodes(&sector_portals);
+		portal_graph.insert_all_portal_nodes(&sector_portals, &sector_cost_fields);
 		// build the edges within each sector
-		portal_graph.build_edges_within_each_sector(&sector_portals, &sector_cost_fields);
+		portal_graph.build_all_internal_sector_edges(&sector_portals, &sector_cost_fields);
 		// build the edges between sectors
-		portal_graph.build_edges_between_sectors(&sector_portals, &map_dimensions);
+		portal_graph.build_all_external_sector_edges(&sector_portals, &sector_cost_fields, &map_dimensions);
+		// the current graph has this plain representation of portals
+		// _______________________________
+		// |         |         |         |
+		// |         |         |         |
+		// |         P         P         |
+		// |         |         |         |
+		// |____P____|____P____|____P____|
+		// |         |         |         |
+		// |         |         |         |
+		// |         P         P         |
+		// |         |         |         |
+		// |____P____|____P____|____P____|
+		// |         |         |         |
+		// |         |         |         |
+		// |         P         P         |
+		// |         |         |         |
+		// |_________|_________|_________|
+
+		// update the top-left CostFields and calculate new portals
+		let mutated_sector_id = SectorID::new(0, 0);
+		sector_cost_fields.set_field_cell_value(mutated_sector_id, 255, FieldCell::new(4, 9), &map_dimensions);
+		sector_portals.update_portals(mutated_sector_id, &sector_cost_fields, &map_dimensions);
+
+		// This produces a new representation with an extra portal, `x` denotes the impassable point
+		// just inserted
+		// _______________________________
+		// |         |         |         |
+		// |         |         |         |
+		// |         P         P         |
+		// |         |         |         |
+		// |_P__x_P__|____P____|____P____|
+		// |         |         |         |
+		// |         |         |         |
+		// |         P         P         |
+		// |         |         |         |
+		// |____P____|____P____|____P____|
+		// |         |         |         |
+		// |         |         |         |
+		// |         P         P         |
+		// |         |         |         |
+		// |_________|_________|_________|
+
+		// update the graph
+		portal_graph.update_graph(mutated_sector_id, &sector_portals, &sector_cost_fields, &map_dimensions);
+		// length is the number of nodes
+		let result = portal_graph.get_graph().len();
+		// each portal in a sector is connected to every other portal in that sector
+		let actual_nodes = 26; //SHOULD BE 54
+		assert_eq!(actual_nodes, result);
+	}
+	#[test]
+	fn update_graph_from_portals_change_edge_count() {
+		//init
+		let map_dimensions = MapDimensions::new(30, 30, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(&map_dimensions);
+		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id,&map_dimensions)
+		}
+		
+		// build the graph
+		let mut portal_graph = PortalGraph::default();
+		portal_graph.insert_all_portal_nodes(&sector_portals, &sector_cost_fields);
+		// build the edges within each sector
+		portal_graph.build_all_internal_sector_edges(&sector_portals, &sector_cost_fields);
+		// build the edges between sectors
+		portal_graph.build_all_external_sector_edges(&sector_portals, &sector_cost_fields, &map_dimensions);
 		// the current graph has this plain representation of portals
 		// _______________________________
 		// |         |         |         |
@@ -754,7 +958,14 @@ use super::*;
 		// update the graph
 		portal_graph.update_graph(mutated_sector_id, &sector_portals, &sector_cost_fields, &map_dimensions);
 		// test that the graph has updated with the new edges
-		let result = portal_graph.graph.edge_count();
+		let result = {
+			let mut edge_count = 0;
+			for (_, edges) in portal_graph.graph.iter() {
+				edge_count += edges.len();
+			}
+			edge_count
+		};
+		println!("Graph\n {:?}", portal_graph);
 		// each portal in a sector is connected to every other portal in that sector
 		let portal_to_portal_count = 54; //SHOULD BE 54
 		// each sector boundary has an edge to the neighbouring sector boundary
@@ -762,6 +973,87 @@ use super::*;
 		let actual = portal_to_portal_count + sector_to_sector_count;
 		assert_eq!(actual, result);
 	}
+	/// Update the costfield so that portal sitting in a corner serves as a link to two sectors at the same time
+	#[test]
+	fn update_graph_from_portals_change_edge_count_dual_corner_portals() {
+		//init
+		let map_dimensions = MapDimensions::new(20, 20, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(&map_dimensions);
+		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id,&map_dimensions)
+		}
+		
+		// build the graph
+		let mut portal_graph = PortalGraph::default();
+		portal_graph.insert_all_portal_nodes(&sector_portals, &sector_cost_fields);
+		// build the edges within each sector
+		portal_graph.build_all_internal_sector_edges(&sector_portals, &sector_cost_fields);
+		// build the edges between sectors
+		portal_graph.build_all_external_sector_edges(&sector_portals, &sector_cost_fields, &map_dimensions);
+		// the current graph has this plain representation of portals
+		// _____________________
+		// |         |         |
+		// |         |         |
+		// |         P         |
+		// |         |         |
+		// |____P____|____P____|
+		// |         |         |
+		// |         |         |
+		// |         P         |
+		// |         |         |
+		// |_________|_________|
+
+		// update the top-left CostFields and calculate new portals
+		let mutated_sector_id_0 = SectorID::new(0, 0);
+		sector_cost_fields.set_field_cell_value(mutated_sector_id_0, 255, FieldCell::new(9, 8), &map_dimensions);
+		sector_portals.update_portals(mutated_sector_id_0, &sector_cost_fields, &map_dimensions);
+		portal_graph.update_graph(mutated_sector_id_0, &sector_portals, &sector_cost_fields, &map_dimensions);
+
+		let mutated_sector_id_1 = SectorID::new(0, 1);
+		sector_cost_fields.set_field_cell_value(mutated_sector_id_1, 255, FieldCell::new(8, 0), &map_dimensions);
+		sector_portals.update_portals(mutated_sector_id_1, &sector_cost_fields, &map_dimensions);
+		portal_graph.update_graph(mutated_sector_id_1, &sector_portals, &sector_cost_fields, &map_dimensions);
+
+		// This produces a new representation with an extra portal, `x` denotes the impassable point
+		// just inserted
+		// _____________________
+		// |         |         |
+		// |         P         |
+		// |         |         |
+		// |         x         |
+		// |___P____P>____P____|
+		// |       x |         |
+		// |         |         |
+		// |         P         |
+		// |         |         |
+		// |_________|_________|
+
+		// test for node count
+		let result_nodes = portal_graph.graph.len();
+		let actual_nodes = 11;
+		// println!("Graph {:?}", portal_graph.graph);
+		// println!("Portals {:?}", sector_portals.get());
+		assert_eq!(actual_nodes, result_nodes);
+
+		// test that the graph has updated with the new edges
+		let result_edges = {
+			let mut edge_count = 0;
+			for (_, edges) in portal_graph.graph.iter() {
+				edge_count += edges.len();
+			}
+			edge_count
+		};
+		// println!("Graph\n {:?}", portal_graph);
+		// each portal in a sector is connected to every other portal in that sector
+		let portal_to_portal_count = 20;
+		// each sector boundary has an edge to the neighbouring sector boundary
+		let sector_to_sector_count = 12;
+		let actual_edges = portal_to_portal_count + sector_to_sector_count;
+		assert_eq!(actual_edges, result_edges);
+	}
+
 	// #[test]
 	// fn dugin() {
 	// 	let map_x_dimension = 30;
@@ -805,11 +1097,11 @@ use super::*;
 		
 		// build the graph
 		let mut portal_graph = PortalGraph::default();
-		portal_graph.build_graph_nodes(&sector_portals);
+		portal_graph.insert_all_portal_nodes(&sector_portals, &sector_cost_fields);
 		// build the edges within each sector
-		portal_graph.build_edges_within_each_sector(&sector_portals, &sector_cost_fields);
+		portal_graph.build_all_internal_sector_edges(&sector_portals, &sector_cost_fields);
 		// build the edges between sectors
-		portal_graph.build_edges_between_sectors(&sector_portals, &map_dimensions);
+		portal_graph.build_all_external_sector_edges(&sector_portals, &sector_cost_fields, &map_dimensions);
 
 		// _______________________________
 		// |         |         |         |
@@ -829,14 +1121,27 @@ use super::*;
 		// |_________|_________|_________|
 
 		// form of ((sector_id), (portal_cell_id))
-		let source = (SectorID::new(0, 0), FieldCell::new(4, 9));
-		let target = (SectorID::new(0, 2), FieldCell::new(4, 0));
-		let portal_path = portal_graph.find_path_between_sector_portals(source, target, &sector_portals);
-		let path = portal_graph.convert_index_path_to_sector_portal_cells(portal_path.unwrap().1, &sector_portals);
+		let source_sector = SectorID::new(0, 0);
+		let source_field = FieldCell::new(4, 9);
+		let source_weight = sector_cost_fields.get_scaled().get(&source_sector).unwrap().get_field_cell_value(source_field) as i32;
+		let source_portal_node = PortalNode::new(source_sector, source_field, source_weight);
+
+		let target_sector = SectorID::new(0, 2);
+		let target_field = FieldCell::new(4, 0);
+		let target_weight = sector_cost_fields.get_scaled().get(&target_sector).unwrap().get_field_cell_value(target_field) as i32;
+		let target_portal_node = PortalNode::new(target_sector, target_field, target_weight);
+
+		let path = portal_graph.find_path_between_sector_portals(source_portal_node, target_portal_node).unwrap();
 		let actual = vec![(SectorID::new(0, 0), FieldCell::new(4, 9)), (SectorID::new(0, 1), FieldCell::new(4, 0)), (SectorID::new(0, 1), FieldCell::new(4, 9)), (SectorID::new(0, 2), FieldCell::new(4, 0))];
 		
-		assert_eq!(actual, path);
+		assert_eq!(actual, path.1);
 	}
+
+
+
+
+
+
 	// #[test]
 	// fn best_path_xyz() {
 	// 	let map_x_dimension = 30;

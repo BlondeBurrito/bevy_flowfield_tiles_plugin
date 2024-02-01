@@ -68,6 +68,7 @@ ron = ["serde", "dep:ron"]
 csv = ["serde", "dep:csv"]
 2d = []
 3d = []
+multithread = []
 
 [package.metadata.docs.rs]
 features = ["serde", "ron", "csv", "2d", "3d"]

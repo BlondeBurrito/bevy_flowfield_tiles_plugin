@@ -131,8 +131,8 @@ mod tests {
 	}
 	#[test]
 	fn new_bundle_from_ron() {
-		let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
+		let path = env!("CARGO_MANIFEST_DIR").to_string()
+			+ "/assets/sector_cost_fields_continuous_layout.ron";
 		let _ = FlowFieldTilesBundle::from_ron(30, 30, 10, 0.5, &path);
 	}
 }

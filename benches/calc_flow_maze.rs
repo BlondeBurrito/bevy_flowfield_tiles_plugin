@@ -55,10 +55,9 @@ fn prepare_fields(
 	let target = (target_sector, target_goal);
 
 	// find the route
-	let node_route = graph
+	let mut path = graph
 		.find_best_path(source, target, &portals, &cost_fields)
 		.unwrap();
-	let mut path = graph.convert_index_path_to_sector_portal_cells(node_route.1, &portals);
 	// println!("Path len: {}", path.len());
 	filter_path(&mut path, target_goal);
 	// println!("Path len: {}", path.len());

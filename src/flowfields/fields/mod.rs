@@ -29,7 +29,7 @@ pub struct FieldCell((usize, usize));
 
 impl FieldCell {
 	/// Create a new instance of [FieldCell]
-	pub const fn new(column: usize, row: usize) -> Self {
+	pub fn new(column: usize, row: usize) -> Self {
 		FieldCell((column, row))
 	}
 	/// Get the sector `(column, row)` tuple

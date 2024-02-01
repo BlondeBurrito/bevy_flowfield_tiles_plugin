@@ -65,6 +65,14 @@ impl Portals {
 	pub fn get_mut(&mut self) -> &mut [Vec<FieldCell>; 4] {
 		&mut self.0
 	}
+	/// Get all the [FieldCell] portals as a list
+	pub fn get_all(&self) -> Vec<FieldCell> {
+		self.get()
+			.iter()
+			.flatten()
+			.cloned()
+			.collect::<Vec<FieldCell>>()
+	}
 	/// Get a reference to the list of [FieldCell]s along the side of a sector defined by the [Ordinal]
 	#[cfg(not(tarpaulin_include))]
 	pub fn get_portals_for_side(&self, ordinal: &Ordinal) -> &Vec<FieldCell> {
