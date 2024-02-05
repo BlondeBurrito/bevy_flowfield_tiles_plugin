@@ -89,14 +89,13 @@ pub fn process_costfields_updates(
 #[derive(Event)]
 pub struct EventCleanCaches(SectorID);
 
-//TODO in order to regenerate the routes the source field cell needs to be known - a cost field change may make that field cell invalid though... disable regen for now, steering pipeline/character controler will have to poll the route cache and request a new one....
 /// Lookup any cached data records making use of sectors that have had their [CostField] adjusted and remove them from the cache
 #[cfg(not(tarpaulin_include))]
 pub fn clean_cache(
 	mut events: EventReader<EventCleanCaches>,
 	mut q_flow: Query<&mut FlowFieldCache>,
 	mut q_route: Query<&mut RouteCache>,
-	// mut event_path_request: EventWriter<EventPathRequest>,
+	mut event_path_request: EventWriter<EventPathRequest>,
 ) {
 	let mut sectors = Vec::new();
 	for event in events.read() {
@@ -184,16 +183,15 @@ pub fn clean_cache(
 			for purge_me in to_purge.iter() {
 				route_cache.remove_route(*purge_me);
 			}
+			// send events to regenerate routes
+			for metadata in to_purge.iter() {
+				event_path_request.send(EventPathRequest::new(
+					metadata.get_source_sector(),
+					metadata.get_source_field_cell(),
+					metadata.get_target_sector(),
+					metadata.get_target_goal(),
+				))
+			}
 		}
-		// // send events to regenerate routes
-		// for metadata in to_purge.iter() {
-		// 	//TODO someway of getting the orignal source_field_cell instead of (5,5) assumption
-		// 	event_path_request.send(EventPathRequest::new(
-		// 		metadata.get_source_sector(),
-		// 		(5, 5),
-		// 		metadata.get_target_sector(),
-		// 		metadata.get_target_goal(),
-		// 	))
-		// }
 	}
 }

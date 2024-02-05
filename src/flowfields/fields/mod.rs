@@ -283,6 +283,10 @@ impl RouteMetadata {
 	pub fn get_source_sector(&self) -> SectorID {
 		self.source_sector
 	}
+	/// Get the source FieldCell
+	pub fn get_source_field_cell(&self) -> FieldCell {
+		self.source_field
+	}
 	/// Get the target sector
 	pub fn get_target_sector(&self) -> SectorID {
 		self.target_sector
