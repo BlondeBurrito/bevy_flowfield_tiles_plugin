@@ -558,6 +558,7 @@ fn create_counters(mut cmds: Commands) {
 }
 
 /// Updates the FPS field each tick
+#[allow(clippy::type_complexity)]
 fn update_fps_counter(
 	diagnostics: Res<DiagnosticsStore>,
 	mut query: Query<
@@ -578,6 +579,7 @@ fn update_fps_counter(
 }
 
 /// Updates the Actor count field each tick
+#[allow(clippy::type_complexity)]
 fn update_actor_counter(
 	actors: Query<&Actor>,
 	mut query: Query<
@@ -598,6 +600,7 @@ fn update_actor_counter(
 }
 
 /// Updates the elapsed time field each tick
+#[allow(clippy::type_complexity)]
 fn update_elapsed_counter(
 	time: Res<Time>,
 	mut query: Query<

@@ -185,6 +185,9 @@ fn get_ord_icon(value: u8) -> String {
 		return String::from("ordinal_icons/goal.png");
 	}
 	//
+	if has_line_of_sight(value) {
+		return String::from("ordinal_icons/los.png")
+	}
 	let ordinal = get_ordinal_from_bits(value);
 	match ordinal {
 		Ordinal::North => String::from("ordinal_icons/north.png"),
