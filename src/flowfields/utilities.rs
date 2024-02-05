@@ -716,14 +716,14 @@ mod tests {
 		let field = FieldCell::new(3, 4);
 		let result = Ordinal::get_all_cell_neighbours_with_ordinal(field);
 		let actual = vec![
-			((Ordinal::North, FieldCell::new(3, 3))),
-			((Ordinal::East, FieldCell::new(4, 4))),
-			((Ordinal::South, FieldCell::new(3, 5))),
-			((Ordinal::West, FieldCell::new(2, 4))),
-			((Ordinal::NorthEast, FieldCell::new(4, 3))),
-			((Ordinal::SouthEast, FieldCell::new(4, 5))),
-			((Ordinal::SouthWest, FieldCell::new(2, 5))),
-			((Ordinal::NorthWest, FieldCell::new(2, 3))),
+			(Ordinal::North, FieldCell::new(3, 3)),
+			(Ordinal::East, FieldCell::new(4, 4)),
+			(Ordinal::South, FieldCell::new(3, 5)),
+			(Ordinal::West, FieldCell::new(2, 4)),
+			(Ordinal::NorthEast, FieldCell::new(4, 3)),
+			(Ordinal::SouthEast, FieldCell::new(4, 5)),
+			(Ordinal::SouthWest, FieldCell::new(2, 5)),
+			(Ordinal::NorthWest, FieldCell::new(2, 3)),
 		];
 		assert_eq!(actual, result)
 	}
@@ -732,9 +732,9 @@ mod tests {
 		let field = FieldCell::new(0, 0);
 		let result = Ordinal::get_all_cell_neighbours_with_ordinal(field);
 		let actual = vec![
-			((Ordinal::East, FieldCell::new(1, 0))),
-			((Ordinal::South, FieldCell::new(0, 1))),
-			((Ordinal::SouthEast, FieldCell::new(1, 1))),
+			(Ordinal::East, FieldCell::new(1, 0)),
+			(Ordinal::South, FieldCell::new(0, 1)),
+			(Ordinal::SouthEast, FieldCell::new(1, 1)),
 		];
 		assert_eq!(actual, result)
 	}

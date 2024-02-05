@@ -78,7 +78,7 @@ impl PartialEq for PortalNode {
 }
 impl Eq for PortalNode {}
 
-/// An edge between [PortalNode] s comes in two varieties.
+/// An edge between [PortalNode]s comes in two varieties.
 ///
 /// Internal means it's an edge to another Portal within the same sector, External means it is a Portal to a neighbouring sector Portal
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
