@@ -62,17 +62,15 @@ impl Field<u8> for CostField {
 		&self.0
 	}
 	/// Retrieve a field cell value
+	/// 
+	/// NB: This will panic if out of bounds
 	fn get_field_cell_value(&self, field_cell: FieldCell) -> u8 {
-		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot get a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
-		}
 		self.0[field_cell.get_column()][field_cell.get_row()]
 	}
 	/// Set a field cell to a value
+	/// 
+	/// NB: This will panic if out of bounds
 	fn set_field_cell_value(&mut self, value: u8, field_cell: FieldCell) {
-		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot set a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
-		}
 		self.0[field_cell.get_column()][field_cell.get_row()] = value;
 	}
 }
@@ -120,7 +118,7 @@ fn process_neighbours(
 		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
 		// iterate over the neighbours to try and find the target
 		for n in neighbours.iter() {
-			let n = Arc::new(*n);
+			// let n = Arc::new(*n);
 			if *n == target {
 				return (true, steps_taken);
 			}

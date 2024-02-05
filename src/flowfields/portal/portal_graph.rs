@@ -15,7 +15,7 @@ use bevy::prelude::*;
 /// Used to provide a heuristic for portals that sit next to each other across
 /// a portal boundary. This is used in the a-star calculation for determining
 /// the best portal path to a goal
-const SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE: i32 = 5;
+const SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE: i32 = 1;
 
 /// A graph contains a series of [PortalNode] which denotes the Sector and FieldCell of a portal
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
