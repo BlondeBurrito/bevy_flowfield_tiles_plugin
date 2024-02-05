@@ -103,7 +103,7 @@ pub fn clean_cache(
 	}
 	if !sectors.is_empty() {
 		for mut flow_cache in q_flow.iter_mut() {
-			// purge invalid queue integratrion fields
+			// purge invalid queued integratrion fields
 			let mut to_purge = Vec::new();
 			let map = flow_cache.get_queue_mut();
 			for id in sectors.iter() {

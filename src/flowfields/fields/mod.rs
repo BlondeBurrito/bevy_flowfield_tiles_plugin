@@ -244,7 +244,8 @@ pub struct RouteMetadata {
 // we don't want to compare `time_generated` so manually impl PartialEq
 impl PartialEq for RouteMetadata {
 	fn eq(&self, other: &Self) -> bool {
-		self.source_sector == other.source_sector && self.source_field == other.source_field
+		self.source_sector == other.source_sector
+			&& self.source_field == other.source_field
 			&& self.target_sector == other.target_sector
 			&& self.target_goal == other.target_goal
 	}
@@ -253,12 +254,18 @@ impl Eq for RouteMetadata {}
 
 impl Ord for RouteMetadata {
 	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-		(self.source_sector, self.source_field, self.target_sector, self.target_goal).cmp(&(
-			other.source_sector,
-			other.source_field,
-			other.target_sector,
-			other.target_goal,
-		))
+		(
+			self.source_sector,
+			self.source_field,
+			self.target_sector,
+			self.target_goal,
+		)
+			.cmp(&(
+				other.source_sector,
+				other.source_field,
+				other.target_sector,
+				other.target_goal,
+			))
 	}
 }
 
@@ -270,7 +277,13 @@ impl PartialOrd for RouteMetadata {
 
 impl RouteMetadata {
 	/// Create a new [RouteMetadata]
-	pub fn new(source_sector: SectorID, source_field: FieldCell, target_sector: SectorID, target_goal: FieldCell, time_generated: Duration) -> Self {
+	pub fn new(
+		source_sector: SectorID,
+		source_field: FieldCell,
+		target_sector: SectorID,
+		target_goal: FieldCell,
+		time_generated: Duration,
+	) -> Self {
 		RouteMetadata {
 			source_sector,
 			source_field,

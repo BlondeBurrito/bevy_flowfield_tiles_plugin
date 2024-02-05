@@ -68,16 +68,10 @@ impl Field<u16> for IntegrationField {
 	}
 	/// Retrieve a field cell value
 	fn get_field_cell_value(&self, field_cell: FieldCell) -> u16 {
-		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot get a IntegrationField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
-		}
 		self.0[field_cell.get_column()][field_cell.get_row()]
 	}
 	/// Set a field cell to a value
 	fn set_field_cell_value(&mut self, value: u16, field_cell: FieldCell) {
-		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot set a IntegrationField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
-		}
 		self.0[field_cell.get_column()][field_cell.get_row()] = value;
 	}
 }
