@@ -22,7 +22,7 @@ impl Plugin for FlowFieldTilesPlugin {
 			.register_type::<MapDimensions>()
 			.register_type::<CostField>()
 			.register_type::<Portals>()
-			// .register_type::<PortalGraph>()
+			.register_type::<PortalGraph>()
 			.register_type::<FlowField>()
 			.register_type::<SectorID>()
 			.register_type::<FieldCell>()
