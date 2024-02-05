@@ -6,8 +6,7 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use std::collections::{BTreeMap, HashMap};
-
+use bevy::utils::{Entry, HashMap};
 use super::portals::Portals;
 use crate::prelude::*;
 use bevy::prelude::*;
@@ -159,20 +158,20 @@ impl PortalEdge {
 //TODO reflect
 /// A representation of [Portals] in graph form with edges bewteen them that can be traversed
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component, Default, Clone, Debug)]
-// #[reflect(Component)]
+#[derive(Component, Default, Clone, Debug, Reflect)]
+#[reflect(Component)]
 pub struct PortalGraph {
 	/// Map of nodes and their edges
-	graph: BTreeMap<PortalNode, PortalEdges>,
+	graph: HashMap<PortalNode, PortalEdges>,
 }
 
 impl PortalGraph {
 	/// Get a reference to the graph
-	fn get(&self) -> &BTreeMap<PortalNode, PortalEdges> {
+	fn get(&self) -> &HashMap<PortalNode, PortalEdges> {
 		&self.graph
 	}
 	/// Get a mutable reference to the set of nodes in the graph
-	fn get_mut(&mut self) -> &mut BTreeMap<PortalNode, PortalEdges> {
+	fn get_mut(&mut self) -> &mut HashMap<PortalNode, PortalEdges> {
 		&mut self.graph
 	}
 	/// For the given `sector_id` identify any nodes in the graph that correspond to it
@@ -244,7 +243,7 @@ impl PortalGraph {
 	/// Add a [PortalNode] to the graph
 	fn insert_portal_node(&mut self, node: PortalNode) {
 		// should never contain one already?
-		if let std::collections::btree_map::Entry::Vacant(e) = self.get_mut().entry(node) {
+		if let Entry::Vacant(e) = self.get_mut().entry(node) {
 			e.insert(PortalEdges::default());
 		} else {
 			// TODO diagonal case?
