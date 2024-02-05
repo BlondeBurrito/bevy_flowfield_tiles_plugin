@@ -50,7 +50,13 @@ pub fn event_insert_route_queue(
 		for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut() {
 			//TODO maybe reinstate this after benchmarking - means less accurate route due to reuse but better perf
 			// only run if the cache doesn't contain the route already
-			let rm = RouteMetadata::new(event.source_sector, event.source_field_cell, event.target_sector, event.target_goal, time.elapsed());
+			let rm = RouteMetadata::new(
+				event.source_sector,
+				event.source_field_cell,
+				event.target_sector,
+				event.target_goal,
+				time.elapsed(),
+			);
 			if !cache.get().contains_key(&rm) {
 				if let Some(mut path) = graph.find_best_path(
 					(event.source_sector, event.source_field_cell),
@@ -63,9 +69,12 @@ pub fn event_insert_route_queue(
 						filter_path(&mut path, event.target_goal);
 					}
 					// don't insert a path that's already in the cache (otherwise it poiintlessly replaces it)
-					if let Some(existing_path) =
-						cache.get_route(event.source_sector, event.source_field_cell, event.target_sector, event.target_goal)
-					{
+					if let Some(existing_path) = cache.get_route(
+						event.source_sector,
+						event.source_field_cell,
+						event.target_sector,
+						event.target_goal,
+					) {
 						if path == *existing_path {
 							continue;
 						}
@@ -93,7 +102,7 @@ pub fn event_insert_route_queue(
 						time.elapsed(),
 						vec![(event.target_sector, event.target_goal)],
 					);
-			}
+				}
 			}
 		}
 	}
@@ -211,25 +220,23 @@ fn build_integration_fields(
 	sectors_expanded_goals: &[(SectorID, Vec<FieldCell>)],
 	sector_cost_fields_scaled: &SectorCostFields,
 ) -> Vec<(SectorID, Vec<FieldCell>, IntegrationField)> {
-		let mut sector_int_fields = Vec::new();
-		for (sector_id, goals) in sectors_expanded_goals.iter() {
-			let mut int_field = IntegrationField::new(goals);
-			let cost_field = sector_cost_fields_scaled
-				.get_scaled()
-				.get(sector_id)
-				.unwrap();
-			int_field.calculate_field(goals, cost_field);
-			sector_int_fields.push((*sector_id, goals.clone(), int_field));
-		}
-		sector_int_fields
-
+	let mut sector_int_fields = Vec::new();
+	for (sector_id, goals) in sectors_expanded_goals.iter() {
+		let mut int_field = IntegrationField::new(goals);
+		let cost_field = sector_cost_fields_scaled
+			.get_scaled()
+			.get(sector_id)
+			.unwrap();
+		int_field.calculate_field(goals, cost_field);
+		sector_int_fields.push((*sector_id, goals.clone(), int_field));
+	}
+	sector_int_fields
 }
 
 /// When a queued item has had its [IntegrationField]s built generate the
 /// [FlowField]s for it
 #[cfg(not(tarpaulin_include))]
 pub fn create_flow_fields(mut cache_q: Query<&mut FlowFieldCache>, time: Res<Time>) {
-
 	for mut field_cache in &mut cache_q {
 		if let Some(mut entry) = field_cache.get_queue_mut().first_entry() {
 			// if the integration fields havbe been created then remove form queue and calculate flowfields
@@ -242,35 +249,23 @@ pub fn create_flow_fields(mut cache_q: Query<&mut FlowFieldCache>, time: Res<Tim
 					let mut flow_field = FlowField::default();
 					// first element is end target, therefore has no info about previous sector for
 					// direction optimisations
-						if i == 0 {
-							flow_field.calculate(goals, None, int_field);
-							field_cache.insert_field(
-								*sector_id,
-								path[i].1,
-								time.elapsed(),
-								flow_field,
-							);
-						} else if let Some(dir_prev_sector) = Ordinal::sector_to_sector_direction(
-							sector_int_fields[i - 1].0,
-							*sector_id,
-						) {
-							let prev_int_field = &sector_int_fields[i - 1].2;
-							flow_field.calculate(
-								goals,
-								Some((dir_prev_sector, prev_int_field)),
-								int_field,
-							);
-							//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own?
-							field_cache.insert_field(
-								*sector_id,
-								path[i].1,
-								time.elapsed(),
-								flow_field,
-							);
-						} else {
-							error!("Route from goal to actor {:?}", path);
-						};
-					
+					if i == 0 {
+						flow_field.calculate(goals, None, int_field);
+						field_cache.insert_field(*sector_id, path[i].1, time.elapsed(), flow_field);
+					} else if let Some(dir_prev_sector) =
+						Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
+					{
+						let prev_int_field = &sector_int_fields[i - 1].2;
+						flow_field.calculate(
+							goals,
+							Some((dir_prev_sector, prev_int_field)),
+							int_field,
+						);
+						//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own?
+						field_cache.insert_field(*sector_id, path[i].1, time.elapsed(), flow_field);
+					} else {
+						error!("Route from goal to actor {:?}", path);
+					};
 				}
 			}
 		}
