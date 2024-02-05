@@ -205,7 +205,7 @@ fn get_ord_icon(value: u8) -> String {
 	}
 	//
 	if has_line_of_sight(value) {
-		return String::from("ordinal_icons/los.png")
+		return String::from("ordinal_icons/los.png");
 	}
 	let ordinal = get_ordinal_from_bits(value);
 	match ordinal {

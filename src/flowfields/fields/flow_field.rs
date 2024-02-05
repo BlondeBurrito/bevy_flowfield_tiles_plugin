@@ -739,7 +739,10 @@ pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
 		BITS_SOUTH_WEST => Vec2::new(-1.0, -1.0),
 		BITS_NORTH_WEST => Vec2::new(-1.0, 1.0),
 		BITS_ZERO => Vec2::new(0.0, 0.0),
-		_ => panic!("First 4 bits of cell are not recognised directions: {}", dir),
+		_ => panic!(
+			"First 4 bits of cell are not recognised directions: {}",
+			dir
+		),
 	}
 }
 /// Reading the directional bits of a [FlowField] field cell obtain a unit
