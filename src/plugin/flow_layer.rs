@@ -49,12 +49,9 @@ pub fn event_insert_route_queue(
 	for event in events.read() {
 		for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut() {
 			//TODO maybe reinstate this after benchmarking - means less accurate route due to reuse but better perf
-			// // only run if the cache doesn't contain the route already
-			// if !cache.get().contains_key(&(
-			// 	event.source_sector,
-			// 	event.target_sector,
-			// 	event.target_goal,
-			// )) {
+			// only run if the cache doesn't contain the route already
+			let rm = RouteMetadata::new(event.source_sector, event.source_field_cell, event.target_sector, event.target_goal, time.elapsed());
+			if !cache.get().contains_key(&rm) {
 				if let Some(mut path) = graph.find_best_path(
 					(event.source_sector, event.source_field_cell),
 					(event.target_sector, event.target_goal),
@@ -67,7 +64,7 @@ pub fn event_insert_route_queue(
 					}
 					// don't insert a path that's already in the cache (otherwise it poiintlessly replaces it)
 					if let Some(existing_path) =
-						cache.get_route(event.source_sector, event.target_sector, event.target_goal)
+						cache.get_route(event.source_sector, event.source_field_cell, event.target_sector, event.target_goal)
 					{
 						if path == *existing_path {
 							continue;
@@ -75,6 +72,7 @@ pub fn event_insert_route_queue(
 					}
 					cache.add_to_queue(
 						event.source_sector,
+						event.source_field_cell,
 						event.target_sector,
 						event.target_goal,
 						time.elapsed(),
@@ -89,13 +87,14 @@ pub fn event_insert_route_queue(
 					);
 					cache.add_to_queue(
 						event.source_sector,
+						event.source_field_cell,
 						event.target_sector,
 						event.target_goal,
 						time.elapsed(),
 						vec![(event.target_sector, event.target_goal)],
 					);
 			}
-			// }
+			}
 		}
 	}
 }

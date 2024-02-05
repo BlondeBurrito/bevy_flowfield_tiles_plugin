@@ -81,6 +81,7 @@ fn prepare_fields(
 	filter_path(&mut path, target_goal);
 	route_cache.insert_route(
 		source_sector,
+		source_field_cell,
 		target_sector,
 		target_goal,
 		Duration::default(),

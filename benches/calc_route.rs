@@ -52,6 +52,7 @@ fn calc(portals: SectorPortals, cost_fields: SectorCostFields, graph: PortalGrap
 
 	route_cache.insert_route(
 		source_sector,
+		source_field_cell,
 		target_sector,
 		target_goal,
 		Duration::default(),

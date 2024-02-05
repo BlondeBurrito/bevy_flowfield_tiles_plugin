@@ -63,6 +63,7 @@ fn prepare_fields(
 	// println!("Path len: {}", path.len());
 	route_cache.insert_route(
 		source_sector,
+		source_field_cell,
 		target_sector,
 		target_goal,
 		Duration::default(),

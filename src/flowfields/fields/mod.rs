@@ -231,6 +231,8 @@ fn walk_bresenham_steep(col_0: i32, row_0: i32, col_1: i32, row_1: i32) -> Vec<F
 pub struct RouteMetadata {
 	/// Starting sector of the route
 	source_sector: SectorID,
+	/// Starting FieldCell of the route
+	source_field: FieldCell,
 	/// Sector to find a route to
 	target_sector: SectorID,
 	/// Field cell of the goal in the target sector
@@ -242,7 +244,7 @@ pub struct RouteMetadata {
 // we don't want to compare `time_generated` so manually impl PartialEq
 impl PartialEq for RouteMetadata {
 	fn eq(&self, other: &Self) -> bool {
-		self.source_sector == other.source_sector
+		self.source_sector == other.source_sector && self.source_field == other.source_field
 			&& self.target_sector == other.target_sector
 			&& self.target_goal == other.target_goal
 	}
@@ -251,8 +253,9 @@ impl Eq for RouteMetadata {}
 
 impl Ord for RouteMetadata {
 	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-		(self.source_sector, self.target_sector, self.target_goal).cmp(&(
+		(self.source_sector, self.source_field, self.target_sector, self.target_goal).cmp(&(
 			other.source_sector,
+			other.source_field,
 			other.target_sector,
 			other.target_goal,
 		))
@@ -266,6 +269,16 @@ impl PartialOrd for RouteMetadata {
 }
 
 impl RouteMetadata {
+	/// Create a new [RouteMetadata]
+	pub fn new(source_sector: SectorID, source_field: FieldCell, target_sector: SectorID, target_goal: FieldCell, time_generated: Duration) -> Self {
+		RouteMetadata {
+			source_sector,
+			source_field,
+			target_sector,
+			target_goal,
+			time_generated,
+		}
+	}
 	/// Get the source sector
 	pub fn get_source_sector(&self) -> SectorID {
 		self.source_sector
@@ -313,11 +326,13 @@ impl RouteCache {
 	pub fn get_route(
 		&self,
 		source_sector: SectorID,
+		source_field: FieldCell,
 		target_sector: SectorID,
 		goal_id: FieldCell,
 	) -> Option<&Vec<(SectorID, FieldCell)>> {
 		let route_data = RouteMetadata {
 			source_sector,
+			source_field,
 			target_sector,
 			target_goal: goal_id,
 			time_generated: Duration::default(),
@@ -330,6 +345,7 @@ impl RouteCache {
 	pub fn add_to_queue(
 		&mut self,
 		source_sector: SectorID,
+		source_field: FieldCell,
 		target_sector: SectorID,
 		goal_id: FieldCell,
 		elapsed_duration: Duration,
@@ -337,6 +353,7 @@ impl RouteCache {
 	) {
 		let route_data = RouteMetadata {
 			source_sector,
+			source_field,
 			target_sector,
 			target_goal: goal_id,
 			time_generated: elapsed_duration,
@@ -347,6 +364,7 @@ impl RouteCache {
 	pub fn insert_route(
 		&mut self,
 		source_sector: SectorID,
+		source_field: FieldCell,
 		target_sector: SectorID,
 		goal_id: FieldCell,
 		elapsed_duration: Duration,
@@ -354,6 +372,7 @@ impl RouteCache {
 	) {
 		let route_data = RouteMetadata {
 			source_sector,
+			source_field,
 			target_sector,
 			target_goal: goal_id,
 			time_generated: elapsed_duration,
