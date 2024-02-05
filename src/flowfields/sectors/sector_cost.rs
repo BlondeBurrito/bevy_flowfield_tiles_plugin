@@ -553,10 +553,17 @@ mod tests {
 	use super::*;
 	#[test]
 	#[cfg(feature = "ron")]
-	fn sector_cost_fields_file() {
+	fn sector_cost_fields_file_ron() {
 		let map_dimensions = MapDimensions::new(1920, 1920, 640, 16.0);
 		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 		let _cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
+	}
+	#[test]
+	#[cfg(feature = "csv")]
+	fn sector_cost_fields_file_csv() {
+		let map_dimensions = MapDimensions::new(1920, 1920, 640, 16.0);
+		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
+		let _cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, path);
 	}
 	#[test]
 	fn scale_north_one() {
