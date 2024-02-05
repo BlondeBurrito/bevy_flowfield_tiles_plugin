@@ -221,7 +221,7 @@ fn build_integration_fields(
 			int_field.calculate_field(goals, cost_field);
 			sector_int_fields.push((*sector_id, goals.clone(), int_field));
 		}
-		return sector_int_fields;
+		sector_int_fields
 
 }
 

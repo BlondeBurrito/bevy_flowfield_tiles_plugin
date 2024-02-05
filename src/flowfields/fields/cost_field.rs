@@ -123,7 +123,7 @@ fn process_neighbours(
 			}
 			let cell_cost = cost_field.get_field_cell_value(*n);
 			// ignore impassable cells
-			if cell_cost != 255 && !visited.contains(&n) {
+			if cell_cost != 255 && !visited.contains(n) {
 				// keep exploring
 				next_neighbours.push(*n);
 			}
