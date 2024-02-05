@@ -103,8 +103,26 @@ pub fn clean_cache(
 		sectors.push(event.0);
 	}
 	if !sectors.is_empty() {
-		let mut to_purge = Vec::new();
 		for mut flow_cache in q_flow.iter_mut() {
+			// purge invalid queue integratrion fields
+			let mut to_purge = Vec::new();
+			let map = flow_cache.get_queue_mut();
+			for id in sectors.iter() {
+				'next: for (metadata, builder) in map.iter() {
+					let path = builder.get_path();
+					for (route_sector, _) in path.iter() {
+						if *id == *route_sector {
+							to_purge.push(*metadata);
+							continue 'next;
+						}
+					}
+				}
+			}
+			for purge_me in to_purge.iter() {
+				flow_cache.remove_queue_item(*purge_me);
+			}
+			// purge invalid flow fields
+			let mut to_purge = Vec::new();
 			let map = flow_cache.get_mut();
 			for id in sectors.iter() {
 				for metadata in map.keys() {
@@ -117,8 +135,33 @@ pub fn clean_cache(
 				flow_cache.remove_field(*purge_me);
 			}
 		}
-		let mut to_purge = Vec::new();
 		for mut route_cache in q_route.iter_mut() {
+			// purge queued routes
+			let mut to_purge = Vec::new();
+			let map = route_cache.get_queue_mut();
+			for id in sectors.iter() {
+				'next: for (metadata, route) in map.iter() {
+					if *id == metadata.get_source_sector() {
+						to_purge.push(*metadata);
+						continue 'next;
+					}
+					if *id == metadata.get_target_sector() {
+						to_purge.push(*metadata);
+						continue 'next;
+					}
+					for (route_sector, _) in route.iter() {
+						if *id == *route_sector {
+							to_purge.push(*metadata);
+							continue 'next;
+						}
+					}
+				}
+			}
+			for purge_me in to_purge.iter() {
+				route_cache.remove_queued_route(*purge_me);
+			}
+			// purge invalid routes
+			let mut to_purge = Vec::new();
 			let map = route_cache.get_mut();
 			for id in sectors.iter() {
 				'next: for (metadata, route) in map.iter() {

@@ -22,6 +22,7 @@ impl Plugin for FlowFieldTilesPlugin {
 			.register_type::<MapDimensions>()
 			.register_type::<CostField>()
 			.register_type::<Portals>()
+			// .register_type::<PortalGraph>()
 			.register_type::<FlowField>()
 			.register_type::<SectorID>()
 			.register_type::<FieldCell>()
@@ -44,8 +45,10 @@ impl Plugin for FlowFieldTilesPlugin {
 						// cost_layer::rebuild_portals,
 						// cost_layer::update_portal_graph,
 						cost_layer::clean_cache,
-						flow_layer::handle_path_requests,
-						flow_layer::generate_flow_fields,
+						flow_layer::event_insert_route_queue,
+						flow_layer::process_route_queue,
+						flow_layer::create_queued_integration_fields,
+						flow_layer::create_flow_fields,
 					)
 						.chain()
 						.in_set(OrderingSet::Calculate),

@@ -138,6 +138,7 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 		let route_cache = route_q.get_single().unwrap();
 		if let Some(route) = route_cache.get_route(
 			pathing.source_sector.unwrap(),
+			pathing.source_field_cell.unwrap(),
 			pathing.target_sector.unwrap(),
 			pathing.target_goal.unwrap(),
 		) {
@@ -185,6 +186,9 @@ fn get_ord_icon(value: u8) -> String {
 		return String::from("ordinal_icons/goal.png");
 	}
 	//
+	if has_line_of_sight(value) {
+		return String::from("ordinal_icons/los.png");
+	}
 	let ordinal = get_ordinal_from_bits(value);
 	match ordinal {
 		Ordinal::North => String::from("ordinal_icons/north.png"),

@@ -277,6 +277,7 @@ fn actor_update_route(
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
+				pathing.source_field_cell.unwrap(),
 				pathing.target_sector.unwrap(),
 				pathing.target_goal.unwrap(),
 			) {
@@ -289,6 +290,7 @@ fn actor_update_route(
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
+				pathing.source_field_cell.unwrap(),
 				pathing.target_sector.unwrap(),
 				pathing.target_goal.unwrap(),
 			) {

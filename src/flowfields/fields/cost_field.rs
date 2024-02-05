@@ -62,17 +62,15 @@ impl Field<u8> for CostField {
 		&self.0
 	}
 	/// Retrieve a field cell value
+	///
+	/// NB: This will panic if out of bounds
 	fn get_field_cell_value(&self, field_cell: FieldCell) -> u8 {
-		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot get a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
-		}
 		self.0[field_cell.get_column()][field_cell.get_row()]
 	}
 	/// Set a field cell to a value
+	///
+	/// NB: This will panic if out of bounds
 	fn set_field_cell_value(&mut self, value: u8, field_cell: FieldCell) {
-		if field_cell.get_column() >= self.0.len() || field_cell.get_row() >= self.0[0].len() {
-			panic!("Cannot set a CostField value, index out of bounds. Asked for column {}, row {}, field column length is {}, field row length is {}", field_cell.get_column(), field_cell.get_row(), self.0.len(), self.0[0].len())
-		}
 		self.0[field_cell.get_column()][field_cell.get_row()] = value;
 	}
 }
@@ -90,41 +88,7 @@ impl CostField {
 		let queue = vec![source];
 		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
 		let visited = HashSet::new();
-		let is_routable = process_neighbours(target, queue, visited, self, 0);
-		/// Recursively process the cells to see if there's a path
-		fn process_neighbours(
-			target: FieldCell,
-			queue: Vec<FieldCell>,
-			mut visited: HashSet<FieldCell>,
-			cost_field: &CostField,
-			mut steps_taken: i32,
-		) -> (bool, i32) {
-			let mut next_neighbours = Vec::new();
-			// iterate over the queue calculating neighbour int costs
-			steps_taken += 1;
-			for cell in queue.iter() {
-				visited.insert(*cell);
-				let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
-				// iterate over the neighbours to try and find the target
-				for n in neighbours.iter() {
-					if *n == target {
-						return (true, steps_taken);
-					}
-					let cell_cost = cost_field.get_field_cell_value(*n);
-					// ignore impassable cells
-					if cell_cost != 255 && !visited.contains(n) {
-						// keep exploring
-						next_neighbours.push(*n);
-					}
-				}
-			}
-			if !next_neighbours.is_empty() {
-				process_neighbours(target, next_neighbours, visited, cost_field, steps_taken)
-			} else {
-				(false, steps_taken)
-			}
-		}
-		is_routable
+		process_neighbours(target, queue, visited, self, 0)
 	}
 	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]
@@ -135,6 +99,40 @@ impl CostField {
 			Err(e) => panic!("Failed deserializing CostField: {}", e),
 		};
 		field
+	}
+}
+
+/// Recursively process the cells to see if there's a path
+fn process_neighbours(
+	target: FieldCell,
+	queue: Vec<FieldCell>,
+	mut visited: HashSet<FieldCell>,
+	cost_field: &CostField,
+	mut steps_taken: i32,
+) -> (bool, i32) {
+	let mut next_neighbours = Vec::new();
+	// iterate over the queue calculating neighbour int costs
+	steps_taken += 1;
+	for cell in queue.iter() {
+		visited.insert(*cell);
+		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
+		// iterate over the neighbours to try and find the target
+		for n in neighbours.iter() {
+			if *n == target {
+				return (true, steps_taken);
+			}
+			let cell_cost = cost_field.get_field_cell_value(*n);
+			// ignore impassable cells
+			if cell_cost != 255 && !visited.contains(n) {
+				// keep exploring
+				next_neighbours.push(*n);
+			}
+		}
+	}
+	if !next_neighbours.is_empty() {
+		process_neighbours(target, next_neighbours, visited, cost_field, steps_taken)
+	} else {
+		(false, steps_taken)
 	}
 }
 

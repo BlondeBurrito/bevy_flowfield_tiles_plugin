@@ -27,7 +27,7 @@ fn field_on_field() {
 	let target_sector = SectorID::new(0, 2);
 	let target_field_cell = FieldCell::new(0, 6);
 	// path from actor to goal sectors
-	let node_path = portal_graph
+	let mut path = portal_graph
 		.find_best_path(
 			(source_sector, source_field_cell),
 			(target_sector, target_field_cell),
@@ -35,9 +35,6 @@ fn field_on_field() {
 			&sector_cost_fields,
 		)
 		.unwrap();
-	// convert to field cell and sector coords
-	let mut path =
-		portal_graph.convert_index_path_to_sector_portal_cells(node_path.1, &sector_portals);
 	// original order is from actor to goal, int fields need to be processed the other way around
 	path.reverse();
 	// change target cell from portal to the real goal

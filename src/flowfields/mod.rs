@@ -31,13 +31,13 @@
 //!
 //! ## Portal Graph
 //!
-//! For finding a path from one Sector to another at a Portal level all Sector Portals are recorded within a data strucutre known as `PortalGraph`. The [petgraph](https://github.com/petgraph/petgraph) library has been used within this structure to store navigational points and paths between them and it gets built in three stages:
+//! For finding a path from one Sector to another at a Portal level all Sector Portals are recorded within a data strucutre known as `PortalGraph`. The Portals are stored as Nodes and Edges are created between them to represent traversable paths, it gets built in three stages:
 //!
 //! * For all Portals add a graph `node`
 //! * For each sector create `edges` (pathable routes) to and from each Portal `node` - effectively create internal walkable routes of each sector
 //! * Create `edges` across the Portal `node` on all sector boundaries (walkable route from one sector to another)
 //!
-//! This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostField` is changed this triggers the regeneration of the sector Portals for the region that `CostField` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `nodes` and the old ones are removed. This is a particularly difficult and complicated area as the Sectors, Portals and fields are represented in 2D arrays but the graph is effectively 1D - it's a big long list of `nodes`. To handle identifying a graph `node` from a Sector and field field cell a special data field exists in `PortalGraph` nicknamed the "translator". It's a way of being able to convert between the graph data structure and the 2D data structure back and forth, so from a field cell you can find its `node` and from a list of `nodes` (like an A* result) you can find the location of each Portal in the fields.
+//! This allows the graph to be queried with a `source` sector and a `target` sector and a list of Portals are returned which can be pathed. When a `CostField` is changed this triggers the regeneration of the sector Portals for the region that `CostField` resides in (and its neighbours to ensure homogenous boundaries) and the graph is updated with any new Portals `nodes` and the old ones are removed.
 //!
 //! ## IntegrationField
 //!

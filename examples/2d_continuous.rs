@@ -40,6 +40,7 @@ fn main() {
 				despawn_at_destination,
 				update_fps_counter,
 				update_actor_counter,
+				update_elapsed_counter,
 			),
 		)
 		.add_systems(
@@ -252,6 +253,7 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 			let route_cache = route_q.get_single().unwrap();
 			if let Some(route) = route_cache.get_route(
 				pathing.source_sector.unwrap(),
+				pathing.source_field_cell.unwrap(),
 				pathing.target_sector.unwrap(),
 				pathing.target_goal.unwrap(),
 			) {
@@ -485,6 +487,10 @@ struct FPSCounter;
 #[derive(Component)]
 struct ActorCounter;
 
+/// Label the elapsed time counter
+#[derive(Component)]
+struct ElapsedCounter;
+
 /// Create UI counters to measure the FPS and number of actors
 fn create_counters(mut cmds: Commands) {
 	cmds.spawn(NodeBundle {
@@ -531,13 +537,39 @@ fn create_counters(mut cmds: Commands) {
 			]))
 			.insert(ActorCounter);
 		});
+		p.spawn(NodeBundle::default()).with_children(|p| {
+			p.spawn(TextBundle::from_sections([
+				TextSection::new(
+					"Dur(s): ",
+					TextStyle {
+						font_size: 30.0,
+						color: Color::WHITE,
+						..default()
+					},
+				),
+				TextSection::from_style(TextStyle {
+					font_size: 30.0,
+					color: Color::WHITE,
+					..default()
+				}),
+			]))
+			.insert(ElapsedCounter);
+		});
 	});
 }
 
-/// Updates the FPS field ech tick
+/// Updates the FPS field each tick
+#[allow(clippy::type_complexity)]
 fn update_fps_counter(
 	diagnostics: Res<DiagnosticsStore>,
-	mut query: Query<&mut Text, (With<FPSCounter>, Without<ActorCounter>)>,
+	mut query: Query<
+		&mut Text,
+		(
+			With<FPSCounter>,
+			Without<ElapsedCounter>,
+			Without<ActorCounter>,
+		),
+	>,
 ) {
 	let mut text = query.single_mut();
 	if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
@@ -547,10 +579,18 @@ fn update_fps_counter(
 	}
 }
 
-/// Updates the FPS field ech tick
+/// Updates the Actor count field each tick
+#[allow(clippy::type_complexity)]
 fn update_actor_counter(
 	actors: Query<&Actor>,
-	mut query: Query<&mut Text, (With<ActorCounter>, Without<FPSCounter>)>,
+	mut query: Query<
+		&mut Text,
+		(
+			With<ActorCounter>,
+			Without<ElapsedCounter>,
+			Without<FPSCounter>,
+		),
+	>,
 ) {
 	let mut text = query.single_mut();
 	let mut actor_count = 0;
@@ -558,4 +598,22 @@ fn update_actor_counter(
 		actor_count += 1;
 	}
 	text.sections[1].value = format!("{actor_count:.2}");
+}
+
+/// Updates the elapsed time field each tick
+#[allow(clippy::type_complexity)]
+fn update_elapsed_counter(
+	time: Res<Time>,
+	mut query: Query<
+		&mut Text,
+		(
+			With<ElapsedCounter>,
+			Without<ActorCounter>,
+			Without<FPSCounter>,
+		),
+	>,
+) {
+	let mut text = query.single_mut();
+	let elapsed = time.elapsed().as_secs_f32();
+	text.sections[1].value = format!("{elapsed:.2}");
 }

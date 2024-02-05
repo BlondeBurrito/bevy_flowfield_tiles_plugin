@@ -27,47 +27,63 @@ pub enum Ordinal {
 impl Ordinal {
 	/// Based on a field cells `(column, row)` position find its neighbours based on FIELD_RESOLUTION limits (up to 4)
 	pub fn get_orthogonal_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
+		let row = cell_id.get_row();
+		let column = cell_id.get_column();
+		// 64 out of 100 field cells have 4 neighbours so this fast returns
+		// the neighbours - based on profiling
+		if row > 0 && column > 0 && row < FIELD_RESOLUTION - 1 && column < FIELD_RESOLUTION - 1 {
+			return vec![
+				FieldCell::new(column, row - 1),
+				FieldCell::new(column + 1, row),
+				FieldCell::new(column, row + 1),
+				FieldCell::new(column - 1, row),
+			];
+		}
 		let mut neighbours = Vec::new();
-		if cell_id.get_row() > 0 {
-			neighbours.push(FieldCell::new(cell_id.get_column(), cell_id.get_row() - 1)); // northern cell coords
+		if row > 0 {
+			neighbours.push(FieldCell::new(column, row - 1)); // northern cell coords
 		}
-		if cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(cell_id.get_column() + 1, cell_id.get_row())); // eastern cell coords
+		if column < FIELD_RESOLUTION - 1 {
+			neighbours.push(FieldCell::new(column + 1, row)); // eastern cell coords
 		}
-		if cell_id.get_row() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(cell_id.get_column(), cell_id.get_row() + 1)); // southern cell coords
+		if row < FIELD_RESOLUTION - 1 {
+			neighbours.push(FieldCell::new(column, row + 1)); // southern cell coords
 		}
-		if cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(cell_id.get_column() - 1, cell_id.get_row())); // western cell coords
+		if column > 0 {
+			neighbours.push(FieldCell::new(column - 1, row)); // western cell coords
 		}
 		neighbours
 	}
 	/// Based on a field cells `(column, row)` position find its diagonal neighbours based on FIELD_RESOLUTION limits (up to 4)
 	pub fn get_diagonal_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
 		let mut neighbours = Vec::new();
-		if cell_id.get_row() > 0 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(
-				cell_id.get_column() + 1,
-				cell_id.get_row() - 1,
-			)); // north-east cell
+		if cell_id.get_row() > 0 {
+			if cell_id.get_column() < FIELD_RESOLUTION - 1 {
+				neighbours.push(FieldCell::new(
+					cell_id.get_column() + 1,
+					cell_id.get_row() - 1,
+				)); // north-east cell
+			}
+			if cell_id.get_column() > 0 {
+				neighbours.push(FieldCell::new(
+					cell_id.get_column() - 1,
+					cell_id.get_row() - 1,
+				)); // north-west cell
+			}
 		}
-		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(
-				cell_id.get_column() + 1,
-				cell_id.get_row() + 1,
-			)); // south-east cell
-		}
-		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(
-				cell_id.get_column() - 1,
-				cell_id.get_row() + 1,
-			)); // south-west cell
-		}
-		if cell_id.get_row() > 0 && cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(
-				cell_id.get_column() - 1,
-				cell_id.get_row() - 1,
-			)); // north-west cell
+		if cell_id.get_row() < FIELD_RESOLUTION - 1 {
+			if cell_id.get_column() < FIELD_RESOLUTION - 1 {
+				neighbours.push(FieldCell::new(
+					cell_id.get_column() + 1,
+					cell_id.get_row() + 1,
+				)); // south-east cell
+			}
+			if cell_id.get_column() > 0 {
+				neighbours.push(FieldCell::new(
+					cell_id.get_column() - 1,
+					cell_id.get_row() + 1,
+				)); // south-west cell
+			}
 		}
 		neighbours
 	}
@@ -149,43 +165,9 @@ impl Ordinal {
 	}
 	/// Based on a field cells `(column, row)` position find all possible neighbours including diagonal directions
 	pub fn get_all_cell_neighbours(cell_id: FieldCell) -> Vec<FieldCell> {
-		let mut neighbours = Vec::new();
-		if cell_id.get_row() > 0 {
-			neighbours.push(FieldCell::new(cell_id.get_column(), cell_id.get_row() - 1)); // northern cell coords
-		}
-		if cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(cell_id.get_column() + 1, cell_id.get_row())); // eastern cell coords
-		}
-		if cell_id.get_row() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(cell_id.get_column(), cell_id.get_row() + 1)); // southern cell coords
-		}
-		if cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(cell_id.get_column() - 1, cell_id.get_row())); // western cell coords
-		}
-		if cell_id.get_row() > 0 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(
-				cell_id.get_column() + 1,
-				cell_id.get_row() - 1,
-			)); // north-east cell
-		}
-		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() < FIELD_RESOLUTION - 1 {
-			neighbours.push(FieldCell::new(
-				cell_id.get_column() + 1,
-				cell_id.get_row() + 1,
-			)); // south-east cell
-		}
-		if cell_id.get_row() < FIELD_RESOLUTION - 1 && cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(
-				cell_id.get_column() - 1,
-				cell_id.get_row() + 1,
-			)); // south-west cell
-		}
-		if cell_id.get_row() > 0 && cell_id.get_column() > 0 {
-			neighbours.push(FieldCell::new(
-				cell_id.get_column() - 1,
-				cell_id.get_row() - 1,
-			)); // north-west cell
-		}
+		let mut neighbours = Ordinal::get_orthogonal_cell_neighbours(cell_id);
+		let mut diagonals = Ordinal::get_diagonal_cell_neighbours(cell_id);
+		neighbours.append(&mut diagonals);
 		neighbours
 	}
 	/// Based on a field cells `(column, row)` position find all possible neighbours including diagonal directions and the Ordinal they are found in
@@ -458,7 +440,7 @@ impl Ordinal {
 			),
 		}
 	}
-	/// For two sectors next to each other it can be useful to find the [Ordinal] from the `source` to the `target`. This will panic if the two sectors are not orthogonally adjacent
+	/// For two sectors next to each other it can be useful to find the [Ordinal] from the `source` to the `target`. If they are not adjacent None is returned
 	pub fn sector_to_sector_direction(target: SectorID, source: SectorID) -> Option<Self> {
 		let i32_target = (target.get_column() as i32, target.get_row() as i32);
 		let i32_source = (source.get_column() as i32, source.get_row() as i32);

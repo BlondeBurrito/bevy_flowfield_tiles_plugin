@@ -57,6 +57,11 @@ impl SectorCostFields {
 	pub fn get_scaled_mut(&mut self) -> &mut BTreeMap<SectorID, CostField> {
 		&mut self.scaled
 	}
+	// /// Get the [CostField] of a sector wrapped in in Arc
+	// pub fn get_arc_scaled_sector(&self, sector_id: &SectorID) -> Arc<CostField> {
+	// 	//TODO really a clone?
+	// 	Arc::new(self.get_scaled().get(sector_id).unwrap().clone())
+	// }
 	/// Update a cost within a particular `sector_id`. This in turn will update the scaled field based on `actor_scale`
 	pub fn set_field_cell_value(
 		&mut self,

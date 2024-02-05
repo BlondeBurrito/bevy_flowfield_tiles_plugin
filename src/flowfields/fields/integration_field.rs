@@ -52,6 +52,7 @@
 use crate::prelude::*;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Copy)]
 pub struct IntegrationField([[u16; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 
 impl Default for IntegrationField {
@@ -112,34 +113,36 @@ impl IntegrationField {
 			queue.push(((*goal), self.get_field_cell_value(*goal)));
 		}
 		process_neighbours(self, queue, cost_field);
-		/// Recursively prcoess the cells
-		fn process_neighbours(
-			int_field: &mut IntegrationField,
-			queue: Vec<(FieldCell, u16)>,
-			cost_field: &CostField,
-		) {
-			let mut next_neighbours = Vec::new();
-			// iterate over the queue calculating neighbour int costs
-			for (cell, prev_int_cost) in queue.iter() {
-				let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
-				// iterate over the neighbours calculating int costs
-				for n in neighbours.iter() {
-					let cell_cost = cost_field.get_field_cell_value(*n);
-					// ignore impassable cells
-					if cell_cost != 255 {
-						// don't overwrite an int cell with a better cost
-						let int_cost = cell_cost as u16 + prev_int_cost;
-						if int_cost < int_field.get_field_cell_value(*n) {
-							int_field.set_field_cell_value(int_cost, *n);
-							next_neighbours.push((*n, int_cost));
-						}
-					}
+	}
+}
+
+/// Recursively expand the neighbours of a list of [FieldCell] and calculate
+/// their value in the [IntegrationField]
+fn process_neighbours(
+	int_field: &mut IntegrationField,
+	queue: Vec<(FieldCell, u16)>,
+	cost_field: &CostField,
+) {
+	let mut next_neighbours = Vec::new();
+	// iterate over the queue calculating neighbour int costs
+	for (cell, prev_int_cost) in queue.iter() {
+		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
+		// iterate over the neighbours calculating int costs
+		for n in neighbours.iter() {
+			let cell_cost = cost_field.get_field_cell_value(*n);
+			// ignore impassable cells
+			if cell_cost != 255 {
+				// don't overwrite an int cell with a better cost
+				let int_cost = cell_cost as u16 + prev_int_cost;
+				if int_cost < int_field.get_field_cell_value(*n) {
+					int_field.set_field_cell_value(int_cost, *n);
+					next_neighbours.push((*n, int_cost));
 				}
 			}
-			if !next_neighbours.is_empty() {
-				process_neighbours(int_field, next_neighbours, cost_field);
-			}
 		}
+	}
+	if !next_neighbours.is_empty() {
+		process_neighbours(int_field, next_neighbours, cost_field);
 	}
 }
 
