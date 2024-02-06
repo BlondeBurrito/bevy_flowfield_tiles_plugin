@@ -42,6 +42,7 @@ fn main() {
 				update_fps_counter,
 				update_actor_counter,
 				update_elapsed_counter,
+				update_generated_flowfield_counter,
 			),
 		)
 		.add_systems(Update, actor_steering)
@@ -431,6 +432,10 @@ struct ActorCounter;
 #[derive(Component)]
 struct ElapsedCounter;
 
+/// Label the generated flowfield counter
+#[derive(Component)]
+struct FlowFieldCounter;
+
 /// Create UI counters to measure the FPS and number of actors
 fn create_counters(mut cmds: Commands) {
 	cmds.spawn(NodeBundle {
@@ -495,6 +500,24 @@ fn create_counters(mut cmds: Commands) {
 			]))
 			.insert(ElapsedCounter);
 		});
+		p.spawn(NodeBundle::default()).with_children(|p| {
+			p.spawn(TextBundle::from_sections([
+				TextSection::new(
+					"Gen Flows: ",
+					TextStyle {
+						font_size: 30.0,
+						color: Color::WHITE,
+						..default()
+					},
+				),
+				TextSection::from_style(TextStyle {
+					font_size: 30.0,
+					color: Color::WHITE,
+					..default()
+				}),
+			]))
+			.insert(FlowFieldCounter);
+		});
 	});
 }
 
@@ -556,4 +579,26 @@ fn update_elapsed_counter(
 	let mut text = query.single_mut();
 	let elapsed = time.elapsed().as_secs_f32();
 	text.sections[1].value = format!("{elapsed:.2}");
+}
+
+/// Updates the count of generated flow fields
+#[allow(clippy::type_complexity)]
+fn update_generated_flowfield_counter(
+	cache_q: Query<&FlowFieldCache>,
+	mut query: Query<
+		&mut Text,
+		(
+			With<FlowFieldCounter>,
+			Without<ActorCounter>,
+			Without<FPSCounter>,
+			Without<ElapsedCounter>
+		),
+	>,
+) {
+	let mut field_count = 0;
+	for cache in &cache_q {
+		field_count = cache.get().len();
+	}
+	let mut text = query.single_mut();
+	text.sections[1].value = format!("{field_count:.2}");
 }
