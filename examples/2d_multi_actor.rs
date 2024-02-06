@@ -1,36 +1,29 @@
 //! Generates a 30x30 world where multiple actors can be told to move soomewhere with right click
 //!
 
-use std::time::Duration;
-
-use bevy::{
-	prelude::*,
-	sprite::collide_aabb::{collide, Collision},
-	window::PrimaryWindow,
-};
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
+use bevy_xpbd_2d::prelude::*;
 
-/// Timestep of actor movement system
-const ACTOR_TIMESTEP: f32 = 1.0 / 60.0;
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 
 fn main() {
 	App::new()
-		.add_plugins(DefaultPlugins)
-		.insert_resource(Time::<Fixed>::from_duration(Duration::from_secs_f32(
-			ACTOR_TIMESTEP,
-		)))
+		.add_plugins((
+			DefaultPlugins,
+			PhysicsPlugins::default(),
+			// PhysicsDebugPlugin::default(),
+		))
+		.insert_resource(SubstepCount(30))
+		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(
 			Startup,
 			(setup_visualisation, setup_navigation, create_wall_colliders),
 		)
 		.add_systems(Update, (user_input, actor_update_route))
-		.add_systems(
-			FixedUpdate,
-			(actor_steering, collision_detection, apply_velocity).chain(),
-		)
+		.add_systems(Update, actor_steering)
 		.run();
 }
 
@@ -57,15 +50,8 @@ struct Pathing {
 	target_sector: Option<SectorID>,
 	target_goal: Option<FieldCell>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
-	current_direction: Option<Vec2>,
-	/// Helps to steer the actor around corners when it is very close to an impassable field cell and reduces the likihood on tunneling
-	previous_direction: Option<Vec2>,
 	has_los: bool,
 }
-
-/// Dir and magnitude of actor movement
-#[derive(Component, Default)]
-struct Velocity(Vec2);
 
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
@@ -92,24 +78,22 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				// add colliders to impassable cells
 				if *value == 255 {
 					cmds.spawn(SpriteBundle {
-						texture: asset_server.load(get_basic_icon(*value)),
-						transform: Transform::from_xyz(x, y, 0.0),
+						sprite: Sprite {
+							color: Color::BLACK,
+							..default()
+						},
+						transform: Transform {
+							translation: Vec3::new(x, y, 0.0),
+							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
+							..default()
+						},
 						..default()
 					})
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.with_children(|p| {
-						// required to have a collider sized correctly
-						p.spawn(SpatialBundle {
-							transform: Transform::from_scale(Vec3::new(
-								FIELD_SPRITE_DIMENSION,
-								FIELD_SPRITE_DIMENSION,
-								1.0,
-							)),
-							..default()
-						})
-						.insert(Collider);
-					});
+					.insert(Collider::cuboid(1.0, 1.0))
+					.insert(RigidBody::Static)
+					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
 					cmds.spawn(SpriteBundle {
 						texture: asset_server.load(get_basic_icon(*value)),
@@ -124,7 +108,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	}
 }
 /// Spawn navigation related entities
-fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup_navigation(mut cmds: Commands) {
 	// create the entity handling the algorithm
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let map_length = 1920;
@@ -155,19 +139,27 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	];
 	for pos in actor_positions.iter() {
 		cmds.spawn(SpriteBundle {
-			texture: asset_server.load("2d/2d_actor_sprite.png"),
-			transform: Transform::from_xyz(pos.x, pos.y, pos.z),
+			sprite: Sprite {
+				color: Color::Rgba {
+					red: 230.0,
+					green: 0.0,
+					blue: 255.0,
+					alpha: 1.0,
+				},
+				..default()
+			},
+			transform: Transform {
+				translation: Vec3::new(pos.x, pos.y, pos.z),
+				scale: Vec3::new(16.0, 16.0, 1.0),
+				..default()
+			},
 			..default()
 		})
 		.insert(Actor)
-		.insert(Velocity::default())
 		.insert(Pathing::default())
-		.with_children(|p| {
-			p.spawn(SpatialBundle {
-				transform: Transform::from_scale(Vec3::new(16.0, 16.0, 1.0)),
-				..default()
-			});
-		});
+		.insert(RigidBody::Dynamic)
+		.insert(Collider::cuboid(1.0, 1.0))
+		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 	}
 }
 
@@ -233,13 +225,13 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 		}
 	}
 }
-/// Actor speed measured in pixels per fixed tick
-const SPEED: f32 = 250.0;
+/// Actor speed
+const SPEED: f32 = 50000.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
 fn actor_steering(
-	mut actor_q: Query<(&mut Velocity, &mut Transform, &mut Pathing), With<Actor>>,
+	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<Actor>>,
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
 	time_step: Res<Time>,
 ) {
@@ -275,12 +267,6 @@ fn actor_steering(
 								break 'routes;
 							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
-							if pathing.current_direction.is_none() {
-								pathing.current_direction = Some(dir);
-							} else if pathing.current_direction.unwrap() != dir {
-								pathing.previous_direction = pathing.current_direction;
-								pathing.current_direction = Some(dir);
-							}
 							velocity.0 = dir * SPEED * time_step.delta_seconds();
 						}
 						break 'routes;
@@ -288,13 +274,6 @@ fn actor_steering(
 				}
 			}
 		}
-	}
-}
-
-/// Move the actor
-fn apply_velocity(mut actor_q: Query<(&Velocity, &mut Transform), With<Actor>>) {
-	for (velocity, mut tform) in actor_q.iter_mut() {
-		tform.translation += velocity.0.extend(0.0);
 	}
 }
 
@@ -309,9 +288,26 @@ fn get_basic_icon(value: u8) -> String {
 	}
 }
 
-/// Added to entities that should block actors
-#[derive(Component)]
-struct Collider;
+/// Used in CollisionLayers so that actors don't collide with one another, only the terrain
+#[allow(clippy::missing_docs_in_private_items)]
+enum Layer {
+	Actor,
+	Terrain,
+}
+
+// weird bug when using #derive where it thinks the crate bevy_xpbd_3d is being used >(
+impl PhysicsLayer for Layer {
+	fn to_bits(&self) -> u32 {
+		match self {
+			Layer::Actor => 1,
+			Layer::Terrain => 2,
+		}
+	}
+
+	fn all_bits() -> u32 {
+		0b11
+	}
+}
 
 /// Create collider entities around the world
 fn create_wall_colliders(mut cmds: Commands) {
@@ -361,63 +357,9 @@ fn create_wall_colliders(mut cmds: Commands) {
 				},
 				..default()
 			},
-			Collider,
+			RigidBody::Static,
+			Collider::cuboid(1.0, 1.0),
+			CollisionLayers::new([Layer::Terrain], []),
 		));
-	}
-}
-
-/// Rebound actors when they begin to overlap an impassable area
-fn collision_detection(
-	mut actor_q: Query<(&mut Velocity, &Transform, &Children, &Pathing), With<Actor>>,
-	actor_child_q: Query<&Transform>,
-	static_colliders: Query<(&Parent, &Transform), With<Collider>>,
-	parent_colliders: Query<&Transform>,
-	time_step: Res<Time>,
-) {
-	for (mut velocity, actor_tform, children, pathing) in actor_q.iter_mut() {
-		for (parent, child_collider_tform) in static_colliders.iter() {
-			let parent_collider_tform = parent_colliders.get(parent.get()).unwrap();
-			for &child in children {
-				let tform = actor_child_q.get(child).unwrap();
-				let collision = collide(
-					actor_tform.translation,
-					tform.scale.truncate(),
-					parent_collider_tform.translation,
-					child_collider_tform.scale.truncate(),
-				);
-				if let Some(collision) = collision {
-					// direct the actor away from the collider
-					match collision {
-						Collision::Left => {
-							velocity.0.x *= -1.0;
-							if let Some(dir) = pathing.previous_direction {
-								velocity.0.y = dir.y * SPEED * time_step.delta_seconds() * 2.0;
-							}
-						}
-						Collision::Right => {
-							velocity.0.x *= -1.0;
-							if let Some(dir) = pathing.previous_direction {
-								velocity.0.y = dir.y * SPEED * time_step.delta_seconds() * 2.0;
-							}
-						}
-						Collision::Top => {
-							velocity.0.y *= -1.0;
-							if let Some(dir) = pathing.previous_direction {
-								velocity.0.x = dir.x * SPEED * time_step.delta_seconds() * 2.0;
-							}
-						}
-						Collision::Bottom => {
-							velocity.0.y *= -1.0;
-							if let Some(dir) = pathing.previous_direction {
-								velocity.0.x = dir.x * SPEED * time_step.delta_seconds() * 2.0;
-							}
-						}
-						Collision::Inside => {
-							velocity.0 *= -1.0;
-						}
-					}
-				}
-			}
-		}
 	}
 }
