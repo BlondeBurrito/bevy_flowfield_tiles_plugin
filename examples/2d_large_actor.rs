@@ -1,17 +1,12 @@
 //! Generates a 30x30 world where a large actor demonstrates restricted navigation
 //!
 
-use std::{collections::HashMap, f32::consts::PI, time::Duration};
+use std::collections::HashMap;
 
-use bevy::{
-	prelude::*,
-	sprite::collide_aabb::{collide, Collision},
-	window::PrimaryWindow,
-};
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
+use bevy_xpbd_2d::prelude::*;
 
-/// Timestep of actor movement system
-const ACTOR_TIMESTEP: f32 = 1.0 / 60.0;
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 /// Determines what areas are valid for pathing
@@ -19,10 +14,13 @@ const ACTOR_SIZE: f32 = 96.0;
 
 fn main() {
 	App::new()
-		.add_plugins(DefaultPlugins)
-		.insert_resource(Time::<Fixed>::from_duration(Duration::from_secs_f32(
-			ACTOR_TIMESTEP,
-		)))
+		.add_plugins((
+			DefaultPlugins,
+			PhysicsPlugins::default(),
+			// PhysicsDebugPlugin::default(),
+		))
+		.insert_resource(SubstepCount(30))
+		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(
 			Startup,
@@ -30,16 +28,7 @@ fn main() {
 		)
 		.add_systems(Update, (user_input, actor_update_route))
 		.add_systems(Update, (update_sprite_visuals_based_on_actor,))
-		.add_systems(
-			FixedUpdate,
-			(
-				actor_steering,
-				collision_detection,
-				apply_rotation,
-				apply_velocity,
-			)
-				.chain(),
-		)
+		.add_systems(Update, actor_steering)
 		.run();
 }
 
@@ -66,9 +55,6 @@ struct Pathing {
 	target_sector: Option<SectorID>,
 	target_goal: Option<FieldCell>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
-	current_direction: Option<Vec2>,
-	/// Helps to steer the actor around corners when it is very close to an impassable field cell and reduces the likihood on tunneling
-	previous_direction: Option<Vec2>,
 	has_los: bool,
 }
 
@@ -112,18 +98,12 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					})
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.with_children(|p| {
-						// required to have a collider sized correctly
-						p.spawn(SpatialBundle {
-							transform: Transform::from_scale(Vec3::new(
-								FIELD_SPRITE_DIMENSION,
-								FIELD_SPRITE_DIMENSION,
-								1.0,
-							)),
-							..default()
-						})
-						.insert(Collider);
-					});
+					.insert(Collider::cuboid(
+						FIELD_SPRITE_DIMENSION,
+						FIELD_SPRITE_DIMENSION,
+					))
+					.insert(RigidBody::Static)
+					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
 					cmds.spawn(SpriteBundle {
 						texture: asset_server.load(get_basic_icon(*value)),
@@ -138,7 +118,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	}
 }
 /// Spawn navigation related entities
-fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup_navigation(mut cmds: Commands) {
 	// create the entity handling the algorithm
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let map_length = 1920;
@@ -153,19 +133,27 @@ fn setup_navigation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	));
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
-		texture: asset_server.load("2d/2d_actor_sprite_large.png"),
-		transform: Transform::from_xyz(866.0, 866.0, 1.0),
+		sprite: Sprite {
+			color: Color::Rgba {
+				red: 230.0,
+				green: 0.0,
+				blue: 255.0,
+				alpha: 1.0,
+			},
+			..default()
+		},
+		transform: Transform {
+			translation: Vec3::new(886.0, 886.0, 1.0),
+			scale: Vec3::new(ACTOR_SIZE, 16.0, 1.0),
+			..default()
+		},
 		..default()
 	})
 	.insert(Actor)
-	.insert(Velocity::default())
 	.insert(Pathing::default())
-	.with_children(|p| {
-		p.spawn(SpatialBundle {
-			transform: Transform::from_scale(Vec3::new(ACTOR_SIZE, 16.0, 1.0)),
-			..default()
-		});
-	});
+	.insert(RigidBody::Dynamic)
+	.insert(Collider::cuboid(1.0, 1.0))
+	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 }
 
 /// Handle generating a PathRequest via right click
@@ -228,84 +216,57 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 		}
 	}
 }
-/// Actor speed measured in pixels per fixed tick
-const SPEED: f32 = 250.0;
+/// Actor speed
+const SPEED: f32 = 50000.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
 fn actor_steering(
-	mut actor_q: Query<(&mut Velocity, &mut Transform, &mut Pathing), With<Actor>>,
+	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<Actor>>,
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
 	time_step: Res<Time>,
 ) {
-	let (mut velocity, tform, mut pathing) = actor_q.get_single_mut().unwrap();
 	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 
-	if pathing.target_goal.is_some() {
-		// lookup the overarching route
-		if let Some(route) = pathing.portal_route.as_mut() {
-			// info!("Route: {:?}", route);
-			// find the current actors postion in grid space
-			let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
-				.get_sector_and_field_id_from_xy(tform.translation.truncate())
-				.unwrap();
-			// tirm the actor stored route as it makes progress
-			// this ensures it doesn't use a previous goal from
-			// a sector it has already been through when it needs
-			// to pass through it again as part of a different part of the route
-			if curr_actor_sector != route.first().unwrap().0 {
-				route.remove(0);
-			}
-			// lookup the relevant sector-goal of this sector
-			'routes: for (sector, goal) in route.iter() {
-				if *sector == curr_actor_sector {
-					// get the flow field
-					if let Some(field) = flow_cache.get_field(*sector, *goal) {
-						// based on actor field cell find the directional vector it should move in
-						let cell_value = field.get_field_cell_value(curr_actor_field_cell);
-						if has_line_of_sight(cell_value) {
-							pathing.has_los = true;
-							let dir =
-								pathing.target_position.unwrap() - tform.translation.truncate();
-							velocity.0 = dir.normalize() * SPEED * time_step.delta_seconds();
-							break 'routes;
-						}
-						let dir = get_2d_direction_unit_vector_from_bits(cell_value);
-						if pathing.current_direction.is_none() {
-							pathing.current_direction = Some(dir);
-						} else if pathing.current_direction.unwrap() != dir {
-							pathing.previous_direction = pathing.current_direction;
-							pathing.current_direction = Some(dir);
-						}
-						velocity.0 = dir * SPEED * time_step.delta_seconds();
+	for (mut velocity, tform, mut pathing) in actor_q.iter_mut() {
+		if pathing.target_goal.is_some() {
+			// lookup the overarching route
+			if let Some(route) = pathing.portal_route.as_mut() {
+				// find the current actors postion in grid space
+				let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
+					.get_sector_and_field_id_from_xy(tform.translation.truncate())
+					.unwrap();
+				// tirm the actor stored route as it makes progress
+				// this ensures it doesn't use a previous goal from
+				// a sector it has already been through when it needs
+				// to pass through it again as part of a different part of the route
+				if let Some(f) = route.first() {
+					if curr_actor_sector != f.0 {
+						route.remove(0);
 					}
-					break 'routes;
+				}
+				// lookup the relevant sector-goal of this sector
+				'routes: for (sector, goal) in route.iter() {
+					if *sector == curr_actor_sector {
+						// get the flow field
+						if let Some(field) = flow_cache.get_field(*sector, *goal) {
+							// based on actor field cell find the directional vector it should move in
+							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+							if has_line_of_sight(cell_value) {
+								pathing.has_los = true;
+								let dir =
+									pathing.target_position.unwrap() - tform.translation.truncate();
+								velocity.0 = dir.normalize() * SPEED * time_step.delta_seconds();
+								break 'routes;
+							}
+							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+							velocity.0 = dir * SPEED * time_step.delta_seconds();
+						}
+						break 'routes;
+					}
 				}
 			}
 		}
-	}
-}
-
-/// Face the actor
-fn apply_rotation(mut actor_q: Query<(&Velocity, &mut Transform), With<Actor>>) {
-	for (velocity, mut tform) in actor_q.iter_mut() {
-		if velocity.0.length_squared() > 0.0 {
-			let delta_dir = velocity.0;
-			// let angle = velocity.0.angle_between(pos);
-			// let angle = delta_dir.angle_between(pos);
-			let angle = delta_dir.y.atan2(delta_dir.x) + PI / 2.0;
-			tform.rotation = Quat::from_rotation_z(angle)
-			// tform.rotate_z(angle);
-			// tform.look_at(velocity.0.extend(1.0), Vec3::Y);
-			// tform.look_to(velocity.0.extend(1.0), Vec3::NEG_Z);
-		}
-	}
-}
-
-/// Move the actor
-fn apply_velocity(mut actor_q: Query<(&Velocity, &mut Transform), With<Actor>>) {
-	for (velocity, mut tform) in actor_q.iter_mut() {
-		tform.translation += velocity.0.extend(0.0);
 	}
 }
 
@@ -389,9 +350,26 @@ fn get_ord_icon(value: u8) -> String {
 	}
 }
 
-/// Added to entities that should block actors
-#[derive(Component)]
-struct Collider;
+/// Used in CollisionLayers so that actors don't collide with one another, only the terrain
+#[allow(clippy::missing_docs_in_private_items)]
+enum Layer {
+	Actor,
+	Terrain,
+}
+
+// weird bug when using #derive where it thinks the crate bevy_xpbd_3d is being used >(
+impl PhysicsLayer for Layer {
+	fn to_bits(&self) -> u32 {
+		match self {
+			Layer::Actor => 1,
+			Layer::Terrain => 2,
+		}
+	}
+
+	fn all_bits() -> u32 {
+		0b11
+	}
+}
 
 /// Create collider entities around the world
 fn create_wall_colliders(mut cmds: Commands) {
@@ -441,64 +419,9 @@ fn create_wall_colliders(mut cmds: Commands) {
 				},
 				..default()
 			},
-			Collider,
+			RigidBody::Static,
+			Collider::cuboid(1.0, 1.0),
+			CollisionLayers::new([Layer::Terrain], []),
 		));
-	}
-}
-
-/// Rebound actors when they begin to overlap an impassable area
-fn collision_detection(
-	mut actor_q: Query<(&mut Velocity, &Transform, &Children, &Pathing), With<Actor>>,
-	actor_child_q: Query<&Transform>,
-	static_colliders: Query<(&Parent, &Transform), With<Collider>>,
-	parent_colliders: Query<&Transform>,
-	time_step: Res<Time>,
-) {
-	for (mut velocity, actor_tform, children, pathing) in actor_q.iter_mut() {
-		for (parent, child_collider_tform) in static_colliders.iter() {
-			let parent_collider_tform = parent_colliders.get(parent.get()).unwrap();
-			for &child in children {
-				let tform = actor_child_q.get(child).unwrap();
-				let collision = collide(
-					actor_tform.translation,
-					tform.scale.truncate(),
-					parent_collider_tform.translation,
-					child_collider_tform.scale.truncate(),
-				);
-				if let Some(collision) = collision {
-					// direct the actor away from the collider
-					match collision {
-						Collision::Left => {
-							velocity.0.x *= -1.0;
-							if let Some(dir) = pathing.previous_direction {
-								velocity.0.y = dir.y * SPEED * time_step.delta_seconds() * 2.0;
-							}
-						}
-						Collision::Right => {
-							velocity.0.x *= -1.0;
-							if let Some(dir) = pathing.previous_direction {
-								velocity.0.y = dir.y * SPEED * time_step.delta_seconds() * 2.0;
-							}
-						}
-						Collision::Top => {
-							velocity.0.y *= -1.0;
-							if let Some(dir) = pathing.previous_direction {
-								velocity.0.x = dir.x * SPEED * time_step.delta_seconds() * 2.0;
-							}
-						}
-						Collision::Bottom => {
-							info!("{:?}", collision);
-							velocity.0.y *= -1.0;
-							if let Some(dir) = pathing.previous_direction {
-								velocity.0.x = dir.x * SPEED * time_step.delta_seconds() * 2.0;
-							}
-						}
-						Collision::Inside => {
-							velocity.0 *= -1.0;
-						}
-					}
-				}
-			}
-		}
 	}
 }

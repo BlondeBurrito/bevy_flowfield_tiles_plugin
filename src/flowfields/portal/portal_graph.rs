@@ -6,10 +6,10 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use bevy::utils::{Entry, HashMap};
 use super::portals::Portals;
 use crate::prelude::*;
 use bevy::prelude::*;
+use bevy::utils::{Entry, HashMap};
 
 /// Used to provide a heuristic for portals that sit next to each other across
 /// a portal boundary. This is used in the a-star calculation for determining
