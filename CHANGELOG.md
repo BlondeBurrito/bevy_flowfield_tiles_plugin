@@ -2,6 +2,69 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2024-02-06
+
+### Documentation
+
+- Clarify sector_resolution doc comment
+
+
+
+
+### Features
+
+- Bump MSRV to 1.74
+
+
+
+- [**breaking**] On CostField mutate purge outdated routes and request new ones (#46)
+
+
+
+- `PortalGraph` supports reflect (#48)
+
+
+
+
+### Miscellaneous Tasks
+
+- Adopt lints in Cargo manifest (#44)
+
+
+
+- Readme
+
+
+
+- Added generated flowfield counter to 2d_continuous (#50)
+
+
+
+
+### Performance
+
+- [**breaking**] Improved field calculations and route handling (#45)
+
+Integration and flow fields are built in stages, this avoids blocking the main thread for too long, observed average FPS increased from 70 to 165 with the `2d_continuous` example, while number of simultaneous pathfinding actors increased from 600 to 1600
+
+Replaced flowfield blocked diagonal `len()` check with a `bool` check (gets rid of pointless `vec` heap allocations)
+
+`PortalGraph` completely rewritten, crate `petgraph` is no longer a dependency of this library (reduced memory usage as no translator from Node/Edge Index to Sector/FieldCell required)
+
+Events to request a pathfinding route are now filtered to avoid processing duplicates (note: stable FPS at 165, used to jump between 150 and 200 wildly)
+
+
+### Testing
+
+- Improved test coverage to ~90% (#47)
+
+
+
+- Replaced collision detection in 2d examples (#49)
+
+Previously the 2d examples used my janky collision detection which allowed some actors to tunnel into colliders and get stuck. That's all been removed and now the `bevy_xpbd_2d` crate has been added as a dev-dependency to showcase the algorithm working alongside a physics simulation. So far `xpbd` has been really promising and easy to use and now the 2d examples flow nicely
+
+
 ## [0.5.1] - 2023-11-24
 
 ### Bug Fixes
