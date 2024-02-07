@@ -641,14 +641,16 @@ impl PortalGraph {
 		}
 	}
 	/// Based on a source node and direction find any edges containing those parameters
-	fn find_edges(&self, source: PortalNode, direction: Direction) -> &Vec<PortalEdge> {
+	fn find_edges(&self, source: PortalNode, direction: Direction) -> Vec<PortalEdge> {
 		if let Some(edges) = self.get().get(&source) {
 			match direction {
-				Direction::Internal => &edges.internal,
-				Direction::External => &edges.external,
+				Direction::Internal => edges.internal.clone(),
+				Direction::External => edges.external.clone(),
 			}
 		} else {
-			panic!("bahh")
+			//TODO if there's legitmate grpah problem here that can be fixed the above clones can be removed and return references instead
+			warn!("Node {:?} has no edges in direction {:?}. The existence of a portal must mean that there a edges, your CostFields may be problematic", source, direction);
+			Vec::new()
 		}
 	}
 	/// Based on https://github.com/BlondeBurrito/pathfinding_astar
@@ -1144,6 +1146,115 @@ use super::*;
 		let portal_to_portal_count = 20;
 		// each sector boundary has an edge to the neighbouring sector boundary
 		let sector_to_sector_count = 12;
+		let actual_edges = portal_to_portal_count + sector_to_sector_count;
+		assert_eq!(actual_edges, result_edges);
+	}
+	/// Update the costfield so that portal sitting in a corner serves as a link to two sectors at the same time
+	#[test]
+	fn update_graph_from_portals_change_edge_count_dual_corner_portals2() {
+		//init
+		let map_dimensions = MapDimensions::new(20, 20, 10, 0.5);
+		let mut sector_cost_fields = SectorCostFields::new(&map_dimensions);
+		let mut sector_portals = SectorPortals::new(map_dimensions.get_length(), map_dimensions.get_depth(), map_dimensions.get_sector_resolution());
+		// build portals
+		for (id, portals) in sector_portals.get_mut().iter_mut() {
+			portals.recalculate_portals(&sector_cost_fields, id,&map_dimensions)
+		}
+		
+		// build the graph
+		let mut portal_graph = PortalGraph::default();
+		portal_graph.insert_all_portal_nodes(&sector_portals, &sector_cost_fields);
+		// build the edges within each sector
+		portal_graph.build_all_internal_sector_edges(&sector_portals, &sector_cost_fields);
+		// build the edges between sectors
+		portal_graph.build_all_external_sector_edges(&sector_portals, &sector_cost_fields, &map_dimensions);
+		// the current graph has this plain representation of portals
+		// _____________________
+		// |         |         |
+		// |         |         |
+		// |         P         |
+		// |         |         |
+		// |____P____|____P____|
+		// |         |         |
+		// |         |         |
+		// |         P         |
+		// |         |         |
+		// |_________|_________|
+
+		// update the top-right CostFields and calculate new portals
+		let mutated_sector_id_0 = SectorID::new(1, 0);
+		let walls = vec![
+			FieldCell::new(8, 0),
+			FieldCell::new(8, 1),
+			FieldCell::new(8, 2),
+			FieldCell::new(9, 3),
+			FieldCell::new(9, 4),
+			FieldCell::new(9, 5),
+			FieldCell::new(9, 6),
+			FieldCell::new(8, 7),
+			FieldCell::new(8, 8),
+			FieldCell::new(8, 9),
+			];
+			for wall in walls {
+				sector_cost_fields.set_field_cell_value(mutated_sector_id_0, 255, wall, &map_dimensions);
+			sector_portals.update_portals(mutated_sector_id_0, &sector_cost_fields, &map_dimensions);
+			portal_graph.update_graph(mutated_sector_id_0, &sector_portals, &sector_cost_fields, &map_dimensions);
+			}
+		
+
+		let mutated_sector_id_1 = SectorID::new(0, 0);
+		let walls = vec![
+			FieldCell::new(9, 0),
+			FieldCell::new(9, 1),
+			FieldCell::new(9, 2),
+			FieldCell::new(9, 3),
+			FieldCell::new(9, 4),
+			FieldCell::new(9, 5),
+			FieldCell::new(9, 6),
+			FieldCell::new(9, 7),
+			FieldCell::new(9, 8),
+		];
+		for wall in walls {
+			sector_cost_fields.set_field_cell_value(mutated_sector_id_1, 255, wall, &map_dimensions);
+		sector_portals.update_portals(mutated_sector_id_1, &sector_cost_fields, &map_dimensions);
+		portal_graph.update_graph(mutated_sector_id_1, &sector_portals, &sector_cost_fields, &map_dimensions);
+		}
+
+		// This produces a new representation with 2 extra portals, `x` denotes the impassable points
+		// just inserted
+		// _____________________
+		// |        x|         |
+		// |        x|         |
+		// |        x|         |
+		// |        x|xxx  xxxx|
+		// |___P_____|PPxxxx_P_|
+		// |         |         |
+		// |         |         |
+		// |         P         |
+		// |         |         |
+		// |_________|_________|
+
+		// test for node count
+		let result_nodes = portal_graph.get().len();
+		let actual_nodes = 10;
+		// println!("Graph {:?}", portal_graph.graph);
+		// println!("Portals {:?}", sector_portals.get());
+		assert_eq!(actual_nodes, result_nodes);
+
+		// test that the graph has updated with the new edges
+		let result_edges = {
+			let mut len= 0;
+			for (_node, edges) in portal_graph.get().iter() {
+				len += edges.internal.len();
+				len += edges.external.len();
+			}
+			len
+		};
+		// println!("Graph\n {:?}", portal_graph);
+		// each portal in a sector is connected to every other portal in that sector
+		let portal_to_portal_count = 12;
+		// each sector boundary has an edge to the neighbouring sector boundary
+		let sector_to_sector_count = 10;
 		let actual_edges = portal_to_portal_count + sector_to_sector_count;
 		assert_eq!(actual_edges, result_edges);
 	}
