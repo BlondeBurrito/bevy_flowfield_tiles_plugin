@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] - 2024-02-07
+
+### Bug Fixes
+
+- Warn if a portal is explored that doesn't have any egdes
+
+
+
+
 ## [0.6.0] - 2024-02-06
 
 ### Documentation
