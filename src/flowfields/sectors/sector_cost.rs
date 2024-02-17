@@ -549,8 +549,6 @@ impl SectorCostFields {
 	/// represents the cost of a [FieldCell]
 	#[cfg(feature = "heightmap")]
 	pub fn from_heightmap(map_dimensions: &MapDimensions, path: String) -> Self {
-		// let file = std::fs::File::open(path).expect("Failed opening CostField file");
-
 		use photon_rs::native::open_image;
 		let img = open_image(&path).expect("Failed to open heightmap");
 		let img_width = img.get_width();
@@ -604,11 +602,6 @@ impl SectorCostFields {
 					// careful of u8 overflow
 					let colour_avg = (px.0 as f32 + px.1 as f32 + px.2 as f32) / 3.0;
 					let value = (255 - colour_avg as u8).clamp(1, 255);
-					info!("Sector {:?}", sector_id);
-					info!("Cell {:?}", field_cell);
-					info!("Px {:?}", px);
-					info!("Avg {:?}", colour_avg);
-					info!("value {:}", value);
 					field.set_field_cell_value(value, field_cell);
 				}
 			}
