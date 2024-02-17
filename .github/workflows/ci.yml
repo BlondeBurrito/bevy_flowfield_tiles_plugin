@@ -43,22 +43,21 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release --workspace
-  # uses so many build action minutes :(
-  # macos_test:
-  #   name: macos_test
-  #   runs-on: macos-latest
-  #   steps:
-  #     - name: deps
-  #       run: brew install michaeleisel/zld/zld
-  #     - uses: actions/checkout@v3
-  #     - uses: dtolnay/rust-toolchain@stable
-  #     - run: cargo build --release --workspace --all-features
-  # macos_build:
-  #   name: macos_build
-  #   runs-on: macos-latest
-  #   steps:
-  #     - name: deps
-  #       run: brew install michaeleisel/zld/zld
-  #     - uses: actions/checkout@v3
-  #     - uses: dtolnay/rust-toolchain@stable
-  #     - run: cargo build --release --workspace
+  macos_test:
+    name: macos_test
+    runs-on: macos-latest
+    steps:
+      - name: deps
+        run: brew install michaeleisel/zld/zld
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --release --workspace --all-features
+  macos_build:
+    name: macos_build
+    runs-on: macos-latest
+    steps:
+      - name: deps
+        run: brew install michaeleisel/zld/zld
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release --workspace

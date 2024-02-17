@@ -591,7 +591,7 @@ fn update_generated_flowfield_counter(
 			With<FlowFieldCounter>,
 			Without<ActorCounter>,
 			Without<FPSCounter>,
-			Without<ElapsedCounter>
+			Without<ElapsedCounter>,
 		),
 	>,
 ) {

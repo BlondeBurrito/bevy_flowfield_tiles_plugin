@@ -554,15 +554,22 @@ impl SectorCostFields {
 		let img_width = img.get_width();
 		let img_height = img.get_height();
 		// ensure the size of the heightmap actually represents the number of FieldCells required by the MapDimensions
-		let hori_sector_count = map_dimensions.get_length() / map_dimensions.get_sector_resolution();
+		let hori_sector_count =
+			map_dimensions.get_length() / map_dimensions.get_sector_resolution();
 		let required_px_width = hori_sector_count * FIELD_RESOLUTION as u32;
 		if img_width != required_px_width {
-			panic!("Heightmap has incorrect width, expected width of {} pixels, found {}", required_px_width, img_width);
+			panic!(
+				"Heightmap has incorrect width, expected width of {} pixels, found {}",
+				required_px_width, img_width
+			);
 		}
 		let vert_sector_count = map_dimensions.get_depth() / map_dimensions.get_sector_resolution();
 		let required_px_height = vert_sector_count * FIELD_RESOLUTION as u32;
 		if img_height != required_px_height {
-			panic!("Heightmap has incorrect height, expected hieght of {} pixels, found {}", required_px_height, img_height);
+			panic!(
+				"Heightmap has incorrect height, expected hieght of {} pixels, found {}",
+				required_px_height, img_height
+			);
 		}
 		// init the fields so we already have the required sectors inserted
 		let mut sector_cost_fields = SectorCostFields::new(map_dimensions);
@@ -589,9 +596,13 @@ impl SectorCostFields {
 		for (line_number, rgba_slice) in pixels_rgb.chunks(img_width as usize).enumerate() {
 			let sector_row = line_number / FIELD_RESOLUTION;
 			// chunk each row by resolution to give slices of pixels for each sector column
-			for (sector_column, rgba_slice_slice) in rgba_slice.chunks(FIELD_RESOLUTION).enumerate() {
+			for (sector_column, rgba_slice_slice) in rgba_slice.chunks(FIELD_RESOLUTION).enumerate()
+			{
 				let sector_id = SectorID::new(sector_column as u32, sector_row as u32);
-				let field = sector_cost_fields.get_baseline_mut().get_mut(&sector_id).unwrap();
+				let field = sector_cost_fields
+					.get_baseline_mut()
+					.get_mut(&sector_id)
+					.unwrap();
 				// iter over the pixels in the row of the particular sector
 				for (field_column, px) in rgba_slice_slice.iter().enumerate() {
 					// calc row in the field
