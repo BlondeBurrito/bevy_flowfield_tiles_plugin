@@ -73,7 +73,7 @@ heightmap = ["dep:photon-rs"]
 # multithread = []
 
 [package.metadata.docs.rs]
-features = ["serde", "ron", "csv", "2d", "3d"]
+features = ["serde", "ron", "csv", "2d", "3d", "heightmap"]
 
 [profile.dev]
 opt-level = 1
