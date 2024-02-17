@@ -22,6 +22,7 @@ bevy = { version = "0.12", default-features = false }
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
 csv = { version = "1" }
+photon-rs = { version = "0.3"}
 
 [workspace.lints.clippy]
 cargo_common_metadata = "deny"
@@ -57,6 +58,7 @@ bevy = { workspace = true }
 serde = { workspace = true, optional = true}
 ron = { workspace = true, optional = true}
 csv = { workspace = true, optional = true}
+photon-rs = {workspace = true, optional = true}
 
 [lints]
 workspace = true
@@ -67,6 +69,7 @@ ron = ["serde", "dep:ron"]
 csv = ["serde", "dep:csv"]
 2d = []
 3d = []
+heightmap = ["dep:photon-rs"]
 # multithread = []
 
 [package.metadata.docs.rs]
@@ -123,6 +126,11 @@ harness = false
 name = "visualise_cost_field"
 path = "examples/visualise_cost_field.rs"
 required-features = ["ron"]
+
+[[example]]
+name = "visualise_cost_field_heightmap"
+path = "examples/visualise_cost_field_heightmap.rs"
+required-features = ["heightmap"]
 
 [[example]]
 name = "visualise_portals"

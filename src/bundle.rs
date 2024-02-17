@@ -110,6 +110,37 @@ impl FlowFieldTilesBundle {
 			flow_field_cache: cache,
 		}
 	}
+	/// From a greyscale heightmap image initialise a bundle where the
+	/// [CostField]s are derived from the pixel values of the image
+	#[cfg(not(tarpaulin_include))]
+	#[cfg(feature = "heightmap")]
+	pub fn from_heightmap(
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
+		actor_size: f32,
+		file_path: &str,
+	) -> Self {
+		let map_dimensions =
+			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+		let cost_fields = SectorCostFields::from_heightmap(&map_dimensions, file_path.to_string());
+		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
+		// update default portals for cost fields
+		for sector_id in cost_fields.get_scaled().keys() {
+			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
+		}
+		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
+		let route_cache = RouteCache::default();
+		let cache = FlowFieldCache::default();
+		FlowFieldTilesBundle {
+			sector_cost_fields: cost_fields,
+			sector_portals: portals,
+			portal_graph: graph,
+			map_dimensions,
+			route_cache,
+			flow_field_cache: cache,
+		}
+	}
 }
 
 // #[rustfmt::skip]

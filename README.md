@@ -80,7 +80,7 @@ A `CostField` is an `MxN` 2D array of 8-bit values, by default this is always a 
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/cost_field.png" alt="cf" width="370"/>
 
-At runtime the `CostField` is generated for each Sector with the default value - although with the feature `ron` it is possible to load the fields from disk. See the [Usage](#usage) section below for details on updating the `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to to a higher cost or an impassable `255` when something like a wall is placed or the ground splits into a fissure).
+At runtime the `CostField` is generated for each Sector with the default value - although with the feature `ron` it is possible to load the fields from disk, or with the feature `heightmap` a greyscale png/jpeg can be used to seed the fields. See the [Usage](#usage) section below for details on updating the `CostFields` during an inital pass (i.e when loading a level) and tweaking it during gameplay for a world which dynamically evolves with obstacles (flipping a cell to to a higher cost or an impassable `255` when something like a wall is placed or the ground splits into a fissure).
 
 This array is used to generate the `IntegrationField` when requesting a navigatable path.
 
@@ -345,7 +345,7 @@ Note that this will initialise all the `CostFields` representing the world with 
 
 In 3d you could consider making a raycast to the centre of where each FieldCell would be and use something like the `y` position of the ray hit to determine if something is passable or not and then flip the value of that particular `FieldCell` (`EventUpdateCostfieldsCell` can be used to queue a cost change).
 
-Most likely for 2d or more complex 3d scenarios you'll probably want to enable either the `ron` or `csv` feature which allows for creating a `FlowfieldTilesBundle` with inital `CostFields` from a `.ron` file or a collection of `.csv`, the examples showcase this in more detail.
+Most likely for 2d or more complex 3d scenarios you'll probably want to enable either the `ron`, `csv` or `heightmap` feature which allows for creating a `FlowfieldTilesBundle` with inital `CostFields` from a `.ron` file, a collection of `.csv` or a greyscale png/jpeg where pixel colour channels are translated into costs, the examples showcase this in more detail.
 
 ## Path Request
 
@@ -520,6 +520,7 @@ NB: when a CostField is modified Portals and the PortalGraph are updated and any
 * `csv` - enables creating all of the `CostFields` by reading from a directory of csv files. Note that csv filenames need to follow the sector ID convention of `column_row.csv`, the underscore is important, and the path of the directory should be fully qualified and the files themselves should not contain any headers
 * `2d` - enables interface methods when working with Flowfields in a 2d world
 * `3d` - enables interface methods when working with FlowFields in a 3d world
+* `heightmap` - allows initalising the `CostField`s from a greyscale png/jpeg where each pixel of the image represents a `FieldCell`. Alpha channel is optional (it'll just be ignored if included in the image). A pixel with colour channels `(0, 0, 0, 255)` (black) represents an impassable `255` cost whereas `(255, 255, 255, 255)` (white) is translated as a cost of `1`, channel values inbetween will be more expensive costs
 
 # Performance
 
