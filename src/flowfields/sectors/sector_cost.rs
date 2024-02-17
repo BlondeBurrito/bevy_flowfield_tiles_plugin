@@ -545,6 +545,83 @@ impl SectorCostFields {
 		sector_cost_fields.scale_all_costfields(map_dimensions);
 		sector_cost_fields
 	}
+	/// Create a [SectorCostFields] from a greyscale image where each pixel
+	/// represents the cost of a [FieldCell]
+	#[cfg(feature = "heightmap")]
+	pub fn from_heightmap(map_dimensions: &MapDimensions, path: String) -> Self {
+		use photon_rs::native::open_image;
+		let img = open_image(&path).expect("Failed to open heightmap");
+		let img_width = img.get_width();
+		let img_height = img.get_height();
+		// ensure the size of the heightmap actually represents the number of FieldCells required by the MapDimensions
+		let hori_sector_count =
+			map_dimensions.get_length() / map_dimensions.get_sector_resolution();
+		let required_px_width = hori_sector_count * FIELD_RESOLUTION as u32;
+		if img_width != required_px_width {
+			panic!(
+				"Heightmap has incorrect width, expected width of {} pixels, found {}",
+				required_px_width, img_width
+			);
+		}
+		let vert_sector_count = map_dimensions.get_depth() / map_dimensions.get_sector_resolution();
+		let required_px_height = vert_sector_count * FIELD_RESOLUTION as u32;
+		if img_height != required_px_height {
+			panic!(
+				"Heightmap has incorrect height, expected hieght of {} pixels, found {}",
+				required_px_height, img_height
+			);
+		}
+		// init the fields so we already have the required sectors inserted
+		let mut sector_cost_fields = SectorCostFields::new(map_dimensions);
+		// iter over the pixels in chunks creating CostFields
+		let raw_pixels = img.get_raw_pixels();
+		// raw pixels are arranged from the top left of the image and come in sets of either 3 or 4 (if alpha channel is inlcuded).
+		// Each sequential set corresponds to Red, Green, Blue, (Alpha).
+		// We want to convert these into a vector of tuples which can represent each field cell
+		let len_if_alpha = img_height * img_height * 4;
+		let chunk_size = {
+			if len_if_alpha as usize == raw_pixels.len() {
+				4
+			} else {
+				3
+			}
+		};
+		let mut pixels_rgb: Vec<(u8, u8, u8)> = Vec::new();
+		for rgb in raw_pixels.chunks(chunk_size) {
+			let mut as_tuple = vec![(rgb[0], rgb[1], rgb[2])];
+			pixels_rgb.append(&mut as_tuple);
+		}
+		// By chunking the list of pixel RGBAs based on the width of the image
+		// we can iterate on the rows
+		for (line_number, rgba_slice) in pixels_rgb.chunks(img_width as usize).enumerate() {
+			let sector_row = line_number / FIELD_RESOLUTION;
+			// chunk each row by resolution to give slices of pixels for each sector column
+			for (sector_column, rgba_slice_slice) in rgba_slice.chunks(FIELD_RESOLUTION).enumerate()
+			{
+				let sector_id = SectorID::new(sector_column as u32, sector_row as u32);
+				let field = sector_cost_fields
+					.get_baseline_mut()
+					.get_mut(&sector_id)
+					.unwrap();
+				// iter over the pixels in the row of the particular sector
+				for (field_column, px) in rgba_slice_slice.iter().enumerate() {
+					// calc row in the field
+					let field_row = line_number - (FIELD_RESOLUTION * sector_row);
+					let field_cell = FieldCell::new(field_column, field_row);
+					// black (0, 0, 0, 255)
+					// white (255, 255, 255, 255)
+					// careful of u8 overflow
+					let colour_avg = (px.0 as f32 + px.1 as f32 + px.2 as f32) / 3.0;
+					let value = (255 - colour_avg as u8).clamp(1, 255);
+					field.set_field_cell_value(value, field_cell);
+				}
+			}
+		}
+		// now that costs are popualated calcualte the scaled fields that will
+		// be used in the algorithm
+		sector_cost_fields.scale_all_costfields(map_dimensions);
+		sector_cost_fields
+	}
 }
 
 // #[rustfmt::skip]
