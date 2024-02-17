@@ -48,7 +48,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: deps
-        run: brew install michaeleisel/zld/zld
+        run: brew install keith/formulae/ld64.lld
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --release --workspace --all-features
@@ -57,7 +57,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: deps
-        run: brew install michaeleisel/zld/zld
+        run: brew install keith/formulae/ld64.lld
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release --workspace
