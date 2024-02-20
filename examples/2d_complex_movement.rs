@@ -94,7 +94,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					})
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.insert(Collider::cuboid(1.0, 1.0))
+					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
@@ -146,13 +146,13 @@ fn setup_navigation(mut cmds: Commands) {
 	.insert(Actor)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
-	.insert(Collider::cuboid(1.0, 1.0))
+	.insert(Collider::rectangle(1.0, 1.0))
 	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 }
 
 /// Handle generating a PathRequest via right click
 fn user_input(
-	mouse_button_input: Res<Input<MouseButton>>,
+	mouse_button_input: Res<ButtonInput<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	dimensions_q: Query<&MapDimensions>,
@@ -413,8 +413,8 @@ fn create_wall_colliders(mut cmds: Commands) {
 				..default()
 			},
 			RigidBody::Static,
-			Collider::cuboid(1.0, 1.0),
-			CollisionLayers::new([Layer::Terrain], []),
+			Collider::rectangle(1.0, 1.0),
+			CollisionLayers::new([Layer::Terrain], LayerMask::NONE),
 		));
 	}
 }

@@ -94,7 +94,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					})
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.insert(Collider::cuboid(1.0, 1.0))
+					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
@@ -146,7 +146,7 @@ fn setup_navigation(mut cmds: Commands) {
 	.insert(ActorA)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
-	.insert(Collider::cuboid(1.0, 1.0))
+	.insert(Collider::rectangle(1.0, 1.0))
 	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 	// create an actor controlled with left click
 	cmds.spawn(SpriteBundle {
@@ -169,14 +169,14 @@ fn setup_navigation(mut cmds: Commands) {
 	.insert(ActorB)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
-	.insert(Collider::cuboid(1.0, 1.0))
+	.insert(Collider::rectangle(1.0, 1.0))
 	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 }
 
 /// Handle generating a PathRequest via right click
 #[allow(clippy::type_complexity)]
 fn user_input(
-	mouse_button_input: Res<Input<MouseButton>>,
+	mouse_button_input: Res<ButtonInput<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	dimensions_q: Query<&MapDimensions>,
@@ -366,13 +366,13 @@ fn actor_steering(
 				let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
 					.get_sector_and_field_id_from_xy(tform.translation.truncate())
 					.unwrap();
-				// tirm the actor stored route as it makes progress
-				// this ensures it doesn't use a previous goal from
-				// a sector it has already been through when it needs
-				// to pass through it again as part of a different part of the route
-				if curr_actor_sector != route.first().unwrap().0 {
-					route.remove(0);
-				}
+				// // tirm the actor stored route as it makes progress
+				// // this ensures it doesn't use a previous goal from
+				// // a sector it has already been through when it needs
+				// // to pass through it again as part of a different part of the route
+				// if curr_actor_sector != route.first().unwrap().0 {
+				// 	route.remove(0);
+				// }
 				// lookup the relevant sector-goal of this sector
 				'routes: for (sector, goal) in route.iter() {
 					if *sector == curr_actor_sector {
@@ -479,8 +479,8 @@ fn create_wall_colliders(mut cmds: Commands) {
 				..default()
 			},
 			RigidBody::Static,
-			Collider::cuboid(1.0, 1.0),
-			CollisionLayers::new([Layer::Terrain], []),
+			Collider::rectangle(1.0, 1.0),
+			CollisionLayers::new([Layer::Terrain], LayerMask::NONE),
 		));
 	}
 }

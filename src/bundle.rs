@@ -24,6 +24,14 @@ pub struct FlowFieldTilesBundle {
 }
 
 impl FlowFieldTilesBundle {
+	/// Get a reference to the [SectorCostFields]
+	pub fn get_sector_cost_fields(&self) -> &SectorCostFields {
+		&self.sector_cost_fields
+	}
+	/// Get a reference to the [MapDimensions]
+	pub fn get_map_dimensions(&self) -> &MapDimensions {
+		&self.map_dimensions
+	}
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
 	pub fn new(map_length: u32, map_depth: u32, sector_resolution: u32, actor_size: f32) -> Self {
 		let map_dimensions =
