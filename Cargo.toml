@@ -1,8 +1,8 @@
 [workspace.package]
-version = "0.6.1"
+version = "0.7.0"
 authors = ["BlondeBurrito"]
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.76"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
@@ -18,7 +18,7 @@ exclude = ["crates/examples_utils"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.12", default-features = false }
+bevy = { version = "0.13", default-features = false }
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
 csv = { version = "1" }
@@ -50,7 +50,7 @@ publish = true
 criterion = "0.5"
 bevy = { workspace = true, default-features = true }
 rand = "0.8"
-bevy_xpbd_2d = { version = "0.3", default-features = false, features = ["2d", "f32", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+bevy_xpbd_2d = { version = "0.4", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
 # examples_utils = { path = "crates/examples_utils" }
 
 [dependencies]

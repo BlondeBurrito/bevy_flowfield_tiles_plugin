@@ -190,7 +190,7 @@ pub fn clean_cache(
 					metadata.get_source_field_cell(),
 					metadata.get_target_sector(),
 					metadata.get_target_goal(),
-				))
+				));
 			}
 		}
 	}

@@ -93,7 +93,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					})
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.insert(Collider::cuboid(
+					.insert(Collider::rectangle(
 						FIELD_SPRITE_DIMENSION,
 						FIELD_SPRITE_DIMENSION,
 					))
@@ -148,13 +148,13 @@ fn setup_navigation(mut cmds: Commands) {
 	.insert(Actor)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
-	.insert(Collider::cuboid(1.0, 1.0))
+	.insert(Collider::rectangle(1.0, 1.0))
 	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 }
 
 /// Handle generating a PathRequest via right click
 fn user_input(
-	mouse_button_input: Res<Input<MouseButton>>,
+	mouse_button_input: Res<ButtonInput<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	dimensions_q: Query<&MapDimensions>,
@@ -293,7 +293,7 @@ fn update_sprite_visuals_based_on_actor(
 		for (s, g) in route.iter() {
 			route_map.insert(*s, *g);
 		}
-		for (mut handle, field_cell_label, sector_label) in field_cell_q.iter_mut() {
+		for (mut handle, field_cell_label, sector_label) in &mut field_cell_q {
 			// look for the value in the route_map if it's part of the flow, otherwise use the cost field
 			if route_map.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
 				let goal = route_map
@@ -419,8 +419,8 @@ fn create_wall_colliders(mut cmds: Commands) {
 				..default()
 			},
 			RigidBody::Static,
-			Collider::cuboid(1.0, 1.0),
-			CollisionLayers::new([Layer::Terrain], []),
+			Collider::rectangle(1.0, 1.0),
+			CollisionLayers::new([Layer::Terrain], LayerMask::NONE),
 		));
 	}
 }

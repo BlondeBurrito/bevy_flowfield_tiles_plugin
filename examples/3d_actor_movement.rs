@@ -90,13 +90,11 @@ fn setup_navigation(
 	));
 	// create the controllable actor in the top right corner
 	let mesh = meshes.add(
-		Mesh::try_from(shape::Icosphere {
+		Mesh::from(bevy::math::primitives::Sphere {
 			radius: 0.5,
-			subdivisions: 32,
-		})
-		.unwrap(),
+		}),
 	);
-	let material = materials.add(Color::BLUE.into());
+	let material = materials.add(Color::BLUE);
 	cmds.spawn(PbrBundle {
 		mesh,
 		material,
@@ -110,7 +108,7 @@ fn setup_navigation(
 
 /// Handle generating a PathRequest via right click
 fn user_input(
-	mouse_button_input: Res<Input<MouseButton>>,
+	mouse_button_input: Res<ButtonInput<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	dimensions_q: Query<&MapDimensions>,
@@ -125,7 +123,7 @@ fn user_input(
 			.cursor_position()
 			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
 			.map(|ray| {
-				ray.intersect_plane(Vec3::ZERO, Vec3::Y)
+				ray.intersect_plane(Vec3::ZERO, Plane3d::new(Vec3::Y))
 					.map(|distance| ray.get_point(distance))
 			});
 		if let Some(op_world_position) = ray_point {

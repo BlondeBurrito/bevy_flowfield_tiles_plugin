@@ -135,7 +135,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					})
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.insert(Collider::cuboid(1.0, 1.0))
+					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
@@ -256,7 +256,7 @@ fn spawn_actors(
 		})
 		.insert(Actor)
 		.insert(RigidBody::Dynamic)
-		.insert(Collider::cuboid(1.0, 1.0))
+		.insert(Collider::rectangle(1.0, 1.0))
 		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]))
 		.insert(pathing);
 	}
@@ -414,8 +414,8 @@ fn create_wall_colliders(mut cmds: Commands) {
 				..default()
 			},
 			RigidBody::Static,
-			Collider::cuboid(1.0, 1.0),
-			CollisionLayers::new([Layer::Terrain], []),
+			Collider::rectangle(1.0, 1.0),
+			CollisionLayers::new([Layer::Terrain], LayerMask::NONE),
 		));
 	}
 }
@@ -535,7 +535,7 @@ fn update_fps_counter(
 	>,
 ) {
 	let mut text = query.single_mut();
-	if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+	if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
 		if let Some(val) = fps.average() {
 			text.sections[1].value = format!("{val:.2}");
 		}

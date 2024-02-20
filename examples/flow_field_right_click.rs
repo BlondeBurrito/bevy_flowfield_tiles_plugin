@@ -81,7 +81,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 }
 /// Handle user mouse clicks
 fn user_input(
-	mouse_button_input: Res<Input<MouseButton>>,
+	mouse_button_input: Res<ButtonInput<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	dimensions_q: Query<&MapDimensions>,
