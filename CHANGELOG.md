@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2024-02-21
+
+### Features
+
+- Added initialising CostFields from a png/jpeg heightmap (greyscale image) (#51)
+
+Added optional feature `heightmap` - allows initialising the `CostField`s from a greyscale png/jpeg where each pixel of the image represents a `FieldCell`. Alpha channel is optional (it'll just be ignored if included in the image). A pixel with colour channels `(0, 0, 0, 255)` (black) represents an impassable `255` cost whereas `(255, 255, 255, 255)` (white) is translated as a cost of `1`, channel values in between will be more expensive costs
+
+- Update to bevy 0.13 (#52)
+
+
+
+
 ## [0.6.1] - 2024-02-07
 
 ### Bug Fixes
