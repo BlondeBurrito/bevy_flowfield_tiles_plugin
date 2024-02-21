@@ -83,6 +83,10 @@ inherits = "release"
 debug = true
 strip = false
 
+[profile.codecov]
+inherits = "release"
+strip = false
+
 [profile.release]
 codegen-units = 2
 # lto = true # slow
