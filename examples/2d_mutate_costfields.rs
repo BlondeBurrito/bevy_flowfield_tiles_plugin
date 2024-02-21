@@ -431,6 +431,10 @@ fn actor_steering(
 								break 'routes;
 							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+							if dir.x == 0.0 && dir.y == 0.0 {
+								warn!("Stuck");
+								pathing.portal_route = None;
+							}
 							velocity.0 = dir * SPEED * time_step.delta_seconds();
 						}
 						break 'routes;
