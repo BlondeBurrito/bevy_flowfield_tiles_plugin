@@ -24,7 +24,7 @@ fn main() {
 			PhysicsPlugins::default(),
 			// PhysicsDebugPlugin::default(),
 		))
-		.insert_resource(SubstepCount(30))
+		.insert_resource(SubstepCount(12))
 		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(
@@ -37,12 +37,14 @@ fn main() {
 			),
 		)
 		.add_systems(PreUpdate, click_update_cost)
-		.insert_resource(Time::<Fixed>::from_seconds(0.5))
+		.insert_resource(Time::<Fixed>::from_seconds(0.1))
 		.add_systems(FixedUpdate, spawn_actors)
 		.add_systems(
 			Update,
 			(
-				actor_update_route,
+				get_or_request_route,
+				check_if_route_is_old,
+				check_if_route_exhausted,
 				// spawn_actors,
 				despawn_at_destination,
 				update_fps_counter,
@@ -51,7 +53,7 @@ fn main() {
 				update_generated_flowfield_counter,
 			),
 		)
-		.add_systems(Update, (ensure_up_to_date_route, actor_steering))
+		.add_systems(Update, actor_steering)
 		.run();
 }
 
@@ -73,11 +75,8 @@ struct Actor;
 #[allow(dead_code)]
 #[derive(Default, Component)]
 struct Pathing {
-	source_sector: Option<SectorID>,
-	source_field_cell: Option<FieldCell>,
 	target_position: Option<Vec2>,
-	target_sector: Option<SectorID>,
-	target_goal: Option<FieldCell>,
+	metadata: Option<RouteMetadata>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 	has_los: bool,
 }
@@ -194,13 +193,13 @@ fn click_update_cost(
 					event.send(e);
 					// remove collider from tile
 					for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
-						if (sector_label.0, sector_label.1) == sector_id.get() {
-							if (field_label.0, field_label.1) == field_cell.get_column_row() {
-								sprite.color = Color::WHITE;
-								cmds.entity(entity).remove::<Collider>();
-								cmds.entity(entity).remove::<RigidBody>();
-								cmds.entity(entity).remove::<CollisionLayers>();
-							}
+						if (sector_label.0, sector_label.1) == sector_id.get()
+							&& (field_label.0, field_label.1) == field_cell.get_column_row()
+						{
+							sprite.color = Color::WHITE;
+							cmds.entity(entity).remove::<Collider>();
+							cmds.entity(entity).remove::<RigidBody>();
+							cmds.entity(entity).remove::<CollisionLayers>();
 						}
 					}
 				} else {
@@ -208,15 +207,15 @@ fn click_update_cost(
 					event.send(e);
 					// add collider to tile
 					for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
-						if (sector_label.0, sector_label.1) == sector_id.get() {
-							if (field_label.0, field_label.1) == field_cell.get_column_row() {
-								sprite.color = Color::BLACK;
-								cmds.entity(entity).insert((
-									Collider::rectangle(1.0, 1.0),
-									RigidBody::Static,
-									CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
-								));
-							}
+						if (sector_label.0, sector_label.1) == sector_id.get()
+							&& (field_label.0, field_label.1) == field_cell.get_column_row()
+						{
+							sprite.color = Color::BLACK;
+							cmds.entity(entity).insert((
+								Collider::rectangle(1.0, 1.0),
+								RigidBody::Static,
+								CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+							));
 						}
 					}
 				}
@@ -277,21 +276,18 @@ fn spawn_actors(
 		let t_sector = SectorID::new(target_sector.0, target_sector.1);
 		let t_field = FieldCell::new(target_field_cell.0, target_field_cell.1);
 		let pathing = Pathing {
-			source_sector: Some(sector_id),
-			source_field_cell: Some(field),
 			target_position: Some(
 				map_data
 					.get_xy_from_field_sector(t_sector, t_field)
 					.unwrap(),
 			),
-			target_sector: Some(t_sector),
-			target_goal: Some(t_field),
+			metadata: None,
 			portal_route: None,
 			has_los: false,
 		};
 		// request a path
 		event.send(EventPathRequest::new(sector_id, field, t_sector, t_field));
-		// spawn the actor which cna read the path later
+		// spawn the actor which can read the path later
 		cmds.spawn(SpriteBundle {
 			sprite: Sprite {
 				color: Color::Rgba {
@@ -316,38 +312,102 @@ fn spawn_actors(
 		.insert(pathing);
 	}
 }
-
-/// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
-fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
-	for mut pathing in actor_q.iter_mut() {
-		if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-			let route_cache = route_q.get_single().unwrap();
-			if let Some(route) = route_cache.get_route(
-				pathing.source_sector.unwrap(),
-				pathing.source_field_cell.unwrap(),
-				pathing.target_sector.unwrap(),
-				pathing.target_goal.unwrap(),
-			) {
-				pathing.portal_route = Some(route.clone());
+/// If an actor has a target coordinate then obtain a route for it - if a route doesn't exist then send an event so that one is calculated
+fn get_or_request_route(
+	route_q: Query<(&RouteCache, &MapDimensions)>,
+	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
+	mut event: EventWriter<EventPathRequest>,
+) {
+	let (route_cahe, map_dimensions) = route_q.get_single().unwrap();
+	for (tform, mut pathing) in &mut actor_q {
+		if let Some(target) = pathing.target_position {
+			// actor has no route, look one up or request one
+			if pathing.portal_route.is_none() {
+				if let Some((source_sector, source_field)) =
+					map_dimensions.get_sector_and_field_id_from_xy(tform.translation.truncate())
+				{
+					if let Some((target_sector, goal_id)) =
+						map_dimensions.get_sector_and_field_id_from_xy(target)
+					{
+						// if a route is calulated get it
+						if let Some((metadata, route)) = route_cahe.get_route_with_metadata(
+							source_sector,
+							source_field,
+							target_sector,
+							goal_id,
+						) {
+							pathing.metadata = Some(*metadata);
+							pathing.portal_route = Some(route.clone());
+						} else {
+							// request a route
+							event.send(EventPathRequest::new(
+								source_sector,
+								source_field,
+								target_sector,
+								goal_id,
+							));
+						}
+					}
+				}
 			}
 		}
 	}
 }
+
+/// Every route is timestamped, when routes are recalculated they will have new timestamps.
+///
+/// Compare the timestamp of a route an actor has stored with what's in the cache and clear it if it'sold so that a new route can be requested
+fn check_if_route_is_old(
+	route_q: Query<&RouteCache>,
+	mut actor_q: Query<&mut Pathing, With<Actor>>,
+) {
+	let cache = route_q.get_single().unwrap();
+	for mut pathing in &mut actor_q {
+		if let Some(metadata) = pathing.metadata {
+			if let Some((cache_metadata, _route)) = cache.get().get_key_value(&metadata) {
+				if metadata.get_time_generated() != cache_metadata.get_time_generated() {
+					// cached route is newer meaning fields have been rebuilt
+					// reset cached pathing so a new route can be requested
+					pathing.metadata = None;
+					pathing.portal_route = None;
+				}
+			}
+		}
+	}
+}
+
+/// If an actor has drained their route then they are most likely lost due to portals changing, clear their route so they may request a fresh one
+fn check_if_route_exhausted(mut actor_q: Query<&mut Pathing, With<Actor>>) {
+	for mut pathing in &mut actor_q {
+		if let Some(route) = &pathing.portal_route {
+			if route.is_empty() {
+				// actor has exhuasted it's route, it's lost, clear route so a new one cna be requested
+				warn!("Exhausted route, a new one will be requested");
+				pathing.portal_route = None;
+			}
+		}
+	}
+}
+
 /// Actor speed
 const SPEED: f32 = 40000.0;
 
-fn ensure_up_to_date_route(
-	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
-	dimension_q: Query<&MapDimensions>,
+/// If the actor has a destination set then try to retrieve the relevant
+/// [FlowField] for its current position and move the actor
+fn actor_steering(
+	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<Actor>>,
+	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
+	time_step: Res<Time>,
 ) {
-	let map_dimensions = dimension_q.get_single().unwrap();
-	// find the current actors postion in grid space
-	for (tform, mut pathing) in actor_q.iter_mut() {
-		if let Some((curr_actor_sector, curr_actor_field_cell)) =
-			map_dimensions.get_sector_and_field_id_from_xy(tform.translation.truncate())
-		{
-			if let Some(route) = pathing.portal_route.as_mut() {
-				// tirm the actor stored route as it makes progress
+	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
+	for (mut velocity, tform, mut pathing) in actor_q.iter_mut() {
+		// lookup the overarching route
+		if let Some(route) = pathing.portal_route.as_mut() {
+			// find the current actors postion in grid space
+			if let Some((curr_actor_sector, curr_actor_field_cell)) =
+				map_dimensions.get_sector_and_field_id_from_xy(tform.translation.truncate())
+			{
+				// trim the actor stored route as it makes progress
 				// this ensures it doesn't use a previous goal from
 				// a sector it has already been through when it needs
 				// to pass through it again as part of a different part of the route
@@ -355,69 +415,26 @@ fn ensure_up_to_date_route(
 					if curr_actor_sector != f.0 {
 						route.remove(0);
 					}
-				} else {
-					// if slice is empty blah
-					pathing.portal_route = None;
-					pathing.source_sector = Some(curr_actor_sector);
-					pathing.source_field_cell = Some(curr_actor_field_cell);
 				}
-			}
-		}
-	}
-}
-
-/// If the actor has a destination set then try to retrieve the relevant
-/// [FlowField] for its current position and move the actor
-fn actor_steering(
-	mut cmds: Commands,
-	mut actor_q: Query<(Entity, &mut LinearVelocity, &mut Transform, &mut Pathing), With<Actor>>,
-	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
-	time_step: Res<Time>,
-) {
-	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
-	for (entity, mut velocity, tform, mut pathing) in actor_q.iter_mut() {
-		if pathing.target_goal.is_some() {
-			// lookup the overarching route
-			if let Some(route) = pathing.portal_route.as_mut() {
-				// find the current actors postion in grid space
-				if let Some((curr_actor_sector, curr_actor_field_cell)) =
-					map_dimensions.get_sector_and_field_id_from_xy(tform.translation.truncate())
-				{
-					// // tirm the actor stored route as it makes progress
-					// // this ensures it doesn't use a previous goal from
-					// // a sector it has already been through when it needs
-					// // to pass through it again as part of a different part of the route
-					// if let Some(f) = route.first() {
-					// 	if curr_actor_sector != f.0 {
-					// 		route.remove(0);
-					// 	}
-					// } else {
-					// 	// pathing.portal_route = None;
-					// 	// pathing.source_sector = Some(curr_actor_sector);
-					// }
-					// lookup the relevant sector-goal of this sector
-					'routes: for (sector, goal) in route.iter() {
-						if *sector == curr_actor_sector {
-							// get the flow field
-							if let Some(field) = flow_cache.get_field(*sector, *goal) {
-								// based on actor field cell find the directional vector it should move in
-								let cell_value = field.get_field_cell_value(curr_actor_field_cell);
-								if has_line_of_sight(cell_value) {
-									pathing.has_los = true;
-									let dir = pathing.target_position.unwrap()
-										- tform.translation.truncate();
-									velocity.0 =
-										dir.normalize() * SPEED * time_step.delta_seconds();
-									break 'routes;
-								}
-								let dir = get_2d_direction_unit_vector_from_bits(cell_value);
-								velocity.0 = dir * SPEED * time_step.delta_seconds();
+				// lookup the relevant sector-goal of this sector
+				'routes: for (sector, goal) in route.iter() {
+					if *sector == curr_actor_sector {
+						// get the flow field
+						if let Some(field) = flow_cache.get_field(*sector, *goal) {
+							// based on actor field cell find the directional vector it should move in
+							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+							if has_line_of_sight(cell_value) {
+								pathing.has_los = true;
+								let dir =
+									pathing.target_position.unwrap() - tform.translation.truncate();
+								velocity.0 = dir.normalize() * SPEED * time_step.delta_seconds();
+								break 'routes;
 							}
-							break 'routes;
+							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+							velocity.0 = dir * SPEED * time_step.delta_seconds();
 						}
+						break 'routes;
 					}
-				} else {
-					cmds.entity(entity).despawn_recursive();
 				}
 			}
 		}
@@ -436,9 +453,11 @@ fn despawn_at_destination(
 		if let Some((current_sector, current_field)) =
 			map_data.get_sector_and_field_id_from_xy(tform.translation.truncate())
 		{
-			// if its reached its destination despawn it
-			if let Some(target_sector) = path.target_sector {
-				if let Some(target_goal) = path.target_goal {
+			if let Some(target_position) = path.target_position {
+				if let Some((target_sector, target_goal)) =
+					map_data.get_sector_and_field_id_from_xy(target_position)
+				{
+					// if its reached its destination despawn it
 					if current_sector == target_sector && current_field == target_goal {
 						cmds.entity(entity).despawn_recursive();
 					}

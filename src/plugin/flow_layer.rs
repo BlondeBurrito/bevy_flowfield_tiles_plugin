@@ -46,7 +46,7 @@ pub fn event_insert_route_queue(
 	)>,
 	time: Res<Time>,
 ) {
-	for event in events.read() {
+	if let Some(event) = events.read().next() {
 		for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut() {
 			//TODO maybe reinstate this after benchmarking - means less accurate route due to reuse but better perf
 			// only run if the cache doesn't contain the route already
