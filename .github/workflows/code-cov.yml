@@ -21,4 +21,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - run: |
           cargo install cargo-tarpaulin
-          cargo tarpaulin --prfile codecov --workspace --all-features --include-tests --engine=llvm --fail-under 85 --ignore-panics
+          cargo tarpaulin --profile codecov --workspace --all-features --include-tests --engine=llvm --fail-under 85 --ignore-panics
