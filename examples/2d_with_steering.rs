@@ -420,7 +420,7 @@ fn create_wall_colliders(mut cmds: Commands) {
 			},
 			RigidBody::Static,
 			Collider::rectangle(1.0, 1.0),
-			CollisionLayers::new([Layer::Terrain], LayerMask::NONE),
+			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
 		));
 	}
 }

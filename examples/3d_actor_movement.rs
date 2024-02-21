@@ -89,11 +89,7 @@ fn setup_navigation(
 		&path,
 	));
 	// create the controllable actor in the top right corner
-	let mesh = meshes.add(
-		Mesh::from(bevy::math::primitives::Sphere {
-			radius: 0.5,
-		}),
-	);
+	let mesh = meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: 0.5 }));
 	let material = materials.add(Color::BLUE);
 	cmds.spawn(PbrBundle {
 		mesh,

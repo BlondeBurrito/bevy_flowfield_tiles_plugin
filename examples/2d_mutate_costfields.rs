@@ -1,9 +1,12 @@
-//! Generates a 30x30 world and endlessly spawns actors with randomised destinations
+//! Generates a 30x30 world and endlessly spawns actors with randomised destinations.
+//!
+//! You can use your LeftMouseButton to flip Costfield values between 1 and 255
 //!
 
 use bevy::{
 	diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
 	prelude::*,
+	window::PrimaryWindow,
 };
 
 use bevy_flowfield_tiles_plugin::prelude::*;
@@ -33,11 +36,14 @@ fn main() {
 				create_counters,
 			),
 		)
+		.add_systems(PreUpdate, click_update_cost)
+		.insert_resource(Time::<Fixed>::from_seconds(0.5))
+		.add_systems(FixedUpdate, spawn_actors)
 		.add_systems(
 			Update,
 			(
 				actor_update_route,
-				spawn_actors,
+				// spawn_actors,
 				despawn_at_destination,
 				update_fps_counter,
 				update_actor_counter,
@@ -45,7 +51,7 @@ fn main() {
 				update_generated_flowfield_counter,
 			),
 		)
-		.add_systems(Update, actor_steering)
+		.add_systems(Update, (ensure_up_to_date_route, actor_steering))
 		.run();
 }
 
@@ -97,7 +103,7 @@ impl PhysicsLayer for Layer {
 }
 
 /// Spawn sprites to represent the world
-fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup_visualisation(mut cmds: Commands) {
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
@@ -106,47 +112,35 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
-	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
+	let sector_cost_fields = SectorCostFields::new(&map_dimensions);
 	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
 		// iterate over the dimensions of the field
 		for (i, column) in field.get().iter().enumerate() {
-			for (j, value) in column.iter().enumerate() {
+			for (j, _value) in column.iter().enumerate() {
 				// grid origin is always in the top left
 				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
 				let x = sector_offset.x + 32.0 + (FIELD_SPRITE_DIMENSION * i as f32);
 				let y = sector_offset.y - 32.0 - (FIELD_SPRITE_DIMENSION * j as f32);
-				// add colliders to impassable cells
-				if *value == 255 {
-					cmds.spawn(SpriteBundle {
-						sprite: Sprite {
-							color: Color::BLACK,
-							..default()
-						},
-						transform: Transform {
-							translation: Vec3::new(x, y, 0.0),
-							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
-							..default()
-						},
+				// start with sprites for everying being pathable
+				cmds.spawn(SpriteBundle {
+					sprite: Sprite {
+						color: Color::WHITE,
 						..default()
-					})
-					.insert(FieldCellLabel(i, j))
-					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.insert(Collider::rectangle(1.0, 1.0))
-					.insert(RigidBody::Static)
-					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
-				} else {
-					cmds.spawn(SpriteBundle {
-						texture: asset_server.load(get_basic_icon(*value)),
-						transform: Transform::from_xyz(x, y, 0.0),
+					},
+					transform: Transform {
+						translation: Vec3::new(x, y, 0.0),
+						scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 						..default()
-					})
-					.insert(FieldCellLabel(i, j))
-					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
-				}
+					},
+					..default()
+				})
+				.insert(FieldCellLabel(i, j))
+				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
+				// .insert(Collider::rectangle(1.0, 1.0))
+				// .insert(RigidBody::Static)
+				// .insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 			}
 		}
 	}
@@ -154,20 +148,81 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands) {
-	// create the entity handling the algorithm
-	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
+	// create the entity handling the algorithm with default CostFields
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
 	let actor_size = 16.0;
-	cmds.spawn(FlowFieldTilesBundle::from_ron(
+	cmds.spawn(FlowFieldTilesBundle::new(
 		map_length,
 		map_depth,
 		sector_resolution,
 		actor_size,
-		&path,
 	));
+}
+
+/// Left clicking on a tile/field will flip the value of it in the [CostField]
+///
+/// If the current cost is `1` then it is updated to `255` and a [Collider] is inserted denoting an impassable field.
+///
+/// If the current cost is `255` then
+fn click_update_cost(
+	mut cmds: Commands,
+	mut tile_q: Query<(Entity, &SectorLabel, &FieldCellLabel, &mut Sprite)>,
+	input: Res<ButtonInput<MouseButton>>,
+	camera_q: Query<(&Camera, &GlobalTransform)>,
+	windows: Query<&Window, With<PrimaryWindow>>,
+	dimensions_q: Query<(&MapDimensions, &SectorCostFields)>,
+	mut event: EventWriter<EventUpdateCostfieldsCell>,
+) {
+	if input.just_released(MouseButton::Left) {
+		let (camera, camera_transform) = camera_q.single();
+		let window = windows.single();
+		if let Some(world_position) = window
+			.cursor_position()
+			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+			.map(|ray| ray.origin.truncate())
+		{
+			let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
+			if let Some((sector_id, field_cell)) =
+				map_dimensions.get_sector_and_field_id_from_xy(world_position)
+			{
+				let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
+				let value = cost_field.get_field_cell_value(field_cell);
+				if value == 255 {
+					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
+					event.send(e);
+					// remove collider from tile
+					for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
+						if (sector_label.0, sector_label.1) == sector_id.get() {
+							if (field_label.0, field_label.1) == field_cell.get_column_row() {
+								sprite.color = Color::WHITE;
+								cmds.entity(entity).remove::<Collider>();
+								cmds.entity(entity).remove::<RigidBody>();
+								cmds.entity(entity).remove::<CollisionLayers>();
+							}
+						}
+					}
+				} else {
+					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
+					event.send(e);
+					// add collider to tile
+					for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
+						if (sector_label.0, sector_label.1) == sector_id.get() {
+							if (field_label.0, field_label.1) == field_cell.get_column_row() {
+								sprite.color = Color::BLACK;
+								cmds.entity(entity).insert((
+									Collider::rectangle(1.0, 1.0),
+									RigidBody::Static,
+									CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+								));
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 /// Spawn an actor every tick with a random starting position at the top of the
@@ -281,50 +336,88 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 /// Actor speed
 const SPEED: f32 = 40000.0;
 
-/// If the actor has a destination set then try to retrieve the relevant
-/// [FlowField] for its current position and move the actor
-fn actor_steering(
-	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<Actor>>,
-	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
-	time_step: Res<Time>,
+fn ensure_up_to_date_route(
+	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
+	dimension_q: Query<&MapDimensions>,
 ) {
-	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
-	for (mut velocity, tform, mut pathing) in actor_q.iter_mut() {
-		if pathing.target_goal.is_some() {
-			// lookup the overarching route
+	let map_dimensions = dimension_q.get_single().unwrap();
+	// find the current actors postion in grid space
+	for (tform, mut pathing) in actor_q.iter_mut() {
+		if let Some((curr_actor_sector, curr_actor_field_cell)) =
+			map_dimensions.get_sector_and_field_id_from_xy(tform.translation.truncate())
+		{
 			if let Some(route) = pathing.portal_route.as_mut() {
-				// find the current actors postion in grid space
-				let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
-					.get_sector_and_field_id_from_xy(tform.translation.truncate())
-					.unwrap();
 				// tirm the actor stored route as it makes progress
 				// this ensures it doesn't use a previous goal from
 				// a sector it has already been through when it needs
 				// to pass through it again as part of a different part of the route
 				if let Some(f) = route.first() {
 					if curr_actor_sector != f.0 {
-						// route.remove(0);
+						route.remove(0);
 					}
+				} else {
+					// if slice is empty blah
+					pathing.portal_route = None;
+					pathing.source_sector = Some(curr_actor_sector);
+					pathing.source_field_cell = Some(curr_actor_field_cell);
 				}
-				// lookup the relevant sector-goal of this sector
-				'routes: for (sector, goal) in route.iter() {
-					if *sector == curr_actor_sector {
-						// get the flow field
-						if let Some(field) = flow_cache.get_field(*sector, *goal) {
-							// based on actor field cell find the directional vector it should move in
-							let cell_value = field.get_field_cell_value(curr_actor_field_cell);
-							if has_line_of_sight(cell_value) {
-								pathing.has_los = true;
-								let dir =
-									pathing.target_position.unwrap() - tform.translation.truncate();
-								velocity.0 = dir.normalize() * SPEED * time_step.delta_seconds();
-								break 'routes;
+			}
+		}
+	}
+}
+
+/// If the actor has a destination set then try to retrieve the relevant
+/// [FlowField] for its current position and move the actor
+fn actor_steering(
+	mut cmds: Commands,
+	mut actor_q: Query<(Entity, &mut LinearVelocity, &mut Transform, &mut Pathing), With<Actor>>,
+	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
+	time_step: Res<Time>,
+) {
+	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
+	for (entity, mut velocity, tform, mut pathing) in actor_q.iter_mut() {
+		if pathing.target_goal.is_some() {
+			// lookup the overarching route
+			if let Some(route) = pathing.portal_route.as_mut() {
+				// find the current actors postion in grid space
+				if let Some((curr_actor_sector, curr_actor_field_cell)) =
+					map_dimensions.get_sector_and_field_id_from_xy(tform.translation.truncate())
+				{
+					// // tirm the actor stored route as it makes progress
+					// // this ensures it doesn't use a previous goal from
+					// // a sector it has already been through when it needs
+					// // to pass through it again as part of a different part of the route
+					// if let Some(f) = route.first() {
+					// 	if curr_actor_sector != f.0 {
+					// 		route.remove(0);
+					// 	}
+					// } else {
+					// 	// pathing.portal_route = None;
+					// 	// pathing.source_sector = Some(curr_actor_sector);
+					// }
+					// lookup the relevant sector-goal of this sector
+					'routes: for (sector, goal) in route.iter() {
+						if *sector == curr_actor_sector {
+							// get the flow field
+							if let Some(field) = flow_cache.get_field(*sector, *goal) {
+								// based on actor field cell find the directional vector it should move in
+								let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+								if has_line_of_sight(cell_value) {
+									pathing.has_los = true;
+									let dir = pathing.target_position.unwrap()
+										- tform.translation.truncate();
+									velocity.0 =
+										dir.normalize() * SPEED * time_step.delta_seconds();
+									break 'routes;
+								}
+								let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+								velocity.0 = dir * SPEED * time_step.delta_seconds();
 							}
-							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
-							velocity.0 = dir * SPEED * time_step.delta_seconds();
+							break 'routes;
 						}
-						break 'routes;
 					}
+				} else {
+					cmds.entity(entity).despawn_recursive();
 				}
 			}
 		}
@@ -352,16 +445,6 @@ fn despawn_at_destination(
 				}
 			}
 		}
-	}
-}
-/// Get asset path of sprite icons
-fn get_basic_icon(value: u8) -> String {
-	if value == 255 {
-		String::from("ordinal_icons/impassable.png")
-	} else if value == 1 {
-		String::from("ordinal_icons/goal.png")
-	} else {
-		panic!("Require basic icon")
 	}
 }
 

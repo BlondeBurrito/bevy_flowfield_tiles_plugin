@@ -125,6 +125,7 @@ fn user_input(
 				pathing.source_field_cell = Some(source_field_cell);
 				pathing.target_sector = Some(target_sector_id);
 				pathing.target_goal = Some(goal_id);
+				pathing.portal_route = None;
 			} else {
 				error!("Cursor out of bounds");
 			}
@@ -134,7 +135,7 @@ fn user_input(
 /// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
 	let mut pathing = actor_q.get_single_mut().unwrap();
-	if pathing.target_goal.is_some() {
+	if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
 		let route_cache = route_q.get_single().unwrap();
 		if let Some(route) = route_cache.get_route(
 			pathing.source_sector.unwrap(),
@@ -149,22 +150,25 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 
 /// Whenever the actor has a path assigned attempt to get the current flowfield and update all the map sprites to visualise the directions of flow
 fn update_sprite_visuals_based_on_actor(
-	actor_q: Query<&Pathing, With<Actor>>,
+	actor_q: Query<&Pathing, (With<Actor>, Changed<Pathing>)>,
 	flowfield_q: Query<&FlowFieldCache>,
 	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
-	let pathing = actor_q.get_single().unwrap();
-	let cache = flowfield_q.get_single().unwrap();
-	if let Some(route) = &pathing.portal_route {
-		let op_flowfield = cache.get_field(route[0].0, route[0].1);
-		if let Some(flowfield) = op_flowfield {
-			for (mut handle, field_cell_label) in field_cell_q.iter_mut() {
-				let flow_value = flowfield
-					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
-				let icon = get_ord_icon(flow_value);
-				let new_handle: Handle<Image> = asset_server.load(icon);
-				*handle = new_handle;
+	for pathing in &actor_q {
+		let cache = flowfield_q.get_single().unwrap();
+		if let Some(route) = &pathing.portal_route {
+			let op_flowfield = cache.get_field(route[0].0, route[0].1);
+			if let Some(flowfield) = op_flowfield {
+				for (mut handle, field_cell_label) in field_cell_q.iter_mut() {
+					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
+						field_cell_label.0,
+						field_cell_label.1,
+					));
+					let icon = get_ord_icon(flow_value);
+					let new_handle: Handle<Image> = asset_server.load(icon);
+					*handle = new_handle;
+				}
 			}
 		}
 	}

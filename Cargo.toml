@@ -182,6 +182,11 @@ path = "examples/2d_multi_actor_controls.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
+name = "2d_mutate_costfields"
+path = "examples/2d_mutate_costfields.rs"
+required-features = ["ron", "2d"]
+
+[[example]]
 name = "3d_actor_movement"
 path = "examples/3d_actor_movement.rs"
 required-features = ["ron", "3d"]
