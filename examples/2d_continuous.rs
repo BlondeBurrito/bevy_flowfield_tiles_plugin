@@ -27,8 +27,7 @@ fn main() {
 		.add_systems(
 			Startup,
 			(
-				setup_visualisation,
-				setup_navigation,
+				setup,
 				create_wall_colliders,
 				create_counters,
 			),
@@ -93,19 +92,27 @@ impl PhysicsLayer for Layer {
 	}
 }
 
-/// Spawn sprites to represent the world
-fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
+/// Spawn sprites to represent the world and the FlowFieldsBundle
+fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
+	// prepare bundle
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
 	let actor_size = 16.0;
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
+	let bundle = FlowFieldTilesBundle::from_ron(
+		map_length,
+		map_depth,
+		sector_resolution,
+		actor_size,
+		&path,
+	);
+	// use the bundle before spawning it to help create the sprites
+	let map_dimensions = bundle.get_map_dimensions();
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
-	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
+	let sector_cost_fields = bundle.get_sector_cost_fields();
 	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
@@ -147,24 +154,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			}
 		}
 	}
-}
-
-/// Spawn navigation related entities
-fn setup_navigation(mut cmds: Commands) {
-	// create the entity handling the algorithm
-	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let map_length = 1920;
-	let map_depth = 1920;
-	let sector_resolution = 640;
-	let actor_size = 16.0;
-	cmds.spawn(FlowFieldTilesBundle::from_ron(
-		map_length,
-		map_depth,
-		sector_resolution,
-		actor_size,
-		&path,
-	));
+	// spawn the bundle
+	cmds.spawn(bundle);
 }
 
 /// Spawn an actor every tick with a random starting position at the top of the
@@ -332,25 +323,19 @@ fn actor_steering(
 fn despawn_at_destination(
 	mut cmds: Commands,
 	actors: Query<(Entity, &Pathing, &Transform), With<Actor>>,
-	map: Query<&MapDimensions>,
 ) {
 	for (entity, path, tform) in actors.iter() {
-		// get actors current sector and field
-		let map_data = map.get_single().unwrap();
-		if let Some((current_sector, current_field)) =
-			map_data.get_sector_and_field_cell_from_xy(tform.translation.truncate())
-		{
-			// if its reached its destination despawn it
-			if let Some(target_sector) = path.target_sector {
-				if let Some(target_goal) = path.target_goal {
-					if current_sector == target_sector && current_field == target_goal {
-						cmds.entity(entity).despawn_recursive();
-					}
-				}
+		let position = tform.translation.truncate();
+		if let Some(target) = path.target_position {
+			if (target - position).length_squared() < 36.0 {
+				// within 6 pixels of target
+				// so despawn
+				cmds.entity(entity).despawn_recursive();
 			}
 		}
 	}
 }
+
 /// Get asset path of sprite icons
 fn get_basic_icon(value: u8) -> String {
 	if value == 255 {

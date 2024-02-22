@@ -46,9 +46,9 @@ pub fn event_insert_route_queue(
 	)>,
 	time: Res<Time>,
 ) {
+	//?TODO chunking/batches
 	if let Some(event) = events.read().next() {
 		for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut() {
-			//TODO maybe reinstate this after benchmarking - means less accurate route due to reuse but better perf
 			// only run if the cache doesn't contain the route already
 			let rm = RouteMetadata::new(
 				event.source_sector,
@@ -68,17 +68,6 @@ pub fn event_insert_route_queue(
 					if !path.is_empty() {
 						filter_path(&mut path, event.target_goal);
 					}
-					// don't insert a path that's already in the cache (otherwise it poiintlessly replaces it)
-					if let Some(existing_path) = cache.get_route(
-						event.source_sector,
-						event.source_field_cell,
-						event.target_sector,
-						event.target_goal,
-					) {
-						if path == *existing_path {
-							continue;
-						}
-					}
 					cache.add_to_queue(
 						event.source_sector,
 						event.source_field_cell,
@@ -94,6 +83,7 @@ pub fn event_insert_route_queue(
 					debug!(
 						"No portal path found, either local sector movement or just doesn't exist"
 					);
+					//TODO use internal pair visibility to check if a route can be local or not
 					cache.add_to_queue(
 						event.source_sector,
 						event.source_field_cell,

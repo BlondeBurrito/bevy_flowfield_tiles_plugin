@@ -41,19 +41,19 @@ impl Plugin for FlowFieldTilesPlugin {
 					(
 						flow_layer::cleanup_old_routes,
 						flow_layer::cleanup_old_flowfields,
+						(
+							cost_layer::process_costfields_updates,
+							cost_layer::clean_cache,
+						)
+							.chain(),
 					)
 						.in_set(OrderingSet::Tidy),
 					(
-						cost_layer::process_costfields_updates,
-						// cost_layer::rebuild_portals,
-						// cost_layer::update_portal_graph,
-						cost_layer::clean_cache,
 						flow_layer::event_insert_route_queue,
 						flow_layer::process_route_queue,
 						flow_layer::create_queued_integration_fields,
 						flow_layer::create_flow_fields,
 					)
-						.chain()
 						.in_set(OrderingSet::Calculate),
 				),
 			);

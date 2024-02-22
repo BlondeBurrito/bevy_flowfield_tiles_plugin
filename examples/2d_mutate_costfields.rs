@@ -30,14 +30,13 @@ fn main() {
 		.add_systems(
 			Startup,
 			(
-				setup_visualisation,
-				setup_navigation,
+				setup,
 				create_wall_colliders,
 				create_counters,
 			),
 		)
 		.add_systems(PreUpdate, click_update_cost)
-		.insert_resource(Time::<Fixed>::from_seconds(0.1))
+		.insert_resource(Time::<Fixed>::from_seconds(0.01))
 		.add_systems(FixedUpdate, spawn_actors)
 		.add_systems(
 			Update,
@@ -98,17 +97,25 @@ impl PhysicsLayer for Layer {
 	}
 }
 
-/// Spawn sprites to represent the world
-fn setup_visualisation(mut cmds: Commands) {
+/// Spawn sprites to represent the world and the FlowFieldsBundle
+fn setup(mut cmds: Commands) {
+	// prepare bundle
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
 	let actor_size = 16.0;
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+	let bundle = FlowFieldTilesBundle::new(
+		map_length,
+		map_depth,
+		sector_resolution,
+		actor_size,
+	);
+	// use the bundle before spawning it to help create the sprites
+	let map_dimensions = bundle.get_map_dimensions();
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
-	let sector_cost_fields = SectorCostFields::new(&map_dimensions);
+	let sector_cost_fields = bundle.get_sector_cost_fields();
 	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
@@ -134,27 +141,11 @@ fn setup_visualisation(mut cmds: Commands) {
 				})
 				.insert(FieldCellLabel(i, j))
 				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
-				// .insert(Collider::rectangle(1.0, 1.0))
-				// .insert(RigidBody::Static)
-				// .insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 			}
 		}
 	}
-}
-
-/// Spawn navigation related entities
-fn setup_navigation(mut cmds: Commands) {
-	// create the entity handling the algorithm with default CostFields
-	let map_length = 1920;
-	let map_depth = 1920;
-	let sector_resolution = 640;
-	let actor_size = 16.0;
-	cmds.spawn(FlowFieldTilesBundle::new(
-		map_length,
-		map_depth,
-		sector_resolution,
-		actor_size,
-	));
+	// spawn the bundle
+	cmds.spawn(bundle);
 }
 
 /// Left clicking on a tile/field will flip the value of it in the [CostField]
@@ -307,7 +298,7 @@ fn spawn_actors(
 		.insert(Collider::rectangle(1.0, 1.0))
 		.insert(CollisionLayers::new(
 			[Layer::Actor],
-			[Layer::Terrain, Layer::Actor],
+			[Layer::Terrain],
 		))
 		.insert(AngularDamping(1.6))
 		.insert(pathing);
@@ -359,7 +350,7 @@ fn get_or_request_route(
 ///
 /// Compare the timestamp of a route an actor has stored with what's in the cache and clear it if it'sold so that a new route can be requested
 fn check_if_route_is_old(
-	route_q: Query<&RouteCache>,
+	route_q: Query<&RouteCache, Changed<RouteCache>>,
 	mut actor_q: Query<&mut Pathing, With<Actor>>,
 ) {
 	let cache = route_q.get_single().unwrap();
@@ -382,7 +373,7 @@ fn check_if_route_exhausted(mut actor_q: Query<&mut Pathing, With<Actor>>) {
 	for mut pathing in &mut actor_q {
 		if let Some(route) = &pathing.portal_route {
 			if route.is_empty() {
-				// actor has exhuasted it's route, it's lost, clear route so a new one cna be requested
+				// actor has exhuasted it's route, it's lost, clear route so a new one can be requested
 				warn!("Exhausted route, a new one will be requested");
 				pathing.portal_route = None;
 			}
@@ -450,23 +441,14 @@ fn actor_steering(
 fn despawn_at_destination(
 	mut cmds: Commands,
 	actors: Query<(Entity, &Pathing, &Transform), With<Actor>>,
-	map: Query<&MapDimensions>,
 ) {
 	for (entity, path, tform) in actors.iter() {
-		// get actors current sector and field
-		let map_data = map.get_single().unwrap();
-		if let Some((current_sector, current_field)) =
-			map_data.get_sector_and_field_cell_from_xy(tform.translation.truncate())
-		{
-			if let Some(target_position) = path.target_position {
-				if let Some((target_sector, target_goal)) =
-					map_data.get_sector_and_field_cell_from_xy(target_position)
-				{
-					// if its reached its destination despawn it
-					if current_sector == target_sector && current_field == target_goal {
-						cmds.entity(entity).despawn_recursive();
-					}
-				}
+		let position = tform.translation.truncate();
+		if let Some(target) = path.target_position {
+			if (target - position).length_squared() < 36.0 {
+				// within 6 pixels of target
+				// so despawn
+				cmds.entity(entity).despawn_recursive();
 			}
 		}
 	}
