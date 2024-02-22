@@ -214,7 +214,7 @@ fn spawn_actors(
 
 	let map_data = map.get_single().unwrap();
 	if let Some((sector_id, field)) =
-		map_data.get_sector_and_field_id_from_xy(Vec2::new(start_x, start_y))
+		map_data.get_sector_and_field_cell_from_xy(Vec2::new(start_x, start_y))
 	{
 		let t_sector = SectorID::new(target_sector.0, target_sector.1);
 		let t_field = FieldCell::new(target_field_cell.0, target_field_cell.1);
@@ -292,7 +292,7 @@ fn actor_steering(
 			if let Some(route) = pathing.portal_route.as_mut() {
 				// find the current actors postion in grid space
 				let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
-					.get_sector_and_field_id_from_xy(tform.translation.truncate())
+					.get_sector_and_field_cell_from_xy(tform.translation.truncate())
 					.unwrap();
 				// tirm the actor stored route as it makes progress
 				// this ensures it doesn't use a previous goal from
@@ -338,7 +338,7 @@ fn despawn_at_destination(
 		// get actors current sector and field
 		let map_data = map.get_single().unwrap();
 		if let Some((current_sector, current_field)) =
-			map_data.get_sector_and_field_id_from_xy(tform.translation.truncate())
+			map_data.get_sector_and_field_cell_from_xy(tform.translation.truncate())
 		{
 			// if its reached its destination despawn it
 			if let Some(target_sector) = path.target_sector {

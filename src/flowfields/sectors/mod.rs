@@ -156,7 +156,8 @@ impl MapDimensions {
 			|| position.y < -((self.get_depth() / 2) as f32)
 			|| position.y > (self.get_depth() / 2) as f32
 		{
-			error!("OOB pos, x {}, y {}", position.x, position.y);
+			error!("Position is out of bounds of MapDimensions, x {}, y {}, cannot calculate SectorID. The actor requesting this should probably be despawned", position.x, position.y);
+			//TODO use Result instead
 			return None;
 		}
 		let x_sector_count = self.get_length() / self.get_sector_resolution();
@@ -193,9 +194,10 @@ impl MapDimensions {
 		let y = y_origin - sector_id.get_row() as f32 * self.get_sector_resolution() as f32;
 		Vec2::new(x, y)
 	}
+	//TODO return Result
 	/// From a 2d position get the sector and field cell it resides in
 	#[cfg(feature = "2d")]
-	pub fn get_sector_and_field_id_from_xy(&self, position: Vec2) -> Option<(SectorID, FieldCell)> {
+	pub fn get_sector_and_field_cell_from_xy(&self, position: Vec2) -> Option<(SectorID, FieldCell)> {
 		if let Some(sector_id) = self.get_sector_id_from_xy(position) {
 			let sector_corner_origin = self.get_sector_corner_xy(sector_id);
 			let pixel_sector_field_ratio =
@@ -309,7 +311,8 @@ impl MapDimensions {
 			|| position.z < -((self.get_depth() / 2) as f32)
 			|| position.z > (self.get_depth() / 2) as f32
 		{
-			error!("OOB pos, x {}, z {}", position.x, position.z);
+			error!("Position is out of bounds of MapDimensions, x {}, y {}, cannot calculate SectorID. The actor requesting this should probably be despawned", position.x, position.y);
+			//TODO use Result instead
 			return None;
 		}
 		let x_sector_count = self.get_length() / self.get_sector_resolution();
@@ -346,7 +349,7 @@ impl MapDimensions {
 		let z = z_origin + sector_id.get_row() as f32 * self.get_sector_resolution() as f32;
 		Vec3::new(x, 0.0, z)
 	}
-
+	//TODO return Result
 	/// From a point in 3D space calcualte what Sector and field cell it resides in
 	#[cfg(feature = "3d")]
 	pub fn get_sector_and_field_cell_from_xyz(

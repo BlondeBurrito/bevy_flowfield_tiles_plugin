@@ -100,7 +100,7 @@ fn user_input(
 			let map_dimensions = dimensions_q.get_single().unwrap();
 			info!("World cursor position: {}", world_position);
 			if let Some((target_sector_id, goal_id)) =
-				map_dimensions.get_sector_and_field_id_from_xy(world_position)
+				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
 			{
 				info!(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
@@ -108,7 +108,7 @@ fn user_input(
 				);
 				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
 				let (source_sector_id, source_field_cell) = map_dimensions
-					.get_sector_and_field_id_from_xy(tform.translation.truncate())
+					.get_sector_and_field_cell_from_xy(tform.translation.truncate())
 					.unwrap();
 				info!(
 					"Actor sector_id {:?}, goal_id in sector {:?}",

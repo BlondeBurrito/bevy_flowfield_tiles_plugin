@@ -408,12 +408,12 @@ fn user_input(
             // (if not outside the world)
             let map_dimensions = dimensions_q.get_single().unwrap();
             if let Some((target_sector_id, goal_id)) =
-                map_dimensions.get_sector_and_field_id_from_xy(world_position)
+                map_dimensions.get_sector_and_field_cell_from_xy(world_position)
             {
                 // from actor translation find what sector and cell it is in
                 let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
                 let (source_sector_id, source_field_cell) = map_dimensions
-                    .get_sector_and_field_id_from_xy(tform.translation.truncate())
+                    .get_sector_and_field_cell_from_xy(tform.translation.truncate())
                     .unwrap();
                 // send an event asking for a path to be generated
                 event.send(EventPathRequest::new(
@@ -480,7 +480,7 @@ fn actor_steering(
         if let Some(route) = pathing.portal_route.as_mut() {
             // find the current actors postion in grid space
             let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
-                .get_sector_and_field_id_from_xy(tform.translation.truncate())
+                .get_sector_and_field_cell_from_xy(tform.translation.truncate())
                 .unwrap();
             // tirm the actor stored route as it makes progress
             // this ensures it doesn't use a previous goal from

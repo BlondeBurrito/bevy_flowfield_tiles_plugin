@@ -47,14 +47,10 @@ fn main() {
 				check_if_route_exhausted,
 				// spawn_actors,
 				despawn_at_destination,
+				actor_steering,
 				update_counters,
-				// update_fps_counter,
-				// update_actor_counter,
-				// update_elapsed_counter,
-				// update_generated_flowfield_counter,
 			),
 		)
-		.add_systems(Update, actor_steering)
 		.run();
 }
 
@@ -185,7 +181,7 @@ fn click_update_cost(
 		{
 			let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
 			if let Some((sector_id, field_cell)) =
-				map_dimensions.get_sector_and_field_id_from_xy(world_position)
+				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
 			{
 				let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
 				let value = cost_field.get_field_cell_value(field_cell);
@@ -272,7 +268,7 @@ fn spawn_actors(
 
 	let map_data = map.get_single().unwrap();
 	if let Some((sector_id, field)) =
-		map_data.get_sector_and_field_id_from_xy(Vec2::new(start_x, start_y))
+		map_data.get_sector_and_field_cell_from_xy(Vec2::new(start_x, start_y))
 	{
 		let t_sector = SectorID::new(target_sector.0, target_sector.1);
 		let t_field = FieldCell::new(target_field_cell.0, target_field_cell.1);
@@ -309,7 +305,8 @@ fn spawn_actors(
 		.insert(Actor)
 		.insert(RigidBody::Dynamic)
 		.insert(Collider::rectangle(1.0, 1.0))
-		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]))
+		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain, Layer::Actor]))
+		.insert(AngularDamping(1.6))
 		.insert(pathing);
 	}
 }
@@ -325,10 +322,10 @@ fn get_or_request_route(
 			// actor has no route, look one up or request one
 			if pathing.portal_route.is_none() {
 				if let Some((source_sector, source_field)) =
-					map_dimensions.get_sector_and_field_id_from_xy(tform.translation.truncate())
+					map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
 				{
 					if let Some((target_sector, goal_id)) =
-						map_dimensions.get_sector_and_field_id_from_xy(target)
+						map_dimensions.get_sector_and_field_cell_from_xy(target)
 					{
 						// if a route is calulated get it
 						if let Some((metadata, route)) = route_cahe.get_route_with_metadata(
@@ -406,7 +403,7 @@ fn actor_steering(
 		if let Some(route) = pathing.portal_route.as_mut() {
 			// find the current actors postion in grid space
 			if let Some((curr_actor_sector, curr_actor_field_cell)) =
-				map_dimensions.get_sector_and_field_id_from_xy(tform.translation.truncate())
+				map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
 			{
 				// trim the actor stored route as it makes progress
 				// this ensures it doesn't use a previous goal from
@@ -456,11 +453,11 @@ fn despawn_at_destination(
 		// get actors current sector and field
 		let map_data = map.get_single().unwrap();
 		if let Some((current_sector, current_field)) =
-			map_data.get_sector_and_field_id_from_xy(tform.translation.truncate())
+			map_data.get_sector_and_field_cell_from_xy(tform.translation.truncate())
 		{
 			if let Some(target_position) = path.target_position {
 				if let Some((target_sector, target_goal)) =
-					map_data.get_sector_and_field_id_from_xy(target_position)
+					map_data.get_sector_and_field_cell_from_xy(target_position)
 				{
 					// if its reached its destination despawn it
 					if current_sector == target_sector && current_field == target_goal {

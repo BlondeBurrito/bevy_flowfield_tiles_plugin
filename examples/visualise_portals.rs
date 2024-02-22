@@ -134,7 +134,7 @@ fn click_update_cost(
 		{
 			let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
 			if let Some((sector_id, field_cell)) =
-				map_dimensions.get_sector_and_field_id_from_xy(world_position)
+				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
 			{
 				let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
 				let value = cost_field.get_field_cell_value(field_cell);
