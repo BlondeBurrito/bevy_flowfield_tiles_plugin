@@ -46,54 +46,73 @@ pub fn event_insert_route_queue(
 	)>,
 	time: Res<Time>,
 ) {
-	//?TODO chunking/batches
-	if let Some(event) = events.read().next() {
-		for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut() {
-			// only run if the cache doesn't contain the route already
-			let rm = RouteMetadata::new(
-				event.source_sector,
-				event.source_field_cell,
-				event.target_sector,
-				event.target_goal,
-				time.elapsed(),
-			);
-			if !cache.get().contains_key(&rm) {
-				if let Some(mut path) = graph.find_best_path(
-					(event.source_sector, event.source_field_cell),
-					(event.target_sector, event.target_goal),
-					sector_portals,
-					sector_cost_fields_scaled,
-				) {
-					debug!("Portal path found");
-					if !path.is_empty() {
-						filter_path(&mut path, event.target_goal);
-					}
-					cache.add_to_queue(
-						event.source_sector,
-						event.source_field_cell,
-						event.target_sector,
-						event.target_goal,
-						time.elapsed(),
-						path,
-					);
-				} else {
-					// a portal based route could not be found or the actor
-					// is within the same sector as the goal, for the latter
-					// we store a single element route
-					debug!(
+	// several actors may send requests at once, instead of stepping through the events one at time
+	// blitz thorugh duplicates so only a fresh request gets processed each tick - this is critical to perf
+	let mut is_duplicate = true;
+	while is_duplicate {
+		if let Some(event) = events.read().next() {
+			for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut()
+			{
+				// only run if the cache doesn't contain the route already
+				let rm = RouteMetadata::new(
+					event.source_sector,
+					event.source_field_cell,
+					event.target_sector,
+					event.target_goal,
+					time.elapsed(),
+				);
+				if !cache.get().contains_key(&rm) {
+					is_duplicate = false;
+					if let Some(mut path) = graph.find_best_path(
+						(event.source_sector, event.source_field_cell),
+						(event.target_sector, event.target_goal),
+						sector_portals,
+						sector_cost_fields_scaled,
+					) {
+						debug!("Portal path found");
+						if !path.is_empty() {
+							filter_path(&mut path, event.target_goal);
+						}
+						cache.add_to_queue(
+							event.source_sector,
+							event.source_field_cell,
+							event.target_sector,
+							event.target_goal,
+							time.elapsed(),
+							path,
+						);
+					} else {
+						// a portal based route could not be found or the actor
+						// is within the same sector as the goal
+						debug!(
 						"No portal path found, either local sector movement or just doesn't exist"
 					);
-					//TODO use internal pair visibility to check if a route can be local or not
-					cache.add_to_queue(
-						event.source_sector,
-						event.source_field_cell,
-						event.target_sector,
-						event.target_goal,
-						time.elapsed(),
-						vec![(event.target_sector, event.target_goal)],
-					);
+						if let Some(cost_field) = sector_cost_fields_scaled
+							.get_scaled()
+							.get(&event.target_sector)
+						{
+							let vis = cost_field.can_internal_portal_pair_see_each_other(
+								event.source_field_cell,
+								event.target_goal,
+							);
+							// if the two cells are reachable from within the same sector
+							// then there is a local route
+							if vis.0 {
+								cache.add_to_queue(
+									event.source_sector,
+									event.source_field_cell,
+									event.target_sector,
+									event.target_goal,
+									time.elapsed(),
+									vec![(event.target_sector, event.target_goal)],
+								);
+							}
+						}
+					}
 				}
 			}
+		} else {
+			is_duplicate = false;
 		}
 	}
 }

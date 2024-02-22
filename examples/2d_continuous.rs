@@ -24,14 +24,7 @@ fn main() {
 		.insert_resource(SubstepCount(30))
 		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
-		.add_systems(
-			Startup,
-			(
-				setup,
-				create_wall_colliders,
-				create_counters,
-			),
-		)
+		.add_systems(Startup, (setup, create_wall_colliders, create_counters))
 		.add_systems(
 			Update,
 			(
@@ -99,14 +92,10 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_depth = 1920;
 	let sector_resolution = 640;
 	let actor_size = 16.0;
-	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let bundle = FlowFieldTilesBundle::from_ron(
-		map_length,
-		map_depth,
-		sector_resolution,
-		actor_size,
-		&path,
-	);
+	let path =
+		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
+	let bundle =
+		FlowFieldTilesBundle::from_ron(map_length, map_depth, sector_resolution, actor_size, &path);
 	// use the bundle before spawning it to help create the sprites
 	let map_dimensions = bundle.get_map_dimensions();
 	let mut camera = Camera2dBundle::default();

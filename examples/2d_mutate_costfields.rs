@@ -27,14 +27,7 @@ fn main() {
 		.insert_resource(SubstepCount(12))
 		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
-		.add_systems(
-			Startup,
-			(
-				setup,
-				create_wall_colliders,
-				create_counters,
-			),
-		)
+		.add_systems(Startup, (setup, create_wall_colliders, create_counters))
 		.add_systems(PreUpdate, click_update_cost)
 		.insert_resource(Time::<Fixed>::from_seconds(0.01))
 		.add_systems(FixedUpdate, spawn_actors)
@@ -50,6 +43,7 @@ fn main() {
 				update_counters,
 			),
 		)
+		.add_systems(PostUpdate, despawn_tunneled_actors)
 		.run();
 }
 
@@ -104,12 +98,7 @@ fn setup(mut cmds: Commands) {
 	let map_depth = 1920;
 	let sector_resolution = 640;
 	let actor_size = 16.0;
-	let bundle = FlowFieldTilesBundle::new(
-		map_length,
-		map_depth,
-		sector_resolution,
-		actor_size,
-	);
+	let bundle = FlowFieldTilesBundle::new(map_length, map_depth, sector_resolution, actor_size);
 	// use the bundle before spawning it to help create the sprites
 	let map_dimensions = bundle.get_map_dimensions();
 	let mut camera = Camera2dBundle::default();
@@ -296,10 +285,7 @@ fn spawn_actors(
 		.insert(Actor)
 		.insert(RigidBody::Dynamic)
 		.insert(Collider::rectangle(1.0, 1.0))
-		.insert(CollisionLayers::new(
-			[Layer::Actor],
-			[Layer::Terrain],
-		))
+		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]))
 		.insert(AngularDamping(1.6))
 		.insert(pathing);
 	}
@@ -450,6 +436,22 @@ fn despawn_at_destination(
 				// so despawn
 				cmds.entity(entity).despawn_recursive();
 			}
+		}
+	}
+}
+
+/// If an impassable tile is placed directly on top of an actor it may achieve
+/// such a high velocity from the collision that it can "tunnel" through the
+/// border colliders of the world and be forever spinning through space. If an
+/// actor is out-of-bounds of the world then despawn it
+fn despawn_tunneled_actors(mut cmds: Commands, actor_q: Query<(Entity, &Transform), With<Actor>>, map: Query<&MapDimensions>) {
+	let dimensions = map.get_single().unwrap();
+	for (entity, tform) in &actor_q {
+		if tform.translation.x > (dimensions.get_length() as f32 / 2.0) || tform.translation.x < -(dimensions.get_length() as f32 / 2.0){
+			cmds.entity(entity).despawn_recursive();
+		}
+		if tform.translation.y > (dimensions.get_depth() as f32 / 2.0) || tform.translation.y < -(dimensions.get_depth() as f32 / 2.0) {
+			cmds.entity(entity).despawn_recursive();
 		}
 	}
 }
