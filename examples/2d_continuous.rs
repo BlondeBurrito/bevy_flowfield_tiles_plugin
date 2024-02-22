@@ -39,10 +39,7 @@ fn main() {
 				actor_update_route,
 				spawn_actors,
 				despawn_at_destination,
-				update_fps_counter,
-				update_actor_counter,
-				update_elapsed_counter,
-				update_generated_flowfield_counter,
+				update_counters,
 			),
 		)
 		.add_systems(Update, actor_steering)
@@ -521,84 +518,44 @@ fn create_counters(mut cmds: Commands) {
 	});
 }
 
-/// Updates the FPS field each tick
-#[allow(clippy::type_complexity)]
-fn update_fps_counter(
+/// Update the counters for FPS, number of actors, time elapased and current fields cached
+fn update_counters(
 	diagnostics: Res<DiagnosticsStore>,
-	mut query: Query<
-		&mut Text,
-		(
-			With<FPSCounter>,
-			Without<ElapsedCounter>,
-			Without<ActorCounter>,
-		),
-	>,
-) {
-	let mut text = query.single_mut();
-	if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
-		if let Some(val) = fps.average() {
-			text.sections[1].value = format!("{val:.2}");
-		}
-	}
-}
-
-/// Updates the Actor count field each tick
-#[allow(clippy::type_complexity)]
-fn update_actor_counter(
 	actors: Query<&Actor>,
-	mut query: Query<
-		&mut Text,
-		(
-			With<ActorCounter>,
-			Without<ElapsedCounter>,
-			Without<FPSCounter>,
-		),
-	>,
-) {
-	let mut text = query.single_mut();
-	let mut actor_count = 0;
-	for _ in actors.iter() {
-		actor_count += 1;
-	}
-	text.sections[1].value = format!("{actor_count:.2}");
-}
-
-/// Updates the elapsed time field each tick
-#[allow(clippy::type_complexity)]
-fn update_elapsed_counter(
 	time: Res<Time>,
-	mut query: Query<
-		&mut Text,
-		(
-			With<ElapsedCounter>,
-			Without<ActorCounter>,
-			Without<FPSCounter>,
-		),
-	>,
-) {
-	let mut text = query.single_mut();
-	let elapsed = time.elapsed().as_secs_f32();
-	text.sections[1].value = format!("{elapsed:.2}");
-}
-
-/// Updates the count of generated flow fields
-#[allow(clippy::type_complexity)]
-fn update_generated_flowfield_counter(
 	cache_q: Query<&FlowFieldCache>,
 	mut query: Query<
 		&mut Text,
-		(
-			With<FlowFieldCounter>,
-			Without<ActorCounter>,
-			Without<FPSCounter>,
-			Without<ElapsedCounter>,
-		),
 	>,
 ) {
-	let mut field_count = 0;
-	for cache in &cache_q {
-		field_count = cache.get().len();
+	for mut text in &mut query {
+		match text.sections[0].value.as_str() {
+			"FPS: " => {
+				if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
+					if let Some(val) = fps.average() {
+						text.sections[1].value = format!("{val:.2}");
+					}
+				}
+			},
+			"Actors: " => {
+				let mut actor_count = 0;
+				for _ in actors.iter() {
+					actor_count += 1;
+				}
+				text.sections[1].value = format!("{actor_count:.2}");
+			}
+			"Dur(s): " => {
+				let elapsed = time.elapsed().as_secs_f32();
+				text.sections[1].value = format!("{elapsed:.2}");
+			}
+			"Gen Flows: " => {
+				let mut field_count = 0;
+				for cache in &cache_q {
+					field_count = cache.get().len();
+				}
+				text.sections[1].value = format!("{field_count:.2}");
+			}
+			_ => {},
+		}
 	}
-	let mut text = query.single_mut();
-	text.sections[1].value = format!("{field_count:.2}");
 }
