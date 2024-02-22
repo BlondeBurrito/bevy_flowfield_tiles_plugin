@@ -524,22 +524,6 @@ fn create_wall_colliders(mut cmds: Commands) {
 	}
 }
 
-/// Label the FPS counter
-#[derive(Component)]
-struct FPSCounter;
-
-/// Label the FPS counter
-#[derive(Component)]
-struct ActorCounter;
-
-/// Label the elapsed time counter
-#[derive(Component)]
-struct ElapsedCounter;
-
-/// Label the generated flowfield counter
-#[derive(Component)]
-struct FlowFieldCounter;
-
 /// Create UI counters to measure the FPS and number of actors
 fn create_counters(mut cmds: Commands) {
 	cmds.spawn(NodeBundle {
@@ -550,78 +534,26 @@ fn create_counters(mut cmds: Commands) {
 		..default()
 	})
 	.with_children(|p| {
-		p.spawn(NodeBundle::default()).with_children(|p| {
-			p.spawn(TextBundle::from_sections([
-				TextSection::new(
-					"FPS: ",
-					TextStyle {
+		let categories = vec!["FPS: ", "Actors: ", "Dur(s): ", "Gen Flows: "];
+		for categroy in categories {
+			p.spawn(NodeBundle::default()).with_children(|p| {
+				p.spawn(TextBundle::from_sections([
+					TextSection::new(
+						categroy,
+						TextStyle {
+							font_size: 30.0,
+							color: Color::WHITE,
+							..default()
+						},
+					),
+					TextSection::from_style(TextStyle {
 						font_size: 30.0,
 						color: Color::WHITE,
 						..default()
-					},
-				),
-				TextSection::from_style(TextStyle {
-					font_size: 30.0,
-					color: Color::WHITE,
-					..default()
-				}),
-			]))
-			.insert(FPSCounter);
-		});
-		p.spawn(NodeBundle::default()).with_children(|p| {
-			p.spawn(TextBundle::from_sections([
-				TextSection::new(
-					"Actors: ",
-					TextStyle {
-						font_size: 30.0,
-						color: Color::WHITE,
-						..default()
-					},
-				),
-				TextSection::from_style(TextStyle {
-					font_size: 30.0,
-					color: Color::WHITE,
-					..default()
-				}),
-			]))
-			.insert(ActorCounter);
-		});
-		p.spawn(NodeBundle::default()).with_children(|p| {
-			p.spawn(TextBundle::from_sections([
-				TextSection::new(
-					"Dur(s): ",
-					TextStyle {
-						font_size: 30.0,
-						color: Color::WHITE,
-						..default()
-					},
-				),
-				TextSection::from_style(TextStyle {
-					font_size: 30.0,
-					color: Color::WHITE,
-					..default()
-				}),
-			]))
-			.insert(ElapsedCounter);
-		});
-		p.spawn(NodeBundle::default()).with_children(|p| {
-			p.spawn(TextBundle::from_sections([
-				TextSection::new(
-					"Gen Flows: ",
-					TextStyle {
-						font_size: 30.0,
-						color: Color::WHITE,
-						..default()
-					},
-				),
-				TextSection::from_style(TextStyle {
-					font_size: 30.0,
-					color: Color::WHITE,
-					..default()
-				}),
-			]))
-			.insert(FlowFieldCounter);
-		});
+					}),
+				]));
+			});
+		}
 	});
 }
 
