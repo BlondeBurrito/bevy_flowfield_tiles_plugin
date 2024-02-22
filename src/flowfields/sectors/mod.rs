@@ -197,7 +197,10 @@ impl MapDimensions {
 	//TODO return Result
 	/// From a 2d position get the sector and field cell it resides in
 	#[cfg(feature = "2d")]
-	pub fn get_sector_and_field_cell_from_xy(&self, position: Vec2) -> Option<(SectorID, FieldCell)> {
+	pub fn get_sector_and_field_cell_from_xy(
+		&self,
+		position: Vec2,
+	) -> Option<(SectorID, FieldCell)> {
 		if let Some(sector_id) = self.get_sector_id_from_xy(position) {
 			let sector_corner_origin = self.get_sector_corner_xy(sector_id);
 			let pixel_sector_field_ratio =

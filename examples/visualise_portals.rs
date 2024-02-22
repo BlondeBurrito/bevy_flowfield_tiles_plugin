@@ -66,7 +66,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 fn update_sprites(
 	query: Query<(&SectorPortals, &SectorCostFields), Changed<SectorPortals>>,
 	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel, &SectorLabel)>,
-	asset_server: Res<AssetServer>,) {
+	asset_server: Res<AssetServer>,
+) {
 	for (sector_portals, sector_costfields) in &query {
 		// store the ID of each sector and all the portal field coords in it
 		let mut sector_portal_ids = HashMap::new();
@@ -88,9 +89,7 @@ fn update_sprites(
 			*handle = asset_server.load(get_basic_icon(cost));
 			// lookup the sector and grid of a portal and overwrite as necessary
 			if sector_portal_ids.contains_key(&sector_id) {
-				let cell_id = sector_portal_ids
-					.get(&sector_id)
-					.unwrap();
+				let cell_id = sector_portal_ids.get(&sector_id).unwrap();
 				if cell_id.contains(&(field_cell_label.0, field_cell_label.1)) {
 					let new_handle: Handle<Image> = asset_server.load("ordinal_icons/portals.png");
 					*handle = new_handle;

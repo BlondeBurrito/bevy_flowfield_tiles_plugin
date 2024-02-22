@@ -305,7 +305,10 @@ fn spawn_actors(
 		.insert(Actor)
 		.insert(RigidBody::Dynamic)
 		.insert(Collider::rectangle(1.0, 1.0))
-		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain, Layer::Actor]))
+		.insert(CollisionLayers::new(
+			[Layer::Actor],
+			[Layer::Terrain, Layer::Actor],
+		))
 		.insert(AngularDamping(1.6))
 		.insert(pathing);
 	}
@@ -563,9 +566,7 @@ fn update_counters(
 	actors: Query<&Actor>,
 	time: Res<Time>,
 	cache_q: Query<&FlowFieldCache>,
-	mut query: Query<
-		&mut Text,
-	>,
+	mut query: Query<&mut Text>,
 ) {
 	for mut text in &mut query {
 		match text.sections[0].value.as_str() {
@@ -575,7 +576,7 @@ fn update_counters(
 						text.sections[1].value = format!("{val:.2}");
 					}
 				}
-			},
+			}
 			"Actors: " => {
 				let mut actor_count = 0;
 				for _ in actors.iter() {
@@ -594,7 +595,7 @@ fn update_counters(
 				}
 				text.sections[1].value = format!("{field_count:.2}");
 			}
-			_ => {},
+			_ => {}
 		}
 	}
 }

@@ -31,7 +31,10 @@ impl Plugin for FlowFieldTilesPlugin {
 			.add_event::<cost_layer::EventUpdateCostfieldsCell>()
 			.add_event::<cost_layer::EventCleanCaches>()
 			.add_event::<flow_layer::EventPathRequest>()
-			.configure_sets(PreUpdate, (OrderingSet::Tidy, OrderingSet::Calculate).chain())
+			.configure_sets(
+				PreUpdate,
+				(OrderingSet::Tidy, OrderingSet::Calculate).chain(),
+			)
 			.add_systems(
 				PreUpdate,
 				(

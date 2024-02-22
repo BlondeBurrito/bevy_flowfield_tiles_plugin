@@ -664,12 +664,12 @@ impl PortalGraph {
 		if !graph.contains_key(&source_node) {
 			error!("Node data does not contain start node {:?}, this is probably a bug, please report it", source_node);
 			// panic!("Node data does not contain start node {:?}", source_node);
-			return None
+			return None;
 		}
 		if !graph.contains_key(&target_node) {
 			error!("Node data does not contain end node {:?}, this is probably a bug, please report it", target_node);
 			// panic!("Node data does not contain end node {:?}", target_node);
-			return None
+			return None;
 		}
 		// retreive the weight of the start point
 		let start_weight: i32 = source_node.get_weight();
