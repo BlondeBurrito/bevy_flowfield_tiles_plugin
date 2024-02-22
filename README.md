@@ -316,7 +316,7 @@ fn main() {
 
 ## Custom System Setup and Constraints
 
-In your own simulation you may well be using custom schedules or stages to control logic execution, the plugin as is sets all the logic to run as part of the `Update` phase of the main Bevy schedule. To implement the logic into your own scheduling disect the contents of [`plugin/mod.rs`](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/src/plugin/mod.rs) - note that certain systems have been `chained` together and they <b><i>must</i></b> remain chained for accurate paths to be computed.
+In your own simulation you may well be using custom schedules or stages to control logic execution, the plugin as is sets all the logic to run as part of the `PreUpdate` phase of the main Bevy schedule. To implement the logic into your own scheduling disect the contents of [`plugin/mod.rs`](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/src/plugin/mod.rs) - note that certain systems have been `chained` together and they <b><i>must</i></b> remain chained for accurate paths to be computed.
 
 ## Initialising Data
 

@@ -50,7 +50,6 @@ impl Plugin for FlowFieldTilesPlugin {
 						.in_set(OrderingSet::Tidy),
 					(
 						flow_layer::event_insert_route_queue,
-						// flow_layer::event_queue_route,
 						flow_layer::process_route_queue,
 						flow_layer::create_queued_integration_fields,
 						flow_layer::create_flow_fields,

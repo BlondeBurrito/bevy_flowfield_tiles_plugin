@@ -81,7 +81,6 @@ pub fn process_costfields_updates(
 				dimensions,
 			);
 		}
-		// info!("Rebuilt");
 		event_cache_clean.send(EventCleanCaches(*sector_id));
 	}
 }
@@ -103,7 +102,6 @@ pub fn clean_cache(
 		sectors.push(event.0);
 	}
 	if !sectors.is_empty() {
-		// info!("Start cleaning caches");
 		for mut flow_cache in q_flow.iter_mut() {
 			// purge invalid queued integratrion fields
 			let mut to_purge = Vec::new();
@@ -195,6 +193,5 @@ pub fn clean_cache(
 				));
 			}
 		}
-		// info!("Finished cleaning caches");
 	}
 }
