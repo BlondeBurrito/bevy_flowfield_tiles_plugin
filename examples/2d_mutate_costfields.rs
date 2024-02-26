@@ -444,13 +444,21 @@ fn despawn_at_destination(
 /// such a high velocity from the collision that it can "tunnel" through the
 /// border colliders of the world and be forever spinning through space. If an
 /// actor is out-of-bounds of the world then despawn it
-fn despawn_tunneled_actors(mut cmds: Commands, actor_q: Query<(Entity, &Transform), With<Actor>>, map: Query<&MapDimensions>) {
+fn despawn_tunneled_actors(
+	mut cmds: Commands,
+	actor_q: Query<(Entity, &Transform), With<Actor>>,
+	map: Query<&MapDimensions>,
+) {
 	let dimensions = map.get_single().unwrap();
 	for (entity, tform) in &actor_q {
-		if tform.translation.x > (dimensions.get_length() as f32 / 2.0) || tform.translation.x < -(dimensions.get_length() as f32 / 2.0){
+		if tform.translation.x > (dimensions.get_length() as f32 / 2.0)
+			|| tform.translation.x < -(dimensions.get_length() as f32 / 2.0)
+		{
 			cmds.entity(entity).despawn_recursive();
 		}
-		if tform.translation.y > (dimensions.get_depth() as f32 / 2.0) || tform.translation.y < -(dimensions.get_depth() as f32 / 2.0) {
+		if tform.translation.y > (dimensions.get_depth() as f32 / 2.0)
+			|| tform.translation.y < -(dimensions.get_depth() as f32 / 2.0)
+		{
 			cmds.entity(entity).despawn_recursive();
 		}
 	}

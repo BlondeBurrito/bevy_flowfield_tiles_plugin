@@ -13,8 +13,8 @@ fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
 		.add_plugins(FlowFieldTilesPlugin)
-		.add_systems(Startup, setup_visualisation)
-		.add_systems(Update, (update_sprites, click_update_cost))
+		.add_systems(Startup, (setup_visualisation, create_counter))
+		.add_systems(Update, (update_sprites, click_update_cost, update_counter))
 		.run();
 }
 
@@ -73,9 +73,10 @@ fn update_sprites(
 		let mut sector_portal_ids = HashMap::new();
 		for (sector, portals) in sector_portals.get().iter() {
 			let mut portal_ids = Vec::new();
-			for ordinal_portals in portals.get() {
-				for portal_node in ordinal_portals.iter() {
-					portal_ids.push(portal_node.get_column_row());
+			let ords = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
+			for ord in ords.iter() {
+				for cell in portals.get(ord).iter() {
+					portal_ids.push(cell.get_column_row());
 				}
 			}
 			sector_portal_ids.insert(*sector, portal_ids);
@@ -161,6 +162,62 @@ fn click_update_cost(
 					}
 				}
 			}
+		}
+	}
+}
+
+/// Create UI counters to measure the FPS and number of actors
+fn create_counter(mut cmds: Commands) {
+	cmds.spawn(NodeBundle {
+		style: Style {
+			flex_direction: FlexDirection::Column,
+			..default()
+		},
+		..default()
+	})
+	.with_children(|p| {
+		let categories = vec!["Portals: "];
+		for categroy in categories {
+			p.spawn(NodeBundle::default()).with_children(|p| {
+				p.spawn(TextBundle::from_sections([
+					TextSection::new(
+						categroy,
+						TextStyle {
+							font_size: 30.0,
+							color: Color::WHITE,
+							..default()
+						},
+					),
+					TextSection::from_style(TextStyle {
+						font_size: 30.0,
+						color: Color::WHITE,
+						..default()
+					}),
+				]));
+			});
+		}
+	});
+}
+
+/// Update the counters for FPS, number of actors, time elapased and current fields cached
+fn update_counter(
+	sector_portals_q: Query<&SectorPortals>,
+	mut query: Query<&mut Text>,
+) {
+	let mut portal_count = 0;
+	let sp = sector_portals_q.get_single().unwrap();
+	for portals in sp.get().values() {
+		let ords = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
+		for ord in ords.iter() {
+			portal_count += portals.get(ord).len();
+		}
+	}
+	for mut text in &mut query {
+		match text.sections[0].value.as_str() {
+			"Portals: " => {
+						text.sections[1].value = format!("{portal_count:.2}");
+			}
+			_ => {}
 		}
 	}
 }
