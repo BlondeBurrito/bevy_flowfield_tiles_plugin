@@ -137,6 +137,11 @@ path = "examples/visualise_cost_field_heightmap.rs"
 required-features = ["heightmap"]
 
 [[example]]
+name = "2d_variety_costs"
+path = "examples/2d_variety_costs.rs"
+required-features = ["heightmap", "2d"]
+
+[[example]]
 name = "visualise_portals"
 path = "examples/visualise_portals.rs"
 required-features = ["csv", "2d"]
