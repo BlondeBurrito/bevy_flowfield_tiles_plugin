@@ -22,8 +22,15 @@ fn main() {
 			Startup,
 			(setup_visualisation, setup_navigation, create_wall_colliders),
 		)
-		.add_systems(Update, (user_input, actor_update_route))
-		.add_systems(Update, actor_steering)
+		.add_systems(Update, (user_input, get_or_request_route))
+		.add_systems(
+			Update,
+			(
+				actor_steering,
+				check_if_route_exhausted,
+				stop_at_destination,
+			),
+		)
 		.run();
 }
 
@@ -42,16 +49,14 @@ struct ActorA;
 #[derive(Component)]
 struct ActorB;
 
-/// Attached to the Actor as a record of where it is and where it wants to go, used to lookup the correct FlowField
+/// Attached to the actor as a record of where it is and where it wants to go, used to lookup the correct FlowField
 #[allow(clippy::type_complexity)]
 #[allow(clippy::missing_docs_in_private_items)]
+#[allow(dead_code)]
 #[derive(Default, Component)]
 struct Pathing {
-	source_sector: Option<SectorID>,
-	source_field_cell: Option<FieldCell>,
 	target_position: Option<Vec2>,
-	target_sector: Option<SectorID>,
-	target_goal: Option<FieldCell>,
+	metadata: Option<RouteMetadata>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 	has_los: bool,
 }
@@ -180,9 +185,8 @@ fn user_input(
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	dimensions_q: Query<&MapDimensions>,
-	mut actor_a_q: Query<(&Transform, &mut Pathing), (With<ActorA>, Without<ActorB>)>,
-	mut actor_b_q: Query<(&Transform, &mut Pathing), (With<ActorB>, Without<ActorA>)>,
-	mut event: EventWriter<EventPathRequest>,
+	mut actor_a_q: Query<&mut Pathing, (With<ActorA>, Without<ActorB>)>,
+	mut actor_b_q: Query<&mut Pathing, (With<ActorB>, Without<ActorA>)>,
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 2d world positionn of cursor
@@ -194,26 +198,16 @@ fn user_input(
 			.map(|ray| ray.origin.truncate())
 		{
 			let map_dimensions = dimensions_q.get_single().unwrap();
-			if let Some((target_sector_id, goal_id)) =
-				map_dimensions.get_sector_and_field_id_from_xy(world_position)
+			if map_dimensions
+				.get_sector_and_field_cell_from_xy(world_position)
+				.is_some()
 			{
-				for (tform, mut pathing) in actor_a_q.iter_mut() {
-					let (source_sector_id, source_field_cell) = map_dimensions
-						.get_sector_and_field_id_from_xy(tform.translation.truncate())
-						.unwrap();
-					event.send(EventPathRequest::new(
-						source_sector_id,
-						source_field_cell,
-						target_sector_id,
-						goal_id,
-					));
-					// update the Actor pathing
-					pathing.source_sector = Some(source_sector_id);
-					pathing.source_field_cell = Some(source_field_cell);
+				for mut pathing in actor_a_q.iter_mut() {
+					// update the actor pathing
 					pathing.target_position = Some(world_position);
-					pathing.target_sector = Some(target_sector_id);
-					pathing.target_goal = Some(goal_id);
+					pathing.metadata = None;
 					pathing.portal_route = None;
+					pathing.has_los = false;
 				}
 			} else {
 				error!("Cursor out of bounds");
@@ -230,35 +224,16 @@ fn user_input(
 			.map(|ray| ray.origin.truncate())
 		{
 			let map_dimensions = dimensions_q.get_single().unwrap();
-			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) =
-				map_dimensions.get_sector_and_field_id_from_xy(world_position)
+			if map_dimensions
+				.get_sector_and_field_cell_from_xy(world_position)
+				.is_some()
 			{
-				info!(
-					"Cursor sector_id {:?}, goal_id in sector {:?}",
-					target_sector_id, goal_id
-				);
-				for (tform, mut pathing) in actor_b_q.iter_mut() {
-					let (source_sector_id, source_field_cell) = map_dimensions
-						.get_sector_and_field_id_from_xy(tform.translation.truncate())
-						.unwrap();
-					info!(
-						"Actor sector_id {:?}, goal_id in sector {:?}",
-						source_sector_id, source_field_cell
-					);
-					event.send(EventPathRequest::new(
-						source_sector_id,
-						source_field_cell,
-						target_sector_id,
-						goal_id,
-					));
-					// update the Actor pathing
-					pathing.source_sector = Some(source_sector_id);
-					pathing.source_field_cell = Some(source_field_cell);
+				for mut pathing in actor_b_q.iter_mut() {
+					// update the actor pathing
 					pathing.target_position = Some(world_position);
-					pathing.target_sector = Some(target_sector_id);
-					pathing.target_goal = Some(goal_id);
+					pathing.metadata = None;
 					pathing.portal_route = None;
+					pathing.has_los = false;
 				}
 			} else {
 				error!("Cursor out of bounds");
@@ -266,35 +241,44 @@ fn user_input(
 		}
 	}
 }
-/// There is a delay between the Actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the Actor
-fn actor_update_route(
-	mut actor_a_q: Query<&mut Pathing, (With<ActorA>, Without<ActorB>)>,
-	mut actor_b_q: Query<&mut Pathing, (With<ActorB>, Without<ActorA>)>,
-	route_q: Query<&RouteCache>,
+
+/// If an actor has a target coordinate then obtain a route for it - if a route doesn't exist then send an event so that one is calculated
+fn get_or_request_route(
+	route_q: Query<(&RouteCache, &MapDimensions)>,
+	mut actor_q: Query<(&Transform, &mut Pathing)>,
+	mut event: EventWriter<EventPathRequest>,
 ) {
-	for mut pathing in actor_a_q.iter_mut() {
-		if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-			let route_cache = route_q.get_single().unwrap();
-			if let Some(route) = route_cache.get_route(
-				pathing.source_sector.unwrap(),
-				pathing.source_field_cell.unwrap(),
-				pathing.target_sector.unwrap(),
-				pathing.target_goal.unwrap(),
-			) {
-				pathing.portal_route = Some(route.clone());
-			}
-		}
-	}
-	for mut pathing in actor_b_q.iter_mut() {
-		if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-			let route_cache = route_q.get_single().unwrap();
-			if let Some(route) = route_cache.get_route(
-				pathing.source_sector.unwrap(),
-				pathing.source_field_cell.unwrap(),
-				pathing.target_sector.unwrap(),
-				pathing.target_goal.unwrap(),
-			) {
-				pathing.portal_route = Some(route.clone());
+	let (route_cahe, map_dimensions) = route_q.get_single().unwrap();
+	for (tform, mut pathing) in &mut actor_q {
+		if let Some(target) = pathing.target_position {
+			// actor has no route, look one up or request one
+			if pathing.portal_route.is_none() {
+				if let Some((source_sector, source_field)) =
+					map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
+				{
+					if let Some((target_sector, goal_id)) =
+						map_dimensions.get_sector_and_field_cell_from_xy(target)
+					{
+						// if a route is calculated get it
+						if let Some((metadata, route)) = route_cahe.get_route_with_metadata(
+							source_sector,
+							source_field,
+							target_sector,
+							goal_id,
+						) {
+							pathing.metadata = Some(*metadata);
+							pathing.portal_route = Some(route.clone());
+						} else {
+							// request a route
+							event.send(EventPathRequest::new(
+								source_sector,
+								source_field,
+								target_sector,
+								goal_id,
+							));
+						}
+					}
+				}
 			}
 		}
 	}
@@ -319,20 +303,20 @@ fn actor_steering(
 ) {
 	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 	for (mut velocity, tform, mut pathing) in actor_a_q.iter_mut() {
-		if pathing.target_goal.is_some() {
-			// lookup the overarching route
-			if let Some(route) = pathing.portal_route.as_mut() {
-				// info!("Route: {:?}", route);
-				// find the current actors postion in grid space
-				let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
-					.get_sector_and_field_id_from_xy(tform.translation.truncate())
-					.unwrap();
-				// tirm the actor stored route as it makes progress
+		// lookup the overarching route
+		if let Some(route) = pathing.portal_route.as_mut() {
+			// find the current actors postion in grid space
+			if let Some((curr_actor_sector, curr_actor_field_cell)) =
+				map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
+			{
+				// trim the actor stored route as it makes progress
 				// this ensures it doesn't use a previous goal from
 				// a sector it has already been through when it needs
 				// to pass through it again as part of a different part of the route
-				if curr_actor_sector != route.first().unwrap().0 {
-					route.remove(0);
+				if let Some(f) = route.first() {
+					if curr_actor_sector != f.0 {
+						route.remove(0);
+					}
 				}
 				// lookup the relevant sector-goal of this sector
 				'routes: for (sector, goal) in route.iter() {
@@ -349,6 +333,10 @@ fn actor_steering(
 								break 'routes;
 							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+							if dir.x == 0.0 && dir.y == 0.0 {
+								warn!("Stuck");
+								pathing.portal_route = None;
+							}
 							velocity.0 = dir * SPEED * time_step.delta_seconds();
 						}
 						break 'routes;
@@ -358,21 +346,21 @@ fn actor_steering(
 		}
 	}
 	for (mut velocity, tform, mut pathing) in actor_b_q.iter_mut() {
-		if pathing.target_goal.is_some() {
-			// lookup the overarching route
-			if let Some(route) = pathing.portal_route.as_mut() {
-				// info!("Route: {:?}", route);
-				// find the current actors postion in grid space
-				let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
-					.get_sector_and_field_id_from_xy(tform.translation.truncate())
-					.unwrap();
-				// // tirm the actor stored route as it makes progress
-				// // this ensures it doesn't use a previous goal from
-				// // a sector it has already been through when it needs
-				// // to pass through it again as part of a different part of the route
-				// if curr_actor_sector != route.first().unwrap().0 {
-				// 	route.remove(0);
-				// }
+		// lookup the overarching route
+		if let Some(route) = pathing.portal_route.as_mut() {
+			// find the current actors postion in grid space
+			if let Some((curr_actor_sector, curr_actor_field_cell)) =
+				map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
+			{
+				// trim the actor stored route as it makes progress
+				// this ensures it doesn't use a previous goal from
+				// a sector it has already been through when it needs
+				// to pass through it again as part of a different part of the route
+				if let Some(f) = route.first() {
+					if curr_actor_sector != f.0 {
+						route.remove(0);
+					}
+				}
 				// lookup the relevant sector-goal of this sector
 				'routes: for (sector, goal) in route.iter() {
 					if *sector == curr_actor_sector {
@@ -388,11 +376,48 @@ fn actor_steering(
 								break 'routes;
 							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+							if dir.x == 0.0 && dir.y == 0.0 {
+								warn!("Stuck");
+								pathing.portal_route = None;
+							}
 							velocity.0 = dir * SPEED * time_step.delta_seconds();
 						}
 						break 'routes;
 					}
 				}
+			}
+		}
+	}
+}
+
+/// If an actor has drained their route then they are most likely lost due to portals changing, clear their route so they may request a fresh one
+///
+/// This may also happen if an actor has collided with a corner that has bounced it into a different sector
+fn check_if_route_exhausted(mut actor_q: Query<(&mut Pathing, &mut LinearVelocity)>) {
+	for (mut pathing, mut vel) in &mut actor_q {
+		if let Some(route) = &pathing.portal_route {
+			if route.is_empty() {
+				// actor has exhuasted it's route, it's lost, clear route so a new one can be requested
+				warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
+				vel.0 *= 0.0;
+				pathing.portal_route = None;
+			}
+		}
+	}
+}
+
+/// Stop an actor once it has reached its goal
+fn stop_at_destination(mut actors: Query<(&mut LinearVelocity, &mut Pathing, &Transform)>) {
+	for (mut vel, mut path, tform) in &mut actors {
+		let position = tform.translation.truncate();
+		if let Some(target) = path.target_position {
+			if (target - position).length_squared() < 36.0 {
+				// within 6 pixels of target
+				// so despawn
+				vel.0 *= 0.0;
+				path.target_position = None;
+				path.metadata = None;
+				path.portal_route = None;
 			}
 		}
 	}
@@ -480,7 +505,7 @@ fn create_wall_colliders(mut cmds: Commands) {
 			},
 			RigidBody::Static,
 			Collider::rectangle(1.0, 1.0),
-			CollisionLayers::new([Layer::Terrain], LayerMask::NONE),
+			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
 		));
 	}
 }

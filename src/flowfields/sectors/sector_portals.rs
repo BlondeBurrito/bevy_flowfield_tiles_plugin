@@ -13,7 +13,7 @@ use bevy::prelude::*;
 /// grid of sectors across the map. The sectors begin in the top left of the map (-x_max, -z_max)
 /// and values are the [Portals] associated with that sector
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug)]
 pub struct SectorPortals(BTreeMap<SectorID, Portals>);
 
 impl SectorPortals {

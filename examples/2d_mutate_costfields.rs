@@ -1,9 +1,12 @@
-//! Generates a 30x30 world and endlessly spawns actors with randomised destinations
+//! Generates a 30x30 world and endlessly spawns actors with randomised destinations.
+//!
+//! You can use your LeftMouseButton to flip Costfield values between 1 and 255
 //!
 
 use bevy::{
 	diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
 	prelude::*,
+	window::PrimaryWindow,
 };
 
 use bevy_flowfield_tiles_plugin::prelude::*;
@@ -21,22 +24,26 @@ fn main() {
 			PhysicsPlugins::default(),
 			// PhysicsDebugPlugin::default(),
 		))
-		.insert_resource(SubstepCount(30))
+		.insert_resource(SubstepCount(12))
 		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(Startup, (setup, create_wall_colliders, create_counters))
+		.add_systems(PreUpdate, click_update_cost)
+		.insert_resource(Time::<Fixed>::from_seconds(0.01))
+		.add_systems(FixedUpdate, spawn_actors)
 		.add_systems(
 			Update,
 			(
 				get_or_request_route,
-				spawn_actors,
-				despawn_at_destination,
-				update_counters,
+				check_if_route_is_old,
 				check_if_route_exhausted,
-				despawn_tunneled_actors,
+				// spawn_actors,
+				despawn_at_destination,
+				actor_steering,
+				update_counters,
 			),
 		)
-		.add_systems(Update, actor_steering)
+		.add_systems(PostUpdate, despawn_tunneled_actors)
 		.run();
 }
 
@@ -85,16 +92,13 @@ impl PhysicsLayer for Layer {
 }
 
 /// Spawn sprites to represent the world and the FlowFieldsBundle
-fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut cmds: Commands) {
 	// prepare bundle
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
 	let actor_size = 16.0;
-	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let bundle =
-		FlowFieldTilesBundle::from_ron(map_length, map_depth, sector_resolution, actor_size, &path);
+	let bundle = FlowFieldTilesBundle::new(map_length, map_depth, sector_resolution, actor_size);
 	// use the bundle before spawning it to help create the sprites
 	let map_dimensions = bundle.get_map_dimensions();
 	let mut camera = Camera2dBundle::default();
@@ -106,44 +110,95 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	for (sector_id, field) in fields.iter() {
 		// iterate over the dimensions of the field
 		for (i, column) in field.get().iter().enumerate() {
-			for (j, value) in column.iter().enumerate() {
+			for (j, _value) in column.iter().enumerate() {
 				// grid origin is always in the top left
 				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
 				let x = sector_offset.x + 32.0 + (FIELD_SPRITE_DIMENSION * i as f32);
 				let y = sector_offset.y - 32.0 - (FIELD_SPRITE_DIMENSION * j as f32);
-				// add colliders to impassable cells
-				if *value == 255 {
-					cmds.spawn(SpriteBundle {
-						sprite: Sprite {
-							color: Color::BLACK,
-							..default()
-						},
-						transform: Transform {
-							translation: Vec3::new(x, y, 0.0),
-							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
-							..default()
-						},
+				// start with sprites for everying being pathable
+				cmds.spawn(SpriteBundle {
+					sprite: Sprite {
+						color: Color::WHITE,
 						..default()
-					})
-					.insert(FieldCellLabel(i, j))
-					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.insert(Collider::rectangle(1.0, 1.0))
-					.insert(RigidBody::Static)
-					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
-				} else {
-					cmds.spawn(SpriteBundle {
-						texture: asset_server.load(get_basic_icon(*value)),
-						transform: Transform::from_xyz(x, y, 0.0),
+					},
+					transform: Transform {
+						translation: Vec3::new(x, y, 0.0),
+						scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 						..default()
-					})
-					.insert(FieldCellLabel(i, j))
-					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
-				}
+					},
+					..default()
+				})
+				.insert(FieldCellLabel(i, j))
+				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
 			}
 		}
 	}
 	// spawn the bundle
 	cmds.spawn(bundle);
+}
+
+/// Left clicking on a tile/field will flip the value of it in the [CostField]
+///
+/// If the current cost is `1` then it is updated to `255` and a [Collider] is inserted denoting an impassable field.
+///
+/// If the current cost is `255` then
+fn click_update_cost(
+	mut cmds: Commands,
+	mut tile_q: Query<(Entity, &SectorLabel, &FieldCellLabel, &mut Sprite)>,
+	input: Res<ButtonInput<MouseButton>>,
+	camera_q: Query<(&Camera, &GlobalTransform)>,
+	windows: Query<&Window, With<PrimaryWindow>>,
+	dimensions_q: Query<(&MapDimensions, &SectorCostFields)>,
+	mut event: EventWriter<EventUpdateCostfieldsCell>,
+) {
+	if input.just_released(MouseButton::Left) {
+		let (camera, camera_transform) = camera_q.single();
+		let window = windows.single();
+		if let Some(world_position) = window
+			.cursor_position()
+			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+			.map(|ray| ray.origin.truncate())
+		{
+			let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
+			if let Some((sector_id, field_cell)) =
+				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
+			{
+				let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
+				let value = cost_field.get_field_cell_value(field_cell);
+				if value == 255 {
+					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
+					event.send(e);
+					// remove collider from tile
+					for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
+						if (sector_label.0, sector_label.1) == sector_id.get()
+							&& (field_label.0, field_label.1) == field_cell.get_column_row()
+						{
+							sprite.color = Color::WHITE;
+							cmds.entity(entity).remove::<Collider>();
+							cmds.entity(entity).remove::<RigidBody>();
+							cmds.entity(entity).remove::<CollisionLayers>();
+						}
+					}
+				} else {
+					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
+					event.send(e);
+					// add collider to tile
+					for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
+						if (sector_label.0, sector_label.1) == sector_id.get()
+							&& (field_label.0, field_label.1) == field_cell.get_column_row()
+						{
+							sprite.color = Color::BLACK;
+							cmds.entity(entity).insert((
+								Collider::rectangle(1.0, 1.0),
+								RigidBody::Static,
+								CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+							));
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 /// Spawn an actor every tick with a random starting position at the top of the
@@ -152,7 +207,15 @@ fn spawn_actors(
 	mut cmds: Commands,
 	map: Query<&MapDimensions>,
 	mut event: EventWriter<EventPathRequest>,
+	actors_q: Query<&Actor>,
 ) {
+	let mut a_count = 0;
+	for _ in &actors_q {
+		a_count += 1;
+	}
+	if a_count > 1500 {
+		return;
+	}
 	// pick a start
 	let starting_sectors = [(0, 0), (1, 0), (2, 0)];
 	let starting_field_cells = [
@@ -209,7 +272,7 @@ fn spawn_actors(
 		};
 		// request a path
 		event.send(EventPathRequest::new(sector_id, field, t_sector, t_field));
-		// spawn the actor which cna read the path later
+		// spawn the actor which can read the path later
 		cmds.spawn(SpriteBundle {
 			sprite: Sprite {
 				color: Color::Rgba {
@@ -231,10 +294,10 @@ fn spawn_actors(
 		.insert(RigidBody::Dynamic)
 		.insert(Collider::rectangle(1.0, 1.0))
 		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]))
+		.insert(AngularDamping(1.6))
 		.insert(pathing);
 	}
 }
-
 /// If an actor has a target coordinate then obtain a route for it - if a route doesn't exist then send an event so that one is calculated
 fn get_or_request_route(
 	route_q: Query<(&RouteCache, &MapDimensions)>,
@@ -272,6 +335,45 @@ fn get_or_request_route(
 						}
 					}
 				}
+			}
+		}
+	}
+}
+
+/// Every route is timestamped, when routes are recalculated they will have new timestamps.
+///
+/// Compare the timestamp of a route an actor has stored with what's in the
+/// cache and clear it if it's old so that a new route can be requested
+fn check_if_route_is_old(
+	route_q: Query<&RouteCache, Changed<RouteCache>>,
+	mut actor_q: Query<&mut Pathing, With<Actor>>,
+) {
+	let cache = route_q.get_single().unwrap();
+	for mut pathing in &mut actor_q {
+		if let Some(metadata) = pathing.metadata {
+			if let Some((cache_metadata, _route)) = cache.get().get_key_value(&metadata) {
+				if metadata.get_time_generated() != cache_metadata.get_time_generated() {
+					// cached route is newer meaning fields have been rebuilt
+					// reset cached pathing so a new route can be requested
+					pathing.metadata = None;
+					pathing.portal_route = None;
+				}
+			}
+		}
+	}
+}
+
+/// If an actor has drained their route then they are most likely lost due to portals changing, clear their route so they may request a fresh one
+///
+/// This may also happen if an actor has collided with a corner that has bounced it into a different sector
+fn check_if_route_exhausted(mut actor_q: Query<(&mut Pathing, &mut LinearVelocity), With<Actor>>) {
+	for (mut pathing, mut vel) in &mut actor_q {
+		if let Some(route) = &pathing.portal_route {
+			if route.is_empty() {
+				// actor has exhuasted it's route, it's lost, clear route so a new one can be requested
+				warn!("Exhausted route, a new one will be requested");
+				vel.0 *= 0.0;
+				pathing.portal_route = None;
 			}
 		}
 	}
@@ -333,22 +435,6 @@ fn actor_steering(
 	}
 }
 
-/// If an actor has drained their route then they are most likely lost due to portals changing, clear their route so they may request a fresh one
-///
-/// This may also happen if an actor has collided with a corner that has bounced it into a different sector
-fn check_if_route_exhausted(mut actor_q: Query<(&mut Pathing, &mut LinearVelocity), With<Actor>>) {
-	for (mut pathing, mut vel) in &mut actor_q {
-		if let Some(route) = &pathing.portal_route {
-			if route.is_empty() {
-				// actor has exhuasted it's route, it's lost, clear route so a new one can be requested
-				warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
-				vel.0 *= 0.0;
-				pathing.portal_route = None;
-			}
-		}
-	}
-}
-
 /// Despawn an actor once it has reached its goal
 fn despawn_at_destination(
 	mut cmds: Commands,
@@ -365,6 +451,7 @@ fn despawn_at_destination(
 		}
 	}
 }
+
 /// If an impassable tile is placed directly on top of an actor it may achieve
 /// such a high velocity from the collision that it can "tunnel" through the
 /// border colliders of the world and be forever spinning through space. If an
@@ -386,17 +473,6 @@ fn despawn_tunneled_actors(
 		{
 			cmds.entity(entity).despawn_recursive();
 		}
-	}
-}
-
-/// Get asset path of sprite icons
-fn get_basic_icon(value: u8) -> String {
-	if value == 255 {
-		String::from("ordinal_icons/impassable.png")
-	} else if value == 1 {
-		String::from("ordinal_icons/goal.png")
-	} else {
-		panic!("Require basic icon")
 	}
 }
 

@@ -258,7 +258,8 @@ impl FlowField {
 		for i in 0..FIELD_RESOLUTION {
 			for j in 0..FIELD_RESOLUTION {
 				let start_cell = FieldCell::new(i, j);
-				let path = start_cell.get_cells_between_points(&los_goals[0]);
+				let mut path = start_cell.get_cells_between_points(&los_goals[0]);
+				path.pop(); // last is always the goal, remove incase it's in a corner
 				let mut has_los = true;
 				'cells: for cell in path.iter() {
 					let has_blocked_diag = has_blocked_diagonals(*cell, int_field);
@@ -685,7 +686,10 @@ pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
 		BITS_SOUTH_EAST => Vec2::new(1.0, -1.0),
 		BITS_SOUTH_WEST => Vec2::new(-1.0, -1.0),
 		BITS_NORTH_WEST => Vec2::new(-1.0, 1.0),
-		BITS_ZERO => Vec2::new(0.0, 0.0),
+		BITS_ZERO => {
+			warn!("Got direction of impassable cell, an actor may be stuck");
+			Vec2::new(0.0, 0.0)
+		}
 		_ => panic!(
 			"First 4 bits of cell are not recognised directions: {}",
 			dir

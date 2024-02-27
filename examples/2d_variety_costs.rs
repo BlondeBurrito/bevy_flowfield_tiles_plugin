@@ -1,7 +1,4 @@
-//! Generates a 30x30 world where an actor can be told to navigate to a point with a right click
-//!
-
-use std::collections::HashMap;
+//! Creates a 30x30 world based on a heightmap that contains a variety of costs - pixels with differing shades of grey. A white pixel is the most efficient, a black pixel is impassable and the greys between represent good and bad costs in the CostFields. The purpose of this is to show actors prefering routes around the bad costs
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
@@ -25,7 +22,6 @@ fn main() {
 			(setup_visualisation, setup_navigation, create_wall_colliders),
 		)
 		.add_systems(Update, (user_input, get_or_request_route))
-		.add_systems(Update, (update_sprite_visuals_based_on_actor,))
 		.add_systems(
 			Update,
 			(
@@ -62,17 +58,24 @@ struct Pathing {
 }
 
 /// Spawn sprites to represent the world
-fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup_visualisation(mut cmds: Commands) {
+	let mut camera = Camera2dBundle::default();
+	camera.projection.scale = 2.0;
+	cmds.spawn(camera);
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
 	let actor_size = 16.0;
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-	let mut camera = Camera2dBundle::default();
-	camera.projection.scale = 2.0;
-	cmds.spawn(camera);
-	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
-	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
+	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/heightmap_variety_costs.png";
+	let bundle = FlowFieldTilesBundle::from_heightmap(
+		map_length,
+		map_depth,
+		sector_resolution,
+		actor_size,
+		&path,
+	);
+	let map_dimensions = bundle.get_map_dimensions();
+	let sector_cost_fields = bundle.get_sector_cost_fields();
 	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
 	for (sector_id, field) in fields.iter() {
@@ -89,25 +92,39 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				if *value == 255 {
 					cmds.spawn(SpriteBundle {
 						sprite: Sprite {
-							custom_size: Some(Vec2::new(64.0, 64.0)),
+							color: Color::BLACK,
 							..default()
 						},
-						texture: asset_server.load(get_basic_icon(*value)),
-						transform: Transform::from_xyz(x, y, 0.0),
+						transform: Transform {
+							translation: Vec3::new(x, y, 0.0),
+							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
+							..default()
+						},
 						..default()
 					})
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.insert(Collider::rectangle(
-						FIELD_SPRITE_DIMENSION,
-						FIELD_SPRITE_DIMENSION,
-					))
+					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
+					// note in image editing software a pixel colour channel may range from 1-255, in bevy sprite the color channels range 0-1, so we convert the cost to a grey colour and take it as a percentage to be compatible
+					let grey_scale = (255.0 - *value as f32) / 255.0;
 					cmds.spawn(SpriteBundle {
-						texture: asset_server.load(get_basic_icon(*value)),
-						transform: Transform::from_xyz(x, y, 0.0),
+						sprite: Sprite {
+							color: Color::Rgba {
+								red: grey_scale,
+								green: grey_scale,
+								blue: grey_scale,
+								alpha: 1.0,
+							},
+							..default()
+						},
+						transform: Transform {
+							translation: Vec3::new(x, y, 0.0),
+							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
+							..default()
+						},
 						..default()
 					})
 					.insert(FieldCellLabel(i, j))
@@ -116,22 +133,10 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			}
 		}
 	}
+	cmds.spawn(bundle);
 }
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands) {
-	// create the entity handling the algorithm
-	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
-	let map_length = 1920;
-	let map_depth = 1920;
-	let sector_resolution = 640;
-	let actor_size = 16.0;
-	cmds.spawn(FlowFieldTilesBundle::from_ron(
-		map_length,
-		map_depth,
-		sector_resolution,
-		actor_size,
-		&path,
-	));
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
 		sprite: Sprite {
@@ -144,7 +149,7 @@ fn setup_navigation(mut cmds: Commands) {
 			..default()
 		},
 		transform: Transform {
-			translation: Vec3::new(928.0, 920.0, 1.0),
+			translation: Vec3::new(0.0, 0.0, 2.0),
 			scale: Vec3::new(16.0, 16.0, 1.0),
 			..default()
 		},
@@ -319,89 +324,6 @@ fn stop_at_destination(
 				path.metadata = None;
 				path.portal_route = None;
 			}
-		}
-	}
-}
-
-/// Get asset path to sprite icons
-fn get_basic_icon(value: u8) -> String {
-	if value == 255 {
-		String::from("ordinal_icons/impassable.png")
-	} else if value == 1 {
-		String::from("ordinal_icons/goal.png")
-	} else {
-		panic!("Require basic icon")
-	}
-}
-
-/// Whenever the actor has a path assigned attempt to get the current flowfield and update all the map sprites to visualise the directions of flow
-fn update_sprite_visuals_based_on_actor(
-	actor_q: Query<&Pathing, With<Actor>>,
-	flowfield_q: Query<&FlowFieldCache>,
-	costfield_q: Query<&SectorCostFields>,
-	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel, &SectorLabel)>,
-	asset_server: Res<AssetServer>,
-) {
-	let f_cache = flowfield_q.get_single().unwrap();
-	let sc_cache = costfield_q.get_single().unwrap();
-	let pathing = actor_q.get_single().unwrap();
-	if let Some(route) = &pathing.portal_route {
-		let mut route_map: HashMap<SectorID, FieldCell> = HashMap::new();
-		for (s, g) in route.iter() {
-			route_map.insert(*s, *g);
-		}
-		for (mut handle, field_cell_label, sector_label) in &mut field_cell_q {
-			// look for the value in the route_map if it's part of the flow, otherwise use the cost field
-			if route_map.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
-				let goal = route_map
-					.get(&SectorID::new(sector_label.0, sector_label.1))
-					.unwrap();
-				if let Some(flowfield) =
-					f_cache.get_field(SectorID::new(sector_label.0, sector_label.1), *goal)
-				{
-					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
-						field_cell_label.0,
-						field_cell_label.1,
-					));
-					let icon = get_ord_icon(flow_value);
-					let new_handle: Handle<Image> = asset_server.load(icon);
-					*handle = new_handle;
-				}
-			} else {
-				let value = sc_cache
-					.get_baseline()
-					.get(&SectorID::new(sector_label.0, sector_label.1))
-					.unwrap()
-					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
-				// if value == 255 {
-				// 	continue
-				// }
-				let icon = get_basic_icon(value);
-				let new_handle: Handle<Image> = asset_server.load(icon);
-				*handle = new_handle;
-			}
-		}
-	}
-}
-/// Get the asset path to ordinal icons
-fn get_ord_icon(value: u8) -> String {
-	if is_goal(value) {
-		String::from("ordinal_icons/goal.png")
-	} else if has_line_of_sight(value) {
-		String::from("ordinal_icons/los.png")
-	} else {
-		//
-		let ordinal = get_ordinal_from_bits(value);
-		match ordinal {
-			Ordinal::North => String::from("ordinal_icons/north.png"),
-			Ordinal::East => String::from("ordinal_icons/east.png"),
-			Ordinal::South => String::from("ordinal_icons/south.png"),
-			Ordinal::West => String::from("ordinal_icons/west.png"),
-			Ordinal::NorthEast => String::from("ordinal_icons/north_east.png"),
-			Ordinal::SouthEast => String::from("ordinal_icons/south_east.png"),
-			Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
-			Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
-			Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
 		}
 	}
 }

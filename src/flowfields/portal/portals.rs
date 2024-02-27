@@ -48,63 +48,61 @@ use bevy::reflect::Reflect;
 
 use crate::prelude::*;
 
-/// Portals contains an array of length 4 (one element for each side of a sector) where the values are lists of the portals. The elements correspond to Ordinals in a strict ordering of `0..=3 == North, East,
-/// South, West`
+/// Portals contains a list for each side of a Sector of which [FieldCell]s have a Portal
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Default, Debug, Clone, Reflect)]
-pub struct Portals([Vec<FieldCell>; 4]);
+pub struct Portals {
+	/// Portals along the northern side of a sector
+	north: Vec<FieldCell>,
+	/// Portals along the eastern side of a sector
+	east: Vec<FieldCell>,
+	/// Portals along the southern side of a sector
+	south: Vec<FieldCell>,
+	/// Portals along the western side of a sector
+	west: Vec<FieldCell>,
+}
 
 impl Portals {
-	/// Get a reference to the array list of [FieldCell]
+	/// Get a reference the Portals along a partiuclar side of a sector
 	#[cfg(not(tarpaulin_include))]
-	pub fn get(&self) -> &[Vec<FieldCell>; 4] {
-		&self.0
+	pub fn get(&self, ordinal: &Ordinal) -> &Vec<FieldCell> {
+		match ordinal {
+			Ordinal::North => &self.north,
+			Ordinal::East => &self.east,
+			Ordinal::South => &self.south,
+			Ordinal::West => &self.west,
+			_ => panic!("Ordinal {:?} is invalid when looking up portals", ordinal),
+		}
 	}
 	/// Get a mutable reference to the array list of [FieldCell]
 	#[cfg(not(tarpaulin_include))]
-	pub fn get_mut(&mut self) -> &mut [Vec<FieldCell>; 4] {
-		&mut self.0
-	}
-	/// Get all the [FieldCell] portals as a list
-	pub fn get_all(&self) -> Vec<FieldCell> {
-		self.get()
-			.iter()
-			.flatten()
-			.cloned()
-			.collect::<Vec<FieldCell>>()
-	}
-	/// Get a reference to the list of [FieldCell]s along the side of a sector defined by the [Ordinal]
-	#[cfg(not(tarpaulin_include))]
-	pub fn get_portals_for_side(&self, ordinal: &Ordinal) -> &Vec<FieldCell> {
+	pub fn get_mut(&mut self, ordinal: &Ordinal) -> &mut Vec<FieldCell> {
 		match ordinal {
-			Ordinal::North => &self.0[0],
-			Ordinal::East => &self.0[1],
-			Ordinal::South => &self.0[2],
-			Ordinal::West => &self.0[3],
-			_ => panic!(
-				"Portals ordinal can only be North, East, South or West. Asked for {:?}",
-				ordinal
-			),
+			Ordinal::North => &mut self.north,
+			Ordinal::East => &mut self.east,
+			Ordinal::South => &mut self.south,
+			Ordinal::West => &mut self.west,
+			_ => panic!("Ordinal {:?} is invalid when looking up portals", ordinal),
 		}
 	}
-	/// Get a mutable reference to the list of [FieldCell]s along the side of a sector defined
-	/// by the [Ordinal]
-	pub fn get_portals_for_side_mut(&mut self, ordinal: &Ordinal) -> &mut Vec<FieldCell> {
+	/// Remove the [FieldCell] of Portals for the `ordinal` side of a sector
+	fn clear(&mut self, ordinal: Ordinal) {
 		match ordinal {
-			Ordinal::North => &mut self.0[0],
-			Ordinal::East => &mut self.0[1],
-			Ordinal::South => &mut self.0[2],
-			Ordinal::West => &mut self.0[3],
+			Ordinal::North => self.north.clear(),
+			Ordinal::East => self.east.clear(),
+			Ordinal::South => self.south.clear(),
+			Ordinal::West => self.west.clear(),
 			_ => panic!(
-				"Portals ordinal can only be North, East, South or West. Asked for {:?}",
+				"Ordinal {:?} is invalid when clearing a portal side",
 				ordinal
 			),
 		}
 	}
 	/// Remove all [FieldCell] elements from the lists of [FieldCell]
-	fn clear(&mut self) {
-		for vec in self.0.iter_mut() {
-			vec.clear();
+	fn clear_all(&mut self) {
+		let ords = [Ordinal::North, Ordinal::South, Ordinal::West, Ordinal::East];
+		for ord in ords {
+			self.clear(ord);
 		}
 	}
 	/// When a sectors [CostField] is updated the portal [FieldCell]s of the sector and
@@ -135,7 +133,7 @@ impl Portals {
 		sector_id: &SectorID,
 		map_dimensions: &MapDimensions,
 	) {
-		self.clear();
+		self.clear_all();
 		// there are up to 4 lists of [FieldCell]s for a given sector, in case this sector being
 		// updated is on a boundary we need to determine the valid elements of [Portals] that
 		// should be updated
@@ -150,7 +148,7 @@ impl Portals {
 		for (ord, adjoining_sector_id) in valid_ordinals_for_this_sector.iter() {
 			match ord {
 				Ordinal::North => {
-					let portal_nodes = self.get_portals_for_side_mut(ord);
+					let portal_nodes = self.get_mut(ord);
 					let column_range = 0..FIELD_RESOLUTION;
 					let fixed_row = 0;
 					let adjoining_cost_field = sector_cost_fields
@@ -200,7 +198,7 @@ impl Portals {
 					}
 				}
 				Ordinal::East => {
-					let portal_nodes = self.get_portals_for_side_mut(ord);
+					let portal_nodes = self.get_mut(ord);
 					let fixed_column = FIELD_RESOLUTION - 1;
 					let row_range = 0..FIELD_RESOLUTION;
 					let adjoining_cost_field = sector_cost_fields
@@ -250,7 +248,7 @@ impl Portals {
 					}
 				}
 				Ordinal::South => {
-					let portal_nodes = self.get_portals_for_side_mut(ord);
+					let portal_nodes = self.get_mut(ord);
 					let column_range = 0..FIELD_RESOLUTION;
 					let fixed_row = FIELD_RESOLUTION - 1;
 					let adjoining_cost_field = sector_cost_fields
@@ -300,7 +298,7 @@ impl Portals {
 					}
 				}
 				Ordinal::West => {
-					let portal_nodes = self.get_portals_for_side_mut(ord);
+					let portal_nodes = self.get_mut(ord);
 					let fixed_column = 0;
 					let row_range = 0..FIELD_RESOLUTION;
 					let adjoining_cost_field = sector_cost_fields
@@ -572,10 +570,10 @@ mod tests {
 		let eastern_side_portal_count = 2;
 		let southern_side_portal_count = 1;
 		let western_side_portal_count = 0;
-		assert_eq!(northern_side_portal_count, portals.0[0].len());
-		assert_eq!(eastern_side_portal_count, portals.0[1].len());
-		assert_eq!(southern_side_portal_count, portals.0[2].len());
-		assert_eq!(western_side_portal_count, portals.0[3].len());
+		assert_eq!(northern_side_portal_count, portals.north.len());
+		assert_eq!(eastern_side_portal_count, portals.east.len());
+		assert_eq!(southern_side_portal_count, portals.south.len());
+		assert_eq!(western_side_portal_count, portals.west.len());
 	}
 	#[test]
 	fn portals_top_middle_sector() {
@@ -601,10 +599,10 @@ mod tests {
 		let eastern_side_portal_count = 2;
 		let southern_side_portal_count = 1;
 		let western_side_portal_count = 1;
-		assert_eq!(northern_side_portal_count, portals.0[0].len());
-		assert_eq!(eastern_side_portal_count, portals.0[1].len());
-		assert_eq!(southern_side_portal_count, portals.0[2].len());
-		assert_eq!(western_side_portal_count, portals.0[3].len());
+		assert_eq!(northern_side_portal_count, portals.north.len());
+		assert_eq!(eastern_side_portal_count, portals.east.len());
+		assert_eq!(southern_side_portal_count, portals.south.len());
+		assert_eq!(western_side_portal_count, portals.west.len());
 	}
 	#[test]
 	fn portals_centre_sector() {
@@ -630,10 +628,10 @@ mod tests {
 		let eastern_side_portal_count = 2;
 		let southern_side_portal_count = 1;
 		let western_side_portal_count = 1;
-		assert_eq!(northern_side_portal_count, portals.0[0].len());
-		assert_eq!(eastern_side_portal_count, portals.0[1].len());
-		assert_eq!(southern_side_portal_count, portals.0[2].len());
-		assert_eq!(western_side_portal_count, portals.0[3].len());
+		assert_eq!(northern_side_portal_count, portals.north.len());
+		assert_eq!(eastern_side_portal_count, portals.east.len());
+		assert_eq!(southern_side_portal_count, portals.south.len());
+		assert_eq!(western_side_portal_count, portals.west.len());
 	}
 	#[test]
 	fn portals_bottom_middle_sector() {
@@ -671,10 +669,10 @@ mod tests {
 		let eastern_side_portal_count = 2;
 		let southern_side_portal_count = 0;
 		let western_side_portal_count = 1;
-		assert_eq!(northern_side_portal_count, portals.0[0].len());
-		assert_eq!(eastern_side_portal_count, portals.0[1].len());
-		assert_eq!(southern_side_portal_count, portals.0[2].len());
-		assert_eq!(western_side_portal_count, portals.0[3].len());
+		assert_eq!(northern_side_portal_count, portals.north.len());
+		assert_eq!(eastern_side_portal_count, portals.east.len());
+		assert_eq!(southern_side_portal_count, portals.south.len());
+		assert_eq!(western_side_portal_count, portals.west.len());
 	}
 	#[test]
 	fn verify_rebuilding() {
@@ -761,20 +759,10 @@ mod tests {
 		// |_________|_________|_________|
 
 		// ensure new portals are correct
-		let actual_first = [
-			vec![],
-			vec![FieldCell::new(9, 4)],
-			vec![FieldCell::new(1, 9), FieldCell::new(7, 9)],
-			vec![],
-		];
-		let actual_second = [
-			vec![FieldCell::new(1, 0), FieldCell::new(7, 0)],
-			vec![FieldCell::new(9, 4)],
-			vec![FieldCell::new(4, 9)],
-			vec![],
-		];
-		assert_eq!(actual_first[2], post_first.get()[2]);
-		assert_eq!(actual_second[0], post_second.get()[0]);
+		let actual_first = vec![FieldCell::new(1, 9), FieldCell::new(7, 9)];
+		let actual_second = vec![FieldCell::new(1, 0), FieldCell::new(7, 0)];
+		assert_eq!(actual_first, *post_first.get(&Ordinal::South));
+		assert_eq!(actual_second, *post_second.get(&Ordinal::North));
 	}
 	#[test]
 	fn expand_portal_goals_north() {

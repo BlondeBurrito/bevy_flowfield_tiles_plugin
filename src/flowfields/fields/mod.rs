@@ -358,6 +358,25 @@ impl RouteCache {
 		trace!("Route: {:?}", route);
 		route
 	}
+	/// Get a high-level sector to sector route. Returns [None] if it doesn't exist
+	pub fn get_route_with_metadata(
+		&self,
+		source_sector: SectorID,
+		source_field: FieldCell,
+		target_sector: SectorID,
+		goal_id: FieldCell,
+	) -> Option<(&RouteMetadata, &Vec<(SectorID, FieldCell)>)> {
+		let route_data = RouteMetadata {
+			source_sector,
+			source_field,
+			target_sector,
+			target_goal: goal_id,
+			time_generated: Duration::default(),
+		};
+		let route = self.routes.get_key_value(&route_data);
+		trace!("Route: {:?}", route);
+		route
+	}
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`
 	pub fn add_to_queue(
 		&mut self,

@@ -31,26 +31,29 @@ impl Plugin for FlowFieldTilesPlugin {
 			.add_event::<cost_layer::EventUpdateCostfieldsCell>()
 			.add_event::<cost_layer::EventCleanCaches>()
 			.add_event::<flow_layer::EventPathRequest>()
-			.configure_sets(Update, (OrderingSet::Tidy, OrderingSet::Calculate).chain())
+			.configure_sets(
+				PreUpdate,
+				(OrderingSet::Tidy, OrderingSet::Calculate).chain(),
+			)
 			.add_systems(
-				Update,
+				PreUpdate,
 				(
 					(
 						flow_layer::cleanup_old_routes,
 						flow_layer::cleanup_old_flowfields,
+						(
+							cost_layer::process_costfields_updates,
+							cost_layer::clean_cache,
+						)
+							.chain(),
 					)
 						.in_set(OrderingSet::Tidy),
 					(
-						cost_layer::process_costfields_updates,
-						// cost_layer::rebuild_portals,
-						// cost_layer::update_portal_graph,
-						cost_layer::clean_cache,
 						flow_layer::event_insert_route_queue,
 						flow_layer::process_route_queue,
 						flow_layer::create_queued_integration_fields,
 						flow_layer::create_flow_fields,
 					)
-						.chain()
 						.in_set(OrderingSet::Calculate),
 				),
 			);
