@@ -75,20 +75,34 @@ impl Field<u8> for CostField {
 	}
 }
 impl CostField {
-	/// Tests whether two portals can see each other within a sector (one might be boxed in by impassable cost field values), additionally returns the number of steps taken to find a route between the two - this can be used as an edge weight
-	pub fn can_internal_portal_pair_see_each_other(
+	/// Tests whether two cells can see each other within a sector (one might be boxed in by impassable cost field values)
+	pub fn is_cell_pair_reachable(
 		&self,
 		source: FieldCell,
 		target: FieldCell,
-	) -> (bool, i32) {
-		// instance of corner portals overlapping from cramped world
+	) -> bool {
+		// instance of corner cells overlapping
 		if source == target {
-			return (true, 0);
+			return true;
 		}
 		let queue = vec![source];
 		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
 		let visited = HashSet::new();
-		process_neighbours(target, queue, visited, self, 0)
+		process_neighbours(&target, queue, visited, self)
+	}
+	pub fn get_distance_between_cells(
+		&self,
+		source: &FieldCell,
+		target: &FieldCell,
+	) -> Option<i32> {
+		// instance of corner portals overlapping from cramped world
+		if source == target {
+			return Some(1);
+		}
+		let queue = vec![*source];
+		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
+		let visited = HashSet::new();
+		process_neighbours_distance(target, queue, visited, self, 0)
 	}
 	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]
@@ -104,22 +118,20 @@ impl CostField {
 
 /// Recursively process the cells to see if there's a path
 fn process_neighbours(
-	target: FieldCell,
+	target: &FieldCell,
 	queue: Vec<FieldCell>,
 	mut visited: HashSet<FieldCell>,
 	cost_field: &CostField,
-	mut steps_taken: i32,
-) -> (bool, i32) {
+) -> bool {
 	let mut next_neighbours = Vec::new();
-	// iterate over the queue calculating neighbour int costs
-	steps_taken += 1;
+	// iterate over the queue calculating neighbour costs
 	for cell in queue.iter() {
 		visited.insert(*cell);
 		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
 		// iterate over the neighbours to try and find the target
 		for n in neighbours.iter() {
-			if *n == target {
-				return (true, steps_taken);
+			if *n == *target {
+				return true;
 			}
 			let cell_cost = cost_field.get_field_cell_value(*n);
 			// ignore impassable cells
@@ -130,9 +142,43 @@ fn process_neighbours(
 		}
 	}
 	if !next_neighbours.is_empty() {
-		process_neighbours(target, next_neighbours, visited, cost_field, steps_taken)
+		process_neighbours(target, next_neighbours, visited, cost_field)
 	} else {
-		(false, steps_taken)
+		false
+	}
+}
+//TODO change form steps taken to some kind fo distance
+/// Recursively process the cells to see if there's a path
+fn process_neighbours_distance(
+	target: &FieldCell,
+	queue: Vec<FieldCell>,
+	mut visited: HashSet<FieldCell>,
+	cost_field: &CostField,
+	mut steps_taken: i32,
+) -> Option<i32> {
+	let mut next_neighbours = Vec::new();
+	// iterate over the queue calculating neighbour int costs
+	steps_taken += 1;
+	for cell in queue.iter() {
+		visited.insert(*cell);
+		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
+		// iterate over the neighbours to try and find the target
+		for n in neighbours.iter() {
+			if *n == *target {
+				return Some(steps_taken);
+			}
+			let cell_cost = cost_field.get_field_cell_value(*n);
+			// ignore impassable cells
+			if cell_cost != 255 && !visited.contains(n) {
+				// keep exploring
+				next_neighbours.push(*n);
+			}
+		}
+	}
+	if !next_neighbours.is_empty() {
+		process_neighbours_distance(target, next_neighbours, visited, cost_field, steps_taken)
+	} else {
+		None
 	}
 }
 
@@ -176,10 +222,8 @@ mod tests {
 		let source = FieldCell::new(0, 4);
 		let target = FieldCell::new(6, 9);
 
-		let result = cost_field.can_internal_portal_pair_see_each_other(source, target);
-
-		let actual = (true, 13);
-		assert_eq!(actual, result)
+		let result = cost_field.is_cell_pair_reachable(source, target);
+		assert!(result)
 	}
 	#[test]
 	fn internal_portal_visibility_false() {
@@ -205,9 +249,60 @@ mod tests {
 		let source = FieldCell::new(0, 4);
 		let target = FieldCell::new(6, 9);
 
-		let result = cost_field.can_internal_portal_pair_see_each_other(source, target);
+		let result = cost_field.is_cell_pair_reachable(source, target);
 
-		let actual = (false, 14);
-		assert_eq!(actual.0, result.0)
+		let actual = false;
+		assert_eq!(actual, result)
+	}
+	#[test]
+	fn internal_cell_distance_some() {
+		//  _____________________________
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |P_|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|x_|x_|__|__|__|
+		// |__|__|__|__|__|x_|__|__|__|__|
+		// |__|__|__|__|__|x_|P_|__|__|__|
+		let mut cost_field = CostField::default();
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(6, 7));
+		let source = FieldCell::new(0, 4);
+		let target = FieldCell::new(6, 9);
+
+		let result = cost_field.get_distance_between_cells(&source, &target);
+		assert!(result.is_some())
+	}
+	#[test]
+	fn internal_cell_distance_none() {
+		//  _____________________________
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |P_|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|__|__|__|__|__|
+		// |__|__|__|__|__|x_|x_|x_|__|__|
+		// |__|__|__|__|__|x_|__|x_|__|__|
+		// |__|__|__|__|__|x_|P_|x_|__|__|
+		let mut cost_field = CostField::default();
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 9));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(5, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(6, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 7));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 8));
+		cost_field.set_field_cell_value(255, FieldCell::new(7, 9));
+		let source = FieldCell::new(0, 4);
+		let target = FieldCell::new(6, 9);
+
+		let result = cost_field.get_distance_between_cells(&source, &target);
+		assert!(result.is_none())
 	}
 }

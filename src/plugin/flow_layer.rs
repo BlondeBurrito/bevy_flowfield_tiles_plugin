@@ -91,13 +91,13 @@ pub fn event_insert_route_queue(
 							.get_scaled()
 							.get(&event.target_sector)
 						{
-							let vis = cost_field.can_internal_portal_pair_see_each_other(
+							let vis = cost_field.is_cell_pair_reachable(
 								event.source_field_cell,
 								event.target_goal,
 							);
 							// if the two cells are reachable from within the same sector
 							// then there is a local route
-							if vis.0 {
+							if vis {
 								cache.add_to_queue(
 									event.source_sector,
 									event.source_field_cell,
