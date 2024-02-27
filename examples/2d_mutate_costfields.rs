@@ -207,7 +207,15 @@ fn spawn_actors(
 	mut cmds: Commands,
 	map: Query<&MapDimensions>,
 	mut event: EventWriter<EventPathRequest>,
+	actors_q: Query<&Actor>,
 ) {
+	let mut a_count = 0;
+	for _ in &actors_q {
+		a_count += 1;
+	}
+	if a_count > 1500 {
+		return
+	}
 	// pick a start
 	let starting_sectors = [(0, 0), (1, 0), (2, 0)];
 	let starting_field_cells = [

@@ -22,14 +22,17 @@ struct Node {
 	/// FieldCell (column, row) position of the portal
 	portal_cell: FieldCell,
 	weight: u8,
+	/// What side of the sector the [Node] sits on
+	side: Ordinal,
 }
 
 impl Node {
-	fn new(sector_id: SectorID, portal_cell: FieldCell, weight: u8) -> Self {
+	fn new(sector_id: SectorID, portal_cell: FieldCell, weight: u8, side: Ordinal) -> Self {
 		Node {
 			sector_id,
 			portal_cell,
 			weight,
+			side,
 		}
 	}
 	fn get_sector(&self) -> &SectorID {
@@ -59,7 +62,7 @@ impl Node {
 
 impl PartialEq for Node {
 	fn eq(&self, other: &Self) -> bool {
-		self.sector_id == other.sector_id && self.portal_cell == other.portal_cell
+		self.sector_id == other.sector_id && self.portal_cell == other.portal_cell && self.side == other.side
 	}
 }
 
@@ -183,7 +186,7 @@ impl PortalGraph {
 						.get(sector_id)
 						.unwrap()
 						.get_field_cell_value(*cell);
-					let portal_node = Node::new(*sector_id, *cell, weight);
+					let portal_node = Node::new(*sector_id, *cell, weight, *ord);
 					// info!("Inserting {:?}", portal_node);
 					// info!("Current graph {:?}", self);
 					self.add_node(portal_node);
@@ -221,17 +224,36 @@ impl PortalGraph {
 		}
 		for (i, (source, ord_source)) in cells.iter().enumerate() {
 			for (j, (target, ord_target)) in cells.iter().enumerate() {
-				if  i != j {
+				// handle nodes on same cell but for differenr sides
+				if i == j {
+					if ord_source == ord_target {
+						let is_visible = cost_field
+						.can_internal_portal_pair_see_each_other(**source, **target);
+					if is_visible.0 {
+						// create the edge
+						let s_weight = cost_field.get_field_cell_value(**source);
+						let source_node =
+							Node::new(*sector_id, **source, s_weight, **ord_source);
+						let t_weight = cost_field.get_field_cell_value(**target);
+						let target_node =
+							Node::new(*sector_id, **target, t_weight, **ord_target);
+						//TODO distance needs to involve using part of the costs weight
+						let distance = is_visible.1;
+						let edge = Edge::new(source_node, target_node, distance);
+						self.add_edge(edge);
+					}
+					}
+				} else {
 					let is_visible = cost_field
 						.can_internal_portal_pair_see_each_other(**source, **target);
 					if is_visible.0 {
 						// create the edge
 						let s_weight = cost_field.get_field_cell_value(**source);
 						let source_node =
-							Node::new(*sector_id, **source, s_weight);
+							Node::new(*sector_id, **source, s_weight, **ord_source);
 						let t_weight = cost_field.get_field_cell_value(**target);
 						let target_node =
-							Node::new(*sector_id, **target, t_weight);
+							Node::new(*sector_id, **target, t_weight, **ord_target);
 						//TODO distance needs to involve using part of the costs weight
 						let distance = is_visible.1;
 						let edge = Edge::new(source_node, target_node, distance);
@@ -282,13 +304,13 @@ impl PortalGraph {
 			for (i, cell) in boundary_portals.iter().enumerate() {
 				// source of the edge
 				let weight = cost_field_source.get_field_cell_value(*cell);
-				let source_node = Node::new(*sector_id, *cell, weight);
+				let source_node = Node::new(*sector_id, *cell, weight, *ordinal);
 				// target of the edge
 				// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
 				let neighbour_portal = neighbour_boundary_portals[i];
 				let weight = cost_field_target.get_field_cell_value(neighbour_portal);
 				let target_node =
-					Node::new(*neighbour_id, neighbour_portal, weight);
+					Node::new(*neighbour_id, neighbour_portal, weight, ordinal.inverse());
 				// add the dge
 				let edge = Edge::new(source_node, target_node, SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE);
 				self.add_edge(edge);
@@ -355,9 +377,10 @@ impl PortalGraph {
 			let portals = sector_portals.get().get(sector).unwrap();
 			self.create_sector_internal_edges(sector, cost_field, portals);
 		}
-		// create external edges from the changed sector to neighbours and back
+		// create external edges from the changed sector to neighbours
 		let portals = sector_portals.get().get(&changed_sector).unwrap();
 		self.create_sector_external_edges(sector_portals, sector_cost_fields, &changed_sector, portals, &sectors_to_rebuild);
+		// create external edges from the neighbours ot the changes sector
 		for (ord, neighbour_sector) in sectors_to_rebuild.iter() {
 			let portals = sector_portals.get().get(neighbour_sector).unwrap();
 			let orignal_sector = vec![(ord.inverse(), changed_sector)];
@@ -458,11 +481,13 @@ impl PortalGraph {
 					source_sector_id,
 					*source_portal,
 					source_weight,
+					*source_ordinal,
 				);
 				let target_portal_node = Node::new(
 					target_sector_id,
 					*target_portal,
 					target_weight,
+					*target_ordinal
 				);
 				if let Some(path) =
 					self.find_path_between_sector_portals(source_portal_node, target_portal_node)
@@ -888,7 +913,7 @@ use super::*;
 		// _____________________
 		// |         |         |
 		// |         |         |
-		// |         P         |
+		// |         P         |20/26
 		// |         |x        |
 		// |___p___xp<____P____|
 		// |         |         |
@@ -898,10 +923,11 @@ use super::*;
 		// |_________|_________|
 		let result_nodes = graph.get_nodes().len();
 		let result_edges = graph.get_edges().len();
-		let actual_nodes = 11;
-		let actual_edges_internal = 20;
+		let actual_nodes = 12;
+		let actual_edges_internal = 36;
 		let actual_edges_external = 12;
 		let actual_edges = actual_edges_internal +actual_edges_external;
+		println!("graph: {:?}", graph);
 		println!("nodes");
 		assert_eq!(actual_nodes, result_nodes);
 		println!("edges");
@@ -945,12 +971,12 @@ use super::*;
 		let source_sector = SectorID::new(0, 0);
 		let source_field = FieldCell::new(4, 9);
 		let source_weight = sector_cost_fields.get_scaled().get(&source_sector).unwrap().get_field_cell_value(source_field);
-		let source_portal_node = Node::new(source_sector, source_field, source_weight);
+		let source_portal_node = Node::new(source_sector, source_field, source_weight, Ordinal::South) ;
 
 		let target_sector = SectorID::new(0, 2);
 		let target_field = FieldCell::new(4, 0);
 		let target_weight = sector_cost_fields.get_scaled().get(&target_sector).unwrap().get_field_cell_value(target_field);
-		let target_portal_node = Node::new(target_sector, target_field, target_weight);
+		let target_portal_node = Node::new(target_sector, target_field, target_weight, Ordinal::North);
 
 		let path = graph.find_path_between_sector_portals(source_portal_node, target_portal_node).unwrap();
 		let actual = vec![(SectorID::new(0, 0), FieldCell::new(4, 9)), (SectorID::new(0, 1), FieldCell::new(4, 0)), (SectorID::new(0, 1), FieldCell::new(4, 9)), (SectorID::new(0, 2), FieldCell::new(4, 0))];
