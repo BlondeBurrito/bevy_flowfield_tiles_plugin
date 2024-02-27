@@ -214,7 +214,7 @@ fn spawn_actors(
 		a_count += 1;
 	}
 	if a_count > 1500 {
-		return
+		return;
 	}
 	// pick a start
 	let starting_sectors = [(0, 0), (1, 0), (2, 0)];

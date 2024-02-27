@@ -6,8 +6,11 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use bevy::{prelude::*, utils::{HashMap, HashSet}};
 use crate::prelude::*;
+use bevy::{
+	prelude::*,
+	utils::{HashMap, HashSet},
+};
 
 /// Used to provide a heuristic for portals that sit next to each other across
 /// a portal boundary. This is used in the a-star calculation for determining
@@ -44,32 +47,28 @@ impl Node {
 		&self.sector_id
 	}
 	/// Get the [FieldCell] of the portal
-	fn get_portal_cell(&self) -> & FieldCell {
+	fn get_portal_cell(&self) -> &FieldCell {
 		&self.portal_cell
 	}
 	/// Get the [CostField] based expense of traversing this portal
 	fn get_weight(&self) -> u8 {
 		self.weight
 	}
+	/// Get the [Ordinal] side of the sector that this [Node] sits on
+	fn get_side(&self) -> &Ordinal {
+		&self.side
+	}
 	/// Compare the [SectorID] of `self` with another `compare` to see if they're the same
 	fn is_in_sector(&self, compare: &SectorID) -> bool {
 		self.sector_id == *compare
-	}
-	/// Based on an [Ordinal] identify if the `portal_cell` field ([FieldCell]) sits along that `ordinal` boundary
-	fn is_on_ordinal_boundary(&self, ordinal: &Ordinal) -> bool {
-		match ordinal {
-			Ordinal::North => self.portal_cell.get_row() == 0,
-			Ordinal::East => self.portal_cell.get_column() == FIELD_RESOLUTION - 1,
-			Ordinal::South => self.portal_cell.get_row() == FIELD_RESOLUTION - 1,
-			Ordinal::West => self.portal_cell.get_column() == 0,
-			_ => panic!("Ordinal {:?} is not acceptable in comparing PortalNode boundary locations", ordinal),
-		}
 	}
 }
 
 impl PartialEq for Node {
 	fn eq(&self, other: &Self) -> bool {
-		self.sector_id == other.sector_id && self.portal_cell == other.portal_cell && self.side == other.side
+		self.sector_id == other.sector_id
+			&& self.portal_cell == other.portal_cell
+			&& self.side == other.side
 	}
 }
 
@@ -97,11 +96,7 @@ struct Edge {
 impl Edge {
 	/// Create a new [Edge] indicating that a portal `from` connects with `to`, with a weighting of `distance`
 	fn new(from: Node, to: Node, distance: i32) -> Self {
-		Edge {
-			from,
-			to,
-			distance,
-		}
+		Edge { from, to, distance }
 	}
 	/// Get the source [Node] of this edge
 	fn get_from(&self) -> &Node {
@@ -140,7 +135,7 @@ pub struct PortalGraph {
 	/// A pair of [Node]s that indicate that a [Node] within the current sector can allow passage to another [Node] within the same sector
 	edges_internal: HashSet<Edge>,
 	/// A pair of [Node]s that indicate that a [Node] within the current sector can allow passage to another [Node] in a different sector
-	edges_external: HashSet<Edge>
+	edges_external: HashSet<Edge>,
 }
 // interface methods to the graph
 impl PortalGraph {
@@ -225,19 +220,24 @@ impl PortalGraph {
 		}
 	}
 	/// For a given `sector_id` create a [Node] for each portal
-	fn create_sector_nodes(&mut self, sector_cost_fields: &SectorCostFields, sector_id: &SectorID, portals: &Portals) {
+	fn create_sector_nodes(
+		&mut self,
+		sector_cost_fields: &SectorCostFields,
+		sector_id: &SectorID,
+		portals: &Portals,
+	) {
 		let ords = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
-			for ord in ords.iter() {
-				for cell in portals.get(ord).iter() {
-					let weight = sector_cost_fields
-						.get_scaled()
-						.get(sector_id)
-						.unwrap()
-						.get_field_cell_value(*cell);
-					let portal_node = Node::new(*sector_id, *cell, weight, *ord);
-					self.add_node(portal_node);
-				}
+		for ord in ords.iter() {
+			for cell in portals.get(ord).iter() {
+				let weight = sector_cost_fields
+					.get_scaled()
+					.get(sector_id)
+					.unwrap()
+					.get_field_cell_value(*cell);
+				let portal_node = Node::new(*sector_id, *cell, weight, *ord);
+				self.add_node(portal_node);
 			}
+		}
 	}
 	/// Iterate over every sector and create [Edge]s between each [Node] within
 	/// that sector
@@ -270,17 +270,15 @@ impl PortalGraph {
 		}
 		for (i, (source, ord_source)) in cells.iter().enumerate() {
 			for (j, (target, ord_target)) in cells.iter().enumerate() {
-				if  i != j {
-					let is_visible = cost_field
-						.can_internal_portal_pair_see_each_other(**source, **target);
+				if i != j {
+					let is_visible =
+						cost_field.can_internal_portal_pair_see_each_other(**source, **target);
 					if is_visible.0 {
 						// create the edge
 						let s_weight = cost_field.get_field_cell_value(**source);
-						let source_node =
-							Node::new(*sector_id, **source, s_weight, **ord_source);
+						let source_node = Node::new(*sector_id, **source, s_weight, **ord_source);
 						let t_weight = cost_field.get_field_cell_value(**target);
-						let target_node =
-							Node::new(*sector_id, **target, t_weight, **ord_target);
+						let target_node = Node::new(*sector_id, **target, t_weight, **ord_target);
 						//TODO distance needs to involve using part of the costs weight
 						let distance = is_visible.1;
 						let edge = Edge::new(source_node, target_node, distance);
@@ -323,6 +321,7 @@ impl PortalGraph {
 			let cost_field_source = sector_cost_fields.get_scaled().get(sector_id).unwrap();
 			let cost_field_target = sector_cost_fields.get_scaled().get(neighbour_id).unwrap();
 			// get portals along boundary of current sector being worked on
+			//? if a portal overlaps a corner we lose an edge pair as we only look at one ord
 			let boundary_portals = portals.get(ordinal);
 			// get inverse ordinal portals along boundary of the neighbour
 			let neighbour_portals = sector_portals.get().get(neighbour_id).unwrap();
@@ -339,7 +338,11 @@ impl PortalGraph {
 				let target_node =
 					Node::new(*neighbour_id, neighbour_portal, weight, ordinal.inverse());
 				// add the dge
-				let edge = Edge::new(source_node, target_node, SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE);
+				let edge = Edge::new(
+					source_node,
+					target_node,
+					SECTOR_BOUNDARY_PORTAL_PORTAL_DISTANCE,
+				);
 				self.add_edge_external(edge);
 			}
 		}
@@ -375,7 +378,7 @@ impl PortalGraph {
 		for (ord, sector) in sectors_to_rebuild.iter() {
 			let neighbours_boundary_ord = ord.inverse();
 			for n in original_graph.get_nodes().iter() {
-				if n.is_in_sector(sector) &&n.is_on_ordinal_boundary(&neighbours_boundary_ord) {
+				if n.is_in_sector(sector) && *n.get_side() == neighbours_boundary_ord {
 					nodes_to_remove.push(n);
 				}
 			}
@@ -389,28 +392,43 @@ impl PortalGraph {
 		self.create_sector_nodes(sector_cost_fields, &changed_sector, portals);
 		// create nodes in the neighbouring sectors
 		//TODO lets not rebuild all, on 3 sides of neighbours they should be exactly as they are
-		for (ord, sector) in sectors_to_rebuild.iter() {
+		for (_ord, sector) in sectors_to_rebuild.iter() {
 			let portals = sector_portals.get().get(sector).unwrap();
 			self.create_sector_nodes(sector_cost_fields, sector, portals);
 		}
 		// create internal edges within the changed sector
-		let cost_field = sector_cost_fields.get_scaled().get(&changed_sector).unwrap();
+		let cost_field = sector_cost_fields
+			.get_scaled()
+			.get(&changed_sector)
+			.unwrap();
 		self.create_sector_internal_edges(&changed_sector, cost_field, portals);
 		// recreate internal edges in the neighbouring sectors
 		//TODO lets not rebuild all, on 3 sides of neighbours they should be exactly as they are
-		for (ord, sector) in sectors_to_rebuild.iter() {
+		for (_ord, sector) in sectors_to_rebuild.iter() {
 			let cost_field = sector_cost_fields.get_scaled().get(sector).unwrap();
 			let portals = sector_portals.get().get(sector).unwrap();
 			self.create_sector_internal_edges(sector, cost_field, portals);
 		}
 		// create external edges from the changed sector to neighbours
 		let portals = sector_portals.get().get(&changed_sector).unwrap();
-		self.create_sector_external_edges(sector_portals, sector_cost_fields, &changed_sector, portals, &sectors_to_rebuild);
+		self.create_sector_external_edges(
+			sector_portals,
+			sector_cost_fields,
+			&changed_sector,
+			portals,
+			&sectors_to_rebuild,
+		);
 		// create external edges from the neighbours to the changed sector
 		for (ord, neighbour_sector) in sectors_to_rebuild.iter() {
 			let portals = sector_portals.get().get(neighbour_sector).unwrap();
 			let orignal_sector = vec![(ord.inverse(), changed_sector)];
-			self.create_sector_external_edges(sector_portals, sector_cost_fields, neighbour_sector, portals, &orignal_sector);
+			self.create_sector_external_edges(
+				sector_portals,
+				sector_cost_fields,
+				neighbour_sector,
+				portals,
+				&orignal_sector,
+			);
 		}
 		self
 	}
@@ -513,7 +531,7 @@ impl PortalGraph {
 					target_sector_id,
 					*target_portal,
 					target_weight,
-					*target_ordinal
+					*target_ordinal,
 				);
 				if let Some(path) =
 					self.find_path_between_sector_portals(source_portal_node, target_portal_node)
@@ -556,7 +574,10 @@ impl PortalGraph {
 	fn find_edges_internal(&self, source: Node) -> Vec<&Edge> {
 		let mut edges = vec![];
 		for edge in self.get_edges_internal().iter() {
-			if *edge.get_from().get_sector() == *source.get_sector() && *edge.get_to().get_sector() == *source.get_sector() && *edge.get_from().get_portal_cell() == *source.get_portal_cell(){
+			if *edge.get_from().get_sector() == *source.get_sector()
+				&& *edge.get_to().get_sector() == *source.get_sector()
+				&& *edge.get_from().get_portal_cell() == *source.get_portal_cell()
+			{
 				edges.push(edge);
 			}
 		}
@@ -573,11 +594,7 @@ impl PortalGraph {
 		edges
 	}
 	/// Based on https://github.com/BlondeBurrito/pathfinding_astar
-	fn astar(
-		&self,
-		source_node: Node,
-		target_node: Node,
-	) -> Option<(i32, Vec<Node>)> {
+	fn astar(&self, source_node: Node, target_node: Node) -> Option<(i32, Vec<Node>)> {
 		let nodes = self.get_nodes();
 		// ensure nodes data contains start and end points
 		if !nodes.contains(&source_node) {
@@ -962,7 +979,7 @@ use super::*;
 		// _____________________
 		// |         |         |
 		// |         |         |
-		// |         P         |20/26
+		// |         P         |
 		// |         |x        |
 		// |___p___xp<____P____|
 		// |         |         |
@@ -971,14 +988,14 @@ use super::*;
 		// |         |         |
 		// |_________|_________|
 		let result_nodes = graph.get_nodes().len();
-		let result_internal = graph.get_edges_internal().len() + graph.get_edges_external().len();
-		let result_external = graph.get_edges_external().len();
 		let actual_nodes = 12;
 		println!("nodes actual {}, result {}", actual_nodes, result_nodes);
 		assert_eq!(actual_nodes, result_nodes);
-		let actual_edges_internal = 36;
+		let result_internal = graph.get_edges_internal().len();
+		let actual_edges_internal = 26;
 		println!("edges_internal actual {},, result {}", actual_edges_internal, result_internal);
 		assert_eq!(actual_edges_internal, result_internal);
+		let result_external = graph.get_edges_external().len();
 		let actual_edges_external = 12;
 		println!("edges_external actual {}, result {}", actual_edges_external, result_external);
 		println!("edges ext {:?}", graph.get_edges_external());

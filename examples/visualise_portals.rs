@@ -200,10 +200,7 @@ fn create_counter(mut cmds: Commands) {
 }
 
 /// Update the counters for FPS, number of actors, time elapased and current fields cached
-fn update_counter(
-	sector_portals_q: Query<&SectorPortals>,
-	mut query: Query<&mut Text>,
-) {
+fn update_counter(sector_portals_q: Query<&SectorPortals>, mut query: Query<&mut Text>) {
 	let mut portal_count = 0;
 	let sp = sector_portals_q.get_single().unwrap();
 	for portals in sp.get().values() {
@@ -213,11 +210,8 @@ fn update_counter(
 		}
 	}
 	for mut text in &mut query {
-		match text.sections[0].value.as_str() {
-			"Portals: " => {
-						text.sections[1].value = format!("{portal_count:.2}");
-			}
-			_ => {}
+		if text.sections[0].value.as_str() == "Portals: " {
+			text.sections[1].value = format!("{portal_count:.2}");
 		}
 	}
 }
