@@ -126,6 +126,9 @@ impl std::hash::Hash for Edge {
 	}
 }
 
+/// The graph represents all the [Portals] across sectors in a [Node] notation. Each [Node] is then associated with `edges_internal` and `edges_external` which define routes to travel between [Portals].
+///
+/// The graph can be queried to find the best path of [Portals] from one sector to another
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component, Default, Reflect, Debug, Clone)]
 #[reflect(Component)]
