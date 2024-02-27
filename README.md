@@ -526,7 +526,14 @@ fn actor_steering(
 
 NB: generated FlowFields and Routes expire from their caches after 15 minutes, your steering pipeline may need to send a new `EventPathRequest` if one gets expired that an actor was relying on.
 
-NB: when a CostField is modified Portals and the PortalGraph are updated and any Routes or FlowFields involving the modified Sector CostField are removed. This means an actor would need a way of knowing (implicitly or explicitly) that it needs to have a new Route made via an `EventPathRequest`. Hopefully auto regeneration of these routes can be solved to take the burden away from the actors, see [issue](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/issues/8).
+NB: when a CostField is modified Portals and the PortalGraph are updated and any Routes or FlowFields involving the modified Sector CostField are removed - they will be regenerated but a CharacterController needs to be able to handle a route vanishing from the cache and then coming back (if it can come back, the CostField update may make a route invalid if a path no longer exists).
+
+### Things that may throw the PathRequest off
+
+If you're combining this with a Physics simulation you'll need to ensure that your CharacterController is very robust, consider some scenarios that may happen:
+
+* A moving actor collides with something that bounces it into a sector which is not part of its route. How can the actor be made aware that this has happened and request a new route?
+* An actor has escaped/tunnelled outside of your world (its translation exceeds the bounds of MapDimensions), should it be despawned or relocated to be within the bounds?
 
 # Features
 
