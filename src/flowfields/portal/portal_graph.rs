@@ -272,7 +272,7 @@ impl PortalGraph {
 			for (j, (target, ord_target)) in cells.iter().enumerate() {
 				if i != j {
 					if let Some(distance) =
-						cost_field.get_distance_between_cells(*source, *target) {
+						cost_field.get_distance_between_cells(source, target) {
 						// create the edge
 						let s_weight = cost_field.get_field_cell_value(**source);
 						let source_node = Node::new(*sector_id, **source, s_weight, **ord_source);

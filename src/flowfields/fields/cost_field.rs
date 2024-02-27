@@ -102,7 +102,7 @@ impl CostField {
 		let queue = vec![*source];
 		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
 		let visited = HashSet::new();
-		process_neighbours_distance(target, queue, visited, self, 0)
+		process_neighbours_distance(target, queue, visited, self, vec![0])
 	}
 	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]
@@ -147,29 +147,31 @@ fn process_neighbours(
 		false
 	}
 }
-//TODO change form steps taken to some kind fo distance
-/// Recursively process the cells to see if there's a path
+/// Recursively process the cells to see if there's a path and a weighting for the distance between the cell pair
 fn process_neighbours_distance(
 	target: &FieldCell,
 	queue: Vec<FieldCell>,
 	mut visited: HashSet<FieldCell>,
 	cost_field: &CostField,
-	mut steps_taken: i32,
+	mut steps_taken: Vec<i32>,
 ) -> Option<i32> {
 	let mut next_neighbours = Vec::new();
 	// iterate over the queue calculating neighbour int costs
-	steps_taken += 1;
 	for cell in queue.iter() {
 		visited.insert(*cell);
 		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
 		// iterate over the neighbours to try and find the target
 		for n in neighbours.iter() {
 			if *n == *target {
-				return Some(steps_taken);
+				let len = steps_taken.len() as i32;
+				let avg_cost = steps_taken.iter().sum::<i32>() / len;
+				return Some(avg_cost);
 			}
 			let cell_cost = cost_field.get_field_cell_value(*n);
 			// ignore impassable cells
 			if cell_cost != 255 && !visited.contains(n) {
+				// record the cost of each step, it cna be averaged later to given a weighting to the distance between the cell pair
+				steps_taken.push(cell_cost as i32);
 				// keep exploring
 				next_neighbours.push(*n);
 			}
