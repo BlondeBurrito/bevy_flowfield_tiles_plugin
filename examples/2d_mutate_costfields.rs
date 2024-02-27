@@ -315,7 +315,7 @@ fn get_or_request_route(
 					if let Some((target_sector, goal_id)) =
 						map_dimensions.get_sector_and_field_cell_from_xy(target)
 					{
-						// if a route is calulated get it
+						// if a route is calculated get it
 						if let Some((metadata, route)) = route_cahe.get_route_with_metadata(
 							source_sector,
 							source_field,

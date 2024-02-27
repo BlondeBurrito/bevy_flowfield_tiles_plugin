@@ -376,24 +376,22 @@ struct Actor;
 /// Consumed by an Actor steering pipeline to produce movement
 #[derive(Default, Component)]
 struct Pathing {
-    source_sector: Option<SectorID>,
-    source_field_cell: Option<FieldCell>,
-    target_sector: Option<SectorID>,
-    target_goal: Option<FieldCell>,
+    target_position: Option<Vec2>,
+    metadata: Option<RouteMetadata>,
     portal_route: Option<Vec<(SectorID, FieldCell)>>,
+    has_los: bool,
 }
 ```
 
-We can then do something like process mouse clicks to fire off PathRequest events (in 3d use the methods ending in xyz instead):
+We can then do something like process mouse clicks assign an actor a `target_position` (in 3d use the methods ending in xyz instead):
 
 ```rust
 fn user_input(
-    mouse_button_input: Res<Input<MouseButton>>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
     dimensions_q: Query<&MapDimensions>,
-    mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
-    mut event: EventWriter<EventPathRequest>,
+    mut actor_q: Query<&mut Pathing, With<Actor>>,
 ) {
     if mouse_button_input.just_released(MouseButton::Right) {
         // get 2d world positionn of cursor
@@ -404,59 +402,65 @@ fn user_input(
             .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
             .map(|ray| ray.origin.truncate())
         {
-            // from 2d mouse position get the sector and field cell it is in
-            // (if not outside the world)
             let map_dimensions = dimensions_q.get_single().unwrap();
-            if let Some((target_sector_id, goal_id)) =
-                map_dimensions.get_sector_and_field_cell_from_xy(world_position)
+            if map_dimensions
+                .get_sector_and_field_cell_from_xy(world_position)
+                .is_some()
             {
-                // from actor translation find what sector and cell it is in
-                let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-                let (source_sector_id, source_field_cell) = map_dimensions
-                    .get_sector_and_field_cell_from_xy(tform.translation.truncate())
-                    .unwrap();
-                // send an event asking for a path to be generated
-                event.send(EventPathRequest::new(
-                    source_sector_id,
-                    source_field_cell,
-                    target_sector_id,
-                    goal_id,
-                ));
-                // update the actor pathing (we get the route later once it is built)
-                pathing.source_sector = Some(source_sector_id);
-                pathing.source_field_cell = Some(source_field_cell);
-                pathing.target_sector = Some(target_sector_id);
-                pathing.target_goal = Some(goal_id);
+                let mut pathing = actor_q.get_single_mut().unwrap();
+                // update the actor pathing
+                pathing.target_position = Some(world_position);
+                pathing.metadata = None;
                 pathing.portal_route = None;
+                pathing.has_los = false;
             } else {
-                warn!("Cursor out of bounds");
+                error!("Cursor out of bounds");
             }
         }
     }
 }
 ```
 
-The actor can then query the `RouteCache` to begin following a high-level portal-to-portal route.
-
-Note this example is very basic as it only handles a single actor, in an application you'd devise your own handling system:
+The actor can then query the `RouteCache` to obtain a route - or if one doesn't exist it can emit a request to have a route generated.
 
 ```rust
-fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
-    let mut pathing = actor_q.get_single_mut().unwrap();
-    // indicates whether the Actor has requested a route and doesn't have one assigned
-    if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-        // check the cache to see if the route has been built yet
-        // routes are ID'ed by the starting and end sectors and the target field cell at the end
-        let route_cache = route_q.get_single().unwrap();
-        if let Some(route) = route_cache.get_route(
-            pathing.source_sector.unwrap(),
-            pathing.target_sector.unwrap(),
-            pathing.target_goal.unwrap(),
-        ) {
-            // it has! So set the Actors (high level) pathing route and you
-            // can optionally implement a pre-cursor steering pipeline to walk
-            // the route until the FlowFields are built too
-            pathing.portal_route = Some(route.clone());
+fn get_or_request_route(
+    route_q: Query<(&RouteCache, &MapDimensions)>,
+    mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
+    mut event: EventWriter<EventPathRequest>,
+) {
+    let (route_cahe, map_dimensions) = route_q.get_single().unwrap();
+    for (tform, mut pathing) in &mut actor_q {
+        if let Some(target) = pathing.target_position {
+            // actor has no route, look one up or request one
+            if pathing.portal_route.is_none() {
+                if let Some((source_sector, source_field)) =
+                    map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
+                {
+                    if let Some((target_sector, goal_id)) =
+                        map_dimensions.get_sector_and_field_cell_from_xy(target)
+                    {
+                        // if a route is calculated get it
+                        if let Some((metadata, route)) = route_cahe.get_route_with_metadata(
+                            source_sector,
+                            source_field,
+                            target_sector,
+                            goal_id,
+                        ) {
+                            pathing.metadata = Some(*metadata);
+                            pathing.portal_route = Some(route.clone());
+                        } else {
+                            // request a route
+                            event.send(EventPathRequest::new(
+                                source_sector,
+                                source_field,
+                                target_sector,
+                                goal_id,
+                            ));
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -467,42 +471,52 @@ And once the `FlowFields` have been built they can query the `FlowFieldCache` in
 Note this example is very basic as it only handles a single actor, in an application you'd devise your own handling system:
 
 ```rust
-const ACTOR_SPEED: f32 = 64.0;
+const SPEED: f32 = 64.0;
 fn actor_steering(
-    mut actor_q: Query<(&mut Transform, &mut Pathing), With<Actor>>,
+    mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<Actor>>,
     flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
+    time_step: Res<Time>,
 ) {
-    let (mut tform, mut pathing) = actor_q.get_single_mut().unwrap();
     let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
-
-    if pathing.target_goal.is_some() {
+    for (mut velocity, tform, mut pathing) in actor_q.iter_mut() {
         // lookup the overarching route
         if let Some(route) = pathing.portal_route.as_mut() {
             // find the current actors postion in grid space
-            let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
-                .get_sector_and_field_cell_from_xy(tform.translation.truncate())
-                .unwrap();
-            // tirm the actor stored route as it makes progress
-            // this ensures it doesn't use a previous goal from
-            // a sector it has already been through when it needs
-            // to pass through it again as part of a different
-            // segment of the route
-            if curr_actor_sector != route.first().unwrap().0 {
-                route.remove(0);
-            }
-            // lookup the relevant sector-goal of this sector
-            'routes: for (sector, goal) in route.iter() {
-                if *sector == curr_actor_sector {
-                    // get the flow field
-                    if let Some(field) = flow_cache.get_field(*sector, *goal) {
-                        // based on actor field cell find the directional vector it should move in
-                        let cell_value = field.get_field_cell_value(curr_actor_field_cell);
-                        let dir = get_2d_direction_unit_vector_from_bits(cell_value);
-                        let velocity = dir * ACTOR_SPEED;
-                        // move the actor based on the velocity
-                        tform.translation += velocity.extend(0.0);
+            if let Some((curr_actor_sector, curr_actor_field_cell)) =
+                map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
+            {
+                // trim the actor stored route as it makes progress
+                // this ensures it doesn't use a previous goal from
+                // a sector it has already been through when it needs
+                // to pass through it again as part of a different part of the route
+                if let Some(f) = route.first() {
+                    if curr_actor_sector != f.0 {
+                        route.remove(0);
                     }
-                    break 'routes;
+                }
+                // lookup the relevant sector-goal of this sector
+                'routes: for (sector, goal) in route.iter() {
+                    if *sector == curr_actor_sector {
+                        // get the flow field
+                        if let Some(field) = flow_cache.get_field(*sector, *goal) {
+                            // based on actor field cell find the directional vector it should move in
+                            let cell_value = field.get_field_cell_value(curr_actor_field_cell);
+                            if has_line_of_sight(cell_value) {
+                                pathing.has_los = true;
+                                let dir =
+                                    pathing.target_position.unwrap() - tform.translation.truncate();
+                                velocity.0 = dir.normalize() * SPEED * time_step.delta_seconds();
+                                break 'routes;
+                            }
+                            let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+                            if dir.x == 0.0 && dir.y == 0.0 {
+                                warn!("Stuck");
+                                pathing.portal_route = None;
+                            }
+                            velocity.0 = dir * SPEED * time_step.delta_seconds();
+                        }
+                        break 'routes;
+                    }
                 }
             }
         }
