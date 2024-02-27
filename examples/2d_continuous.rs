@@ -28,10 +28,12 @@ fn main() {
 		.add_systems(
 			Update,
 			(
-				actor_update_route,
+				get_or_request_route,
 				spawn_actors,
 				despawn_at_destination,
 				update_counters,
+				check_if_route_exhausted,
+				despawn_tunneled_actors,
 			),
 		)
 		.add_systems(Update, actor_steering)
@@ -56,11 +58,8 @@ struct Actor;
 #[allow(dead_code)]
 #[derive(Default, Component)]
 struct Pathing {
-	source_sector: Option<SectorID>,
-	source_field_cell: Option<FieldCell>,
 	target_position: Option<Vec2>,
-	target_sector: Option<SectorID>,
-	target_goal: Option<FieldCell>,
+	metadata: Option<RouteMetadata>,
 	portal_route: Option<Vec<(SectorID, FieldCell)>>,
 	has_los: bool,
 }
@@ -199,15 +198,12 @@ fn spawn_actors(
 		let t_sector = SectorID::new(target_sector.0, target_sector.1);
 		let t_field = FieldCell::new(target_field_cell.0, target_field_cell.1);
 		let pathing = Pathing {
-			source_sector: Some(sector_id),
-			source_field_cell: Some(field),
 			target_position: Some(
 				map_data
 					.get_xy_from_field_sector(t_sector, t_field)
 					.unwrap(),
 			),
-			target_sector: Some(t_sector),
-			target_goal: Some(t_field),
+			metadata: None,
 			portal_route: None,
 			has_los: false,
 		};
@@ -239,22 +235,48 @@ fn spawn_actors(
 	}
 }
 
-/// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
-fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
-	for mut pathing in actor_q.iter_mut() {
-		if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-			let route_cache = route_q.get_single().unwrap();
-			if let Some(route) = route_cache.get_route(
-				pathing.source_sector.unwrap(),
-				pathing.source_field_cell.unwrap(),
-				pathing.target_sector.unwrap(),
-				pathing.target_goal.unwrap(),
-			) {
-				pathing.portal_route = Some(route.clone());
+/// If an actor has a target coordinate then obtain a route for it - if a route doesn't exist then send an event so that one is calculated
+fn get_or_request_route(
+	route_q: Query<(&RouteCache, &MapDimensions)>,
+	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
+	mut event: EventWriter<EventPathRequest>,
+) {
+	let (route_cahe, map_dimensions) = route_q.get_single().unwrap();
+	for (tform, mut pathing) in &mut actor_q {
+		if let Some(target) = pathing.target_position {
+			// actor has no route, look one up or request one
+			if pathing.portal_route.is_none() {
+				if let Some((source_sector, source_field)) =
+					map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
+				{
+					if let Some((target_sector, goal_id)) =
+						map_dimensions.get_sector_and_field_cell_from_xy(target)
+					{
+						// if a route is calulated get it
+						if let Some((metadata, route)) = route_cahe.get_route_with_metadata(
+							source_sector,
+							source_field,
+							target_sector,
+							goal_id,
+						) {
+							pathing.metadata = Some(*metadata);
+							pathing.portal_route = Some(route.clone());
+						} else {
+							// request a route
+							event.send(EventPathRequest::new(
+								source_sector,
+								source_field,
+								target_sector,
+								goal_id,
+							));
+						}
+					}
+				}
 			}
 		}
 	}
 }
+
 /// Actor speed
 const SPEED: f32 = 40000.0;
 
@@ -267,20 +289,19 @@ fn actor_steering(
 ) {
 	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 	for (mut velocity, tform, mut pathing) in actor_q.iter_mut() {
-		if pathing.target_goal.is_some() {
-			// lookup the overarching route
-			if let Some(route) = pathing.portal_route.as_mut() {
-				// find the current actors postion in grid space
-				let (curr_actor_sector, curr_actor_field_cell) = map_dimensions
-					.get_sector_and_field_cell_from_xy(tform.translation.truncate())
-					.unwrap();
-				// tirm the actor stored route as it makes progress
+		// lookup the overarching route
+		if let Some(route) = pathing.portal_route.as_mut() {
+			// find the current actors postion in grid space
+			if let Some((curr_actor_sector, curr_actor_field_cell)) =
+				map_dimensions.get_sector_and_field_cell_from_xy(tform.translation.truncate())
+			{
+				// trim the actor stored route as it makes progress
 				// this ensures it doesn't use a previous goal from
 				// a sector it has already been through when it needs
 				// to pass through it again as part of a different part of the route
 				if let Some(f) = route.first() {
 					if curr_actor_sector != f.0 {
-						// route.remove(0);
+						route.remove(0);
 					}
 				}
 				// lookup the relevant sector-goal of this sector
@@ -298,11 +319,31 @@ fn actor_steering(
 								break 'routes;
 							}
 							let dir = get_2d_direction_unit_vector_from_bits(cell_value);
+							if dir.x == 0.0 && dir.y == 0.0 {
+								warn!("Stuck");
+								pathing.portal_route = None;
+							}
 							velocity.0 = dir * SPEED * time_step.delta_seconds();
 						}
 						break 'routes;
 					}
 				}
+			}
+		}
+	}
+}
+
+/// If an actor has drained their route then they are most likely lost due to portals changing, clear their route so they may request a fresh one
+///
+/// This may also happen if an actor has collided with a corner that has bounced it into a different sector
+fn check_if_route_exhausted(mut actor_q: Query<(&mut Pathing, &mut LinearVelocity), With<Actor>>) {
+	for (mut pathing, mut vel) in &mut actor_q {
+		if let Some(route) = &pathing.portal_route {
+			if route.is_empty() {
+				// actor has exhuasted it's route, it's lost, clear route so a new one can be requested
+				warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
+				vel.0 *= 0.0;
+				pathing.portal_route = None;
 			}
 		}
 	}
@@ -321,6 +362,29 @@ fn despawn_at_destination(
 				// so despawn
 				cmds.entity(entity).despawn_recursive();
 			}
+		}
+	}
+}
+/// If an impassable tile is placed directly on top of an actor it may achieve
+/// such a high velocity from the collision that it can "tunnel" through the
+/// border colliders of the world and be forever spinning through space. If an
+/// actor is out-of-bounds of the world then despawn it
+fn despawn_tunneled_actors(
+	mut cmds: Commands,
+	actor_q: Query<(Entity, &Transform), With<Actor>>,
+	map: Query<&MapDimensions>,
+) {
+	let dimensions = map.get_single().unwrap();
+	for (entity, tform) in &actor_q {
+		if tform.translation.x > (dimensions.get_length() as f32 / 2.0)
+			|| tform.translation.x < -(dimensions.get_length() as f32 / 2.0)
+		{
+			cmds.entity(entity).despawn_recursive();
+		}
+		if tform.translation.y > (dimensions.get_depth() as f32 / 2.0)
+			|| tform.translation.y < -(dimensions.get_depth() as f32 / 2.0)
+		{
+			cmds.entity(entity).despawn_recursive();
 		}
 	}
 }

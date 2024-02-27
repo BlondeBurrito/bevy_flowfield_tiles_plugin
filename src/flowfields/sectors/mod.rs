@@ -156,7 +156,7 @@ impl MapDimensions {
 			|| position.y < -((self.get_depth() / 2) as f32)
 			|| position.y > (self.get_depth() / 2) as f32
 		{
-			error!("Position is out of bounds of MapDimensions, x {}, y {}, cannot calculate SectorID. The actor requesting this should probably be despawned", position.x, position.y);
+			error!("Position is out of bounds of MapDimensions, x {}, y {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?", position.x, position.y);
 			//TODO use Result instead
 			return None;
 		}
@@ -314,7 +314,7 @@ impl MapDimensions {
 			|| position.z < -((self.get_depth() / 2) as f32)
 			|| position.z > (self.get_depth() / 2) as f32
 		{
-			error!("Position is out of bounds of MapDimensions, x {}, y {}, cannot calculate SectorID. The actor requesting this should probably be despawned", position.x, position.y);
+			error!("Position is out of bounds of MapDimensions, x {}, y {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?", position.x, position.y);
 			//TODO use Result instead
 			return None;
 		}

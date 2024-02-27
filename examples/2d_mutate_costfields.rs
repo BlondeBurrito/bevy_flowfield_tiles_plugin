@@ -342,7 +342,8 @@ fn get_or_request_route(
 
 /// Every route is timestamped, when routes are recalculated they will have new timestamps.
 ///
-/// Compare the timestamp of a route an actor has stored with what's in the cache and clear it if it'sold so that a new route can be requested
+/// Compare the timestamp of a route an actor has stored with what's in the
+/// cache and clear it if it's old so that a new route can be requested
 fn check_if_route_is_old(
 	route_q: Query<&RouteCache, Changed<RouteCache>>,
 	mut actor_q: Query<&mut Pathing, With<Actor>>,
@@ -363,12 +364,15 @@ fn check_if_route_is_old(
 }
 
 /// If an actor has drained their route then they are most likely lost due to portals changing, clear their route so they may request a fresh one
-fn check_if_route_exhausted(mut actor_q: Query<&mut Pathing, With<Actor>>) {
-	for mut pathing in &mut actor_q {
+///
+/// This may also happen if an actor has collided with a corner that has bounced it into a different sector
+fn check_if_route_exhausted(mut actor_q: Query<(&mut Pathing, &mut LinearVelocity), With<Actor>>) {
+	for (mut pathing, mut vel) in &mut actor_q {
 		if let Some(route) = &pathing.portal_route {
 			if route.is_empty() {
 				// actor has exhuasted it's route, it's lost, clear route so a new one can be requested
 				warn!("Exhausted route, a new one will be requested");
+				vel.0 *= 0.0;
 				pathing.portal_route = None;
 			}
 		}

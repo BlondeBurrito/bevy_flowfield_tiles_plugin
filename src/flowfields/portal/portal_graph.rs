@@ -271,8 +271,7 @@ impl PortalGraph {
 		for (i, (source, ord_source)) in cells.iter().enumerate() {
 			for (j, (target, ord_target)) in cells.iter().enumerate() {
 				if i != j {
-					if let Some(distance) =
-						cost_field.get_distance_between_cells(source, target) {
+					if let Some(distance) = cost_field.get_distance_between_cells(source, target) {
 						// create the edge
 						let s_weight = cost_field.get_field_cell_value(**source);
 						let source_node = Node::new(*sector_id, **source, s_weight, **ord_source);
@@ -481,9 +480,7 @@ impl PortalGraph {
 					.get_scaled()
 					.get(&source_sector_id)
 					.unwrap();
-				if cost_field
-					.is_cell_pair_reachable(source_field_cell, *cell)
-				{
+				if cost_field.is_cell_pair_reachable(source_field_cell, *cell) {
 					source_portals.push((*cell, *ord));
 				}
 			}
@@ -505,9 +502,7 @@ impl PortalGraph {
 					.get_scaled()
 					.get(&target_sector_id)
 					.unwrap();
-				if cost_field
-					.is_cell_pair_reachable(target_field_cell, *cell)
-				{
+				if cost_field.is_cell_pair_reachable(target_field_cell, *cell) {
 					target_portals.push((*cell, *ord));
 				}
 			}

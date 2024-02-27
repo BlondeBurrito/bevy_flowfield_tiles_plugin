@@ -76,11 +76,7 @@ impl Field<u8> for CostField {
 }
 impl CostField {
 	/// Tests whether two cells can see each other within a sector (one might be boxed in by impassable cost field values)
-	pub fn is_cell_pair_reachable(
-		&self,
-		source: FieldCell,
-		target: FieldCell,
-	) -> bool {
+	pub fn is_cell_pair_reachable(&self, source: FieldCell, target: FieldCell) -> bool {
 		// instance of corner cells overlapping
 		if source == target {
 			return true;
