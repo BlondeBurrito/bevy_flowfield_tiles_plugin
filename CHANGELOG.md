@@ -2,7 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.7.0] - 2024-02-21
+## [0.8.0] - 2024-02-27
+
+### Bug Fixes
+
+- Fix code-coverage action (#53)
+
+
+
+- [**breaking**] Various related fixes to CostField mutation (#54)
+
+Fixed example border colliders
+
+Improved perf of route recalculation
+
+Fixed bug for LOS calculation in corners
+
+Reduced overhead of Flowfield visualisation example
+
+Added example `2d_mutate_costfields` to showcase modifying CostFields at runtime and new FlowFields being calculated for pathfinding actors to follow
+
+Example `visualise_portals` supports flipping FieldCell costs between `1` and `255` to showcase Portals being recalculated
+
+Improved example readability
+
+Aligned `2d` and `3d` method names
+
+PortalGraph split into 3 distinct collections of nodes, internal_edges and external_edges
+
+Fixed Node generation when two Nodes overlap in a sector corner as portals to different neighbouring sectors
+
+Added a handler in examples for scenarios where an actor collides with a corner and gets bounced into a sector that's not part of its route - it'll clear its old route and request a new one
+
+Added an example showcasing a variety of CostField values - can demonstrate an actor prioritising better costs to follow (but in the goal sector LOS check will override bad costs as the distance is considered so short it's best to path directly to the end)
+
+
+## [0.7.0] - 2024-02-20
 
 ### Features
 

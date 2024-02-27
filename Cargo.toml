@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 authors = ["BlondeBurrito"]
 edition = "2021"
 rust-version = "1.76"
@@ -137,11 +137,6 @@ path = "examples/visualise_cost_field_heightmap.rs"
 required-features = ["heightmap"]
 
 [[example]]
-name = "2d_variety_costs"
-path = "examples/2d_variety_costs.rs"
-required-features = ["heightmap", "2d"]
-
-[[example]]
 name = "visualise_portals"
 path = "examples/visualise_portals.rs"
 required-features = ["csv", "2d"]
@@ -170,6 +165,11 @@ required-features = ["ron", "2d"]
 name = "2d_with_steering"
 path = "examples/2d_with_steering.rs"
 required-features = ["ron", "2d"]
+
+[[example]]
+name = "2d_variety_costs"
+path = "examples/2d_variety_costs.rs"
+required-features = ["heightmap", "2d"]
 
 [[example]]
 name = "2d_complex_movement"
