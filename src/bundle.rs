@@ -28,9 +28,33 @@ impl FlowFieldTilesBundle {
 	pub fn get_sector_cost_fields(&self) -> &SectorCostFields {
 		&self.sector_cost_fields
 	}
+	/// Get a reference to the [SectorPortals]
+	pub fn get_sector_portals(&self) -> &SectorPortals {
+		&self.sector_portals
+	}
+	/// Get a reference to the [PortalGraph]
+	pub fn get_portal_graph(&self) -> &PortalGraph {
+		&self.portal_graph
+	}
 	/// Get a reference to the [MapDimensions]
 	pub fn get_map_dimensions(&self) -> &MapDimensions {
 		&self.map_dimensions
+	}
+	/// Get a reference to the [RouteCache]
+	pub fn get_route_cache(&self) -> &RouteCache {
+		&self.route_cache
+	}
+	/// Get a mutable reference to the [RouteCache]
+	pub fn get_route_cache_mut(&mut self) -> &mut RouteCache {
+		&mut self.route_cache
+	}
+	/// Get a reference to the [FlowFieldCache]
+	pub fn get_flowfield_cache(&self) -> &FlowFieldCache {
+		&self.flow_field_cache
+	}
+	/// Get a mutable reference to the [FlowFieldCache]
+	pub fn get_flowfield_cache_mut (&mut self) -> &mut FlowFieldCache {
+		&mut self.flow_field_cache
 	}
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
 	pub fn new(map_length: u32, map_depth: u32, sector_resolution: u32, actor_size: f32) -> Self {

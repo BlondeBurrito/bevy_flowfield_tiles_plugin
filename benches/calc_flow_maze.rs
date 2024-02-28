@@ -31,8 +31,8 @@ fn prepare_fields(
 	actor_size: f32,
 ) -> (SectorPortals, SectorCostFields, MapDimensions, RouteCache) {
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-	let csv_dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/bench_costfields/maze/";
-	let cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, csv_dir);
+	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/bench_costfields/heightmap_maze.png";
+	let cost_fields = SectorCostFields::from_heightmap(&map_dimensions, path);
 	let mut portals = SectorPortals::new(
 		map_dimensions.get_length(),
 		map_dimensions.get_depth(),
