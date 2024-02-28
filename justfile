@@ -28,11 +28,12 @@ bench:
   cargo bench -q --benches --workspace --all-features
 # run a particular benchmark
 bench-one BENCH:
-  cargo bench --benches --workspace --all-features {{BENCH}}
+  cargo bench -q --bench {{BENCH}} --workspace --all-features
 # save each benchmark, this should be run on the main branch for comparing with your own branch
 bench-save-main: build
   cargo bench -q --bench calc_route --workspace --all-features -- --save-baseline main_calc_route
   cargo bench -q --bench calc_flow_open --workspace --all-features -- --save-baseline main_calc_flow_open
+  cargo bench -q --bench calc_flow_sparse --workspace --all-features -- --save-baseline main_calc_flow_sparse
   cargo bench -q --bench calc_flow_maze --workspace --all-features -- --save-baseline main_calc_flow_maze
   cargo bench -q --bench init_bundle --workspace --all-features -- --save-baseline main_init_bundle
   cargo bench -q --bench init_cost_fields --workspace --all-features -- --save-baseline main_init_cost_fields
@@ -42,6 +43,7 @@ bench-save-main: build
 bench-compare: build
   cargo bench -q --bench calc_route --workspace --all-features -- --baseline main_calc_route
   cargo bench -q --bench calc_flow_open --workspace --all-features -- --baseline main_calc_flow_open
+  cargo bench -q --bench calc_flow_sparse --workspace --all-features -- --baseline main_calc_flow_sparse
   cargo bench -q --bench calc_flow_maze --workspace --all-features -- --baseline main_calc_flow_maze
   cargo bench -q --bench init_bundle --workspace --all-features -- --baseline main_init_bundle
   cargo bench -q --bench init_cost_fields --workspace --all-features -- --baseline main_init_cost_fields

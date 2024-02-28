@@ -100,9 +100,9 @@ harness = false
 name = "calc_flow_open"
 harness = false
 
-# [[bench]]
-# name = "calc_flow_sparse"
-# harness = false
+[[bench]]
+name = "calc_flow_sparse"
+harness = false
 
 [[bench]]
 name = "calc_flow_maze"

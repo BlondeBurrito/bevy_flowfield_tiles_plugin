@@ -556,6 +556,7 @@ Benchmarks are split into two categories:
 * Algorithm use - measures generating a set of FlowFields
   * [calc_route](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/calc_route.rs) - measures how long it takes to generate a route from one corner of a 100x100 sector layout to the opposite corner
   * [calc_flow_open](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/calc_flow_open.rs) - measure how long it takes to create a full set of `FlowFields` describing movement across uniform `CostFields` (cost = 1) from one corner to another
+  * [calc_flow_sparse](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/calc_flow_sparse.rs) - measure how long it takes to create a full set of `FlowFields` describing movement across a variety of sectors containing clumps of impassable tiles
   * [calc_flow_maze](https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin/blob/main/benches/calc_flow_maze.rs) - measures how long it takes to create a full set of `FlowFields` describing movement from one corner to another in a 100x100 sector world. The world is composed of vertical corridors meaning that the actor has to path up and down to eventually snake it's way to the goal
 
 Currently the slowest area is generating the `PortalGraph` (7s on my machine) so this should be some initialisation that happens behind the scenes (like a loading screen or some such).
