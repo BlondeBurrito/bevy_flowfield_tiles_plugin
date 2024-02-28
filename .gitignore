@@ -16,6 +16,7 @@ Cargo.lock
 
 # tmp img
 *.kra~
+*.kra-autosave.kra
 *.png~
 
 # blender
