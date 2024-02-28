@@ -6,43 +6,8 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-// use bevy::{
-// 	app::{AppExit, ScheduleRunnerPlugin},
-// 	prelude::*,
-// 	render::{settings::WgpuSettings, RenderPlugin}, winit::WinitSettings,
-// };
 use bevy_flowfield_tiles_plugin::prelude::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-
-// fn setup(mut cmds: Commands) {
-// 	cmds.spawn(FlowFieldTilesBundle::new(1000, 1000));
-// }
-
-// fn request(mut event: EventWriter<EventPathRequest>) {
-// 	// top right
-// 	let source_sector = (99, 0);
-// 	let source_field_cell = (9, 0);
-// 	// bottom left
-// 	let target_sector = (0, 99);
-// 	let target_goal = (0, 9);
-
-// 	event.send(EventPathRequest::new(
-// 		source_sector,
-// 		source_field_cell,
-// 		target_sector,
-// 		target_goal,
-// 	))
-// }
-
-// fn check_for_flowfield(
-// 	flow_cache_q: Query<&FlowFieldCache>,
-// 	mut app_exit_events: EventWriter<AppExit>,
-// ) {
-// 	let flow_cache = flow_cache_q.get_single().unwrap();
-// 	if !flow_cache.get().is_empty() {
-// 		app_exit_events.send(AppExit);
-// 	}
-// }
 
 /// Create the required CostFields and Portals before benchmarking
 fn prepare_fields(
