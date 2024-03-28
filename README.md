@@ -338,7 +338,7 @@ fn my_system(mut cmds: Commands) {
     let map_depth = 1920;
     let sector_resolution = 640;
     let actor_size = 16.0;
-    cmds.spawn(FlowfieldTilesBundle::new(map_length, map_depth, sector_resolution, actor_size));
+    cmds.spawn(FlowFieldTilesBundle::new(map_length, map_depth, sector_resolution, actor_size));
 }
 ```
 
@@ -346,7 +346,7 @@ Note that this will initialise all the `CostFields` representing the world with 
 
 In 3d you could consider making a raycast to the centre of where each FieldCell would be and use something like the `y` position of the ray hit to determine if something is passable or not and then flip the value of that particular `FieldCell` (`EventUpdateCostfieldsCell` can be used to queue a cost change).
 
-Most likely for 2d or more complex 3d scenarios you'll probably want to enable either the `ron`, `csv` or `heightmap` feature which allows for creating a `FlowfieldTilesBundle` with inital `CostFields` from a `.ron` file, a collection of `.csv` or a greyscale png/jpeg where pixel colour channels are translated into costs, the examples showcase this in more detail.
+Most likely for 2d or more complex 3d scenarios you'll probably want to enable either the `ron`, `csv` or `heightmap` feature which allows for creating a `FlowFieldTilesBundle` with inital `CostFields` from a `.ron` file, a collection of `.csv` or a greyscale png/jpeg where pixel colour channels are translated into costs, the examples showcase this in more detail.
 
 ## Path Request
 
