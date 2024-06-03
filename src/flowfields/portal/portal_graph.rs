@@ -669,7 +669,7 @@ impl PortalGraph {
 								if q.1 >= astar_score {
 									new_queue_item_required_for_node = false;
 									q.1 = astar_score;
-									q.2 = previous_nodes_traversed.clone();
+									q.2.clone_from(&previous_nodes_traversed);
 									q.3 = distance_traveled;
 									q.4 = edge_direction.flip();
 								}

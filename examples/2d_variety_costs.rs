@@ -33,14 +33,6 @@ fn main() {
 		.run();
 }
 
-/// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
-#[derive(Component)]
-struct SectorLabel(u32, u32);
-
-/// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
-#[derive(Component)]
-struct FieldCellLabel(usize, usize);
-
 /// Labels the actor to enable getting its [Transform] easily
 #[derive(Component)]
 struct Actor;
@@ -102,8 +94,6 @@ fn setup_visualisation(mut cmds: Commands) {
 						},
 						..default()
 					})
-					.insert(FieldCellLabel(i, j))
-					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
 					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
@@ -126,9 +116,7 @@ fn setup_visualisation(mut cmds: Commands) {
 							..default()
 						},
 						..default()
-					})
-					.insert(FieldCellLabel(i, j))
-					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
+					});
 				}
 			}
 		}
