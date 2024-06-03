@@ -63,10 +63,6 @@ struct Pathing {
 	has_los: bool,
 }
 
-/// Dir and magnitude of actor movement
-#[derive(Component, Default)]
-struct Velocity(Vec2);
-
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_length = 1920;
