@@ -53,7 +53,7 @@ impl FlowFieldTilesBundle {
 		&self.flow_field_cache
 	}
 	/// Get a mutable reference to the [FlowFieldCache]
-	pub fn get_flowfield_cache_mut (&mut self) -> &mut FlowFieldCache {
+	pub fn get_flowfield_cache_mut(&mut self) -> &mut FlowFieldCache {
 		&mut self.flow_field_cache
 	}
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
@@ -157,6 +157,42 @@ impl FlowFieldTilesBundle {
 			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
 		let cost_fields = SectorCostFields::from_heightmap(&map_dimensions, file_path.to_string());
 		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
+		// update default portals for cost fields
+		for sector_id in cost_fields.get_scaled().keys() {
+			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
+		}
+		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
+		let route_cache = RouteCache::default();
+		let cache = FlowFieldCache::default();
+		FlowFieldTilesBundle {
+			sector_cost_fields: cost_fields,
+			sector_portals: portals,
+			portal_graph: graph,
+			map_dimensions,
+			route_cache,
+			flow_field_cache: cache,
+		}
+	}
+	/// From a list of 2d meshes initialise a bundle
+	#[cfg(not(tarpaulin_include))]
+	#[cfg(feature = "2d")]
+	pub fn from_bevy_2d_meshes(
+		meshes: Vec<(&Mesh, Vec2)>,
+		map_length: u32,
+		map_depth: u32,
+		sector_resolution: u32,
+		actor_size: f32,
+	) -> Self {
+		//TODO just use new for map_dim, otherwise too easy for someone to supply meshes that aren't a factor of sector_reolustion
+		// let map_dimensions = MapDimensions::from_bevy_2d_meshes(&meshes, sector_resolution, actor_size);
+		let map_dimensions =
+			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+		let cost_fields = SectorCostFields::from_bevy_2d_meshes(&map_dimensions, &meshes);
+		let mut portals = SectorPortals::new(
+			map_dimensions.get_length(),
+			map_dimensions.get_depth(),
+			sector_resolution,
+		);
 		// update default portals for cost fields
 		for sector_id in cost_fields.get_scaled().keys() {
 			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);

@@ -75,6 +75,10 @@ impl Field<u8> for CostField {
 	}
 }
 impl CostField {
+	/// Create a new [CostField] with all cell values initialised with `cost`
+	pub fn new_with_cost(cost: u8) -> Self {
+		CostField([[cost; FIELD_RESOLUTION]; FIELD_RESOLUTION])
+	}
 	/// Tests whether two cells can see each other within a sector (one might be boxed in by impassable cost field values)
 	pub fn is_cell_pair_reachable(&self, source: FieldCell, target: FieldCell) -> bool {
 		// instance of corner cells overlapping

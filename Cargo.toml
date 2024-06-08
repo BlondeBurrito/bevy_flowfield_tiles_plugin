@@ -18,7 +18,7 @@ exclude = ["crates/examples_utils"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.13", default-features = false }
+bevy = { version = "0.13", default-features = false, features = ["bevy_render"] }
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
 csv = { version = "1" }
@@ -54,7 +54,7 @@ bevy_xpbd_2d = { version = "0.4", default-features = false, features = ["2d", "f
 # examples_utils = { path = "crates/examples_utils" }
 
 [dependencies]
-bevy = { workspace = true }
+bevy = { workspace = true, features = ["bevy_render"] }
 serde = { workspace = true, optional = true}
 ron = { workspace = true, optional = true}
 csv = { workspace = true, optional = true}
@@ -205,3 +205,8 @@ required-features = ["ron", "2d"]
 name = "2d_large_actor"
 path = "examples/2d_large_actor.rs"
 required-features = ["ron", "2d"]
+
+[[example]]
+name = "2d_from_mesh"
+path = "examples/2d_from_mesh.rs"
+required-features = ["2d"]

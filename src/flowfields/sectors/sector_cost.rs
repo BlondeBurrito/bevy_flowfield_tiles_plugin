@@ -41,6 +41,21 @@ impl SectorCostFields {
 		sector_cost_fields.scale_all_costfields(map_dimensions);
 		sector_cost_fields
 	}
+	/// Create a new instance of [SectorCostFields] based on the map dimensions where the supplied `cost` is used as the default value in all [CostField]
+	fn new_with_cost(map_dimensions: &MapDimensions, cost: u8) -> Self {
+		let mut sector_cost_fields = SectorCostFields::default();
+		let column_count = map_dimensions.get_length() / map_dimensions.get_sector_resolution();
+		let row_count = map_dimensions.get_depth() / map_dimensions.get_sector_resolution();
+		for m in 0..column_count {
+			for n in 0..row_count {
+				sector_cost_fields
+					.baseline
+					.insert(SectorID::new(m, n), CostField::new_with_cost(cost));
+			}
+		}
+		sector_cost_fields.scale_all_costfields(map_dimensions);
+		sector_cost_fields
+	}
 	/// Get a reference to the map of the baseline sectors and [CostField]
 	pub fn get_baseline(&self) -> &BTreeMap<SectorID, CostField> {
 		&self.baseline
@@ -203,7 +218,7 @@ impl SectorCostFields {
 									let value = self
 										.get_baseline()
 										.get(n_sector)
-										.unwrap()
+										.unwrap_or_else(|| panic!("Could not get baseline costfield {:?}, this can indicates that sector_resolution and/or actor_size are not set correctly", n_sector))
 										.get_field_cell_value(field_cell);
 									// hit impassable before exceeding scale therefore
 									// gap too small for pathing
@@ -622,6 +637,453 @@ impl SectorCostFields {
 		sector_cost_fields.scale_all_costfields(map_dimensions);
 		sector_cost_fields
 	}
+	/// From a list of meshes use //TODO
+	#[cfg(feature = "2d")]
+	pub fn from_bevy_2d_meshes(map_dimensions: &MapDimensions, meshes: &Vec<(&Mesh, Vec2)>) -> Self {
+		// init the fields so we already have the required sectors inserted
+
+		use bevy::render::mesh::PrimitiveTopology;
+		let mut sector_cost_fields = SectorCostFields::new_with_cost(map_dimensions, 255);
+
+		let columns = (map_dimensions.get_length() / map_dimensions.get_sector_resolution())
+			as usize * FIELD_RESOLUTION;
+		let rows = (map_dimensions.get_depth() / map_dimensions.get_sector_resolution()) as usize
+			* FIELD_RESOLUTION;
+		let field_cell_unit_size =
+			(map_dimensions.get_sector_resolution() as usize / FIELD_RESOLUTION) as f32;
+
+		// Treat each FieldCell as its own polygon
+		// to find if one polygon (A) is within another (B):
+		// 1) Take a vertex of A (a corner of a FieldCell) and project a line
+		// to the maximum x dimension - check to see if this line intersects
+		// any of the edges of B (the supplied mesh).
+		// If it intersects an even number of times (includes 0) then it is
+		// outside polygon B.
+		// If it intersects an odd number of times then it is a candiate and we
+		// perform the next check
+		// 2) Check each edge of A (FieldCell polygon) and see if any edges
+		// intersect with the edges of B (the mesh). If an intersection is
+		// found then the FieldCell overlaps the polygon and the FieldCell is
+		// treated as impassable.
+		// If no intersections are found then A is inside B.
+
+		// store all mesh outer edges for field cell checks later
+		let mut outer_edges = vec![];
+		for (mesh, translation) in meshes {
+			match mesh.primitive_topology() {
+						PrimitiveTopology::TriangleList => {
+							if let Some(mesh_vertices) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+								let points = mesh_vertices.as_float3().unwrap();
+								let indices = mesh.indices().unwrap();
+								let indices_slice: Vec<usize> = indices.iter().map(|x| x).collect();
+								// build each edge of each triangle in the mesh represented by index points
+								let mut edge_indices = vec![];
+								for i in indices_slice.chunks(3) {
+									edge_indices.push(MeshTriEdge(i[0], i[1]));
+									edge_indices.push(MeshTriEdge(i[1], i[2]));
+									edge_indices.push(MeshTriEdge(i[2], i[0]));
+								}
+								// collect edges that only belong to a single triangle (this means ignore internal edges, we only want the edges outlining the mesh), if any MeshEdge appears more than once we remove all occurances of it
+								let copy = edge_indices.clone();
+								for edge in edge_indices {
+									let mut occurances = 0;
+									for c in &copy {
+										if edge == *c {
+											occurances +=1;
+										}
+									}
+									if occurances == 1 {
+										// found outter edge
+										// store equation of a line for it
+										let start = points[edge.0];
+										let end = points[edge.1];
+										//NB: vertex points are relative to mesh so include
+										// translation of the mesh to find global position
+										let line = EdgeLine::build(Vec2::new(start[0] + translation.x, start[1] + translation.y), Vec2::new(end[0] + translation.x, end[1] + translation.y));
+										outer_edges.push(line);
+									}
+								}
+							}
+						},
+						PrimitiveTopology::TriangleStrip => todo!(),
+						_ => warn!("Mesh topology must be of TriangleList or TriangleStrip for use with Flowfields"),
+					}
+		}
+		// with the external edges of the mesh known we can
+		// test to see if the field cell vertex intercepts any edge
+		// an odd number of times to mark it as a candiate that
+		// could be inside the mesh
+
+		// convert FieldCell ID notation of origin top-left
+		// into an f32 form where the origin is the center of
+		// the world
+		// iterate over all FieldCells, left to right, top to bottom
+
+		// create a list of candiate row-col which are likely to be within the
+		// mesh therefore pathable
+		let mut candidates: Vec<(usize, usize)> = vec![];
+		for row in 0..rows {
+			for col in 0..columns {
+				// find coord of top left field cell corner
+				let x1 =
+					col as f32 * field_cell_unit_size - (map_dimensions.get_length() as f32 / 2.0);
+				let y1 =
+					row as f32 * -field_cell_unit_size + (map_dimensions.get_depth() as f32 / 2.0);
+				let x2 =
+					col as f32 * field_cell_unit_size - (map_dimensions.get_length() as f32 / 2.0) + field_cell_unit_size;
+				let y2 =
+					row as f32 * -field_cell_unit_size + (map_dimensions.get_depth() as f32 / 2.0) - field_cell_unit_size;
+
+				//TODO what happens when two meshes are next to each other but a field cell overlaps their boundary -> treated as impassable currently
+
+				// create a horizontal edge with constant y
+				let hori1 = EdgeLine::build(
+					Vec2::new(x1, y1),
+					Vec2::new(map_dimensions.get_length() as f32 / 2.0, y1),
+				);
+				let hori2 = EdgeLine::build(
+					Vec2::new(x2, y2),
+					Vec2::new(map_dimensions.get_length() as f32 / 2.0, y2),
+				);
+				let mut count_intersections_top = 0;
+				let mut count_intersections_bottom = 0;
+				for edge in &outer_edges {
+					if hori1.does_intersect(edge) {
+						count_intersections_top += 1;
+					}
+					if hori2.does_intersect(edge) {
+						count_intersections_bottom += 1;
+					}
+					// //
+					// // check field vertex is within start and end height of the edge line,
+					// // sign of delta determines operator to use
+					// // If the field vertex is within the edge line then we know that a horizontal line is either parallel or intercepts the mesh edge
+					// if (edge.end.y - edge.start.y).is_sign_positive() {
+					// 	if r >= edge.start.y && r <= edge.end.y {
+					// 		count_intersections += 1;
+					// 	}
+					// } else {
+					// 	if r <= edge.start.y && r >= edge.end.y {
+					// 		count_intersections += 1;
+					// 	}
+					// }
+					// // if intersections is odd then the vertex is within the mesh
+					// if count_intersections % 2 == 1 {
+					// 	candidates.push((row, col));
+					// }
+				}
+				// if intersections is odd then the vertex is within the mesh
+				// info!("hori ({}, {}) has {} intersections",x,y,count_intersections);
+				if count_intersections_top % 2 == 1 && count_intersections_bottom % 2 == 1 {
+					candidates.push((row, col));
+				}
+			}
+		}
+		info!("pre cand {}", candidates.len());
+		let mut failed_candidates: Vec<(usize, usize)> = vec![];
+		for (row, col) in candidates.iter() {
+			// to test whether the entire field cell is within the mesh we need to take each edge of the field cell and test that none of them intersect with any mesh edges.
+			// Construct each edge of the square field cell:
+			let offset_x = map_dimensions.get_length() as f32 / 2.0;
+			let offset_y = map_dimensions.get_depth() as f32 / 2.0;
+			// vertex: top-left
+			let tl = Vec2::new(
+				*col as f32 * field_cell_unit_size - offset_x,
+				*row as f32 * -field_cell_unit_size + offset_y,
+			);
+			// vertex: top-right
+			let tr = Vec2::new(
+				*col as f32 * field_cell_unit_size - offset_x + field_cell_unit_size,
+				*row as f32 * -field_cell_unit_size + offset_y,
+			);
+			// vertex: bottom-left
+			let bl = Vec2::new(
+				*col as f32 * field_cell_unit_size - offset_x,
+				*row as f32 * -field_cell_unit_size + offset_y - field_cell_unit_size,
+			);
+			// vertex: bottom-right
+			let br = Vec2::new(
+				*col as f32 * field_cell_unit_size - offset_x + field_cell_unit_size,
+				*row as f32 * -field_cell_unit_size + offset_y - field_cell_unit_size,
+			);
+			// edge: left up-down
+			let edge_lud = EdgeLine::build(tl, bl);
+			// edge: right up-down
+			let edge_rud = EdgeLine::build(tr, br);
+			// edge: bottom left-right
+			let edge_blr = EdgeLine::build(bl, br);
+			// edge: top left-right
+			let edge_tlr = EdgeLine::build(tl, tr);
+			// look for intersections
+			let field_edges = vec![edge_lud, edge_rud, edge_blr, edge_tlr];
+			for edge in &outer_edges {
+				// if an edge intersects any of the field edges then the field
+				// cell is outside of the meshes. If an edge is parallel then
+				// it's ok, the cell is just snug to the side of a mesh
+				for field_edge in field_edges.iter() {
+					if edge.does_intersect(field_edge) {
+						failed_candidates.push((*row, *col));
+						break;
+					}
+				}
+			}
+		}
+		info!("cand {}", candidates.len());
+		info!("f can {}", failed_candidates.len());
+		// from candidates and failed candidates identify the cells which are pathable
+		for cell in failed_candidates.iter() {
+			candidates.retain(|&c| c != *cell);
+		}
+		// candidates are now the pathable ones, determine how they are represented
+		// in Sector and FieldCell notation to update the CostFields
+		let offset_x = map_dimensions.get_length() as f32 / 2.0;
+		let offset_y = map_dimensions.get_depth() as f32 / 2.0;
+		for (row, col) in candidates {
+			let x = col as f32 * field_cell_unit_size - offset_x + (field_cell_unit_size / 2.0);
+			let y = row as f32 * -field_cell_unit_size + offset_y - (field_cell_unit_size / 2.0);
+			let position = Vec2::new(x, y);
+			if let Some((sector, field_cell)) =
+				map_dimensions.get_sector_and_field_cell_from_xy(position)
+			{
+				sector_cost_fields.set_field_cell_value(sector, 1, field_cell, map_dimensions);
+			}
+		}
+		sector_cost_fields.scale_all_costfields(map_dimensions);
+		sector_cost_fields
+	}
+}
+
+/// Represents two points that form the edge between mech vertices
+#[derive(Clone)]
+struct MeshTriEdge<T: PartialEq>(T, T);
+
+impl<T: PartialEq> PartialEq for MeshTriEdge<T> {
+	fn eq(&self, other: &Self) -> bool {
+		(self.0 == other.0 && self.1 == other.1) || (self.0 == other.1 && self.1 == other.0)
+	}
+}
+
+#[derive(Debug)]
+struct EdgeLine {
+	start: Vec2,
+	end: Vec2,
+	gradient: f32,
+	intercept: f32,
+	vert_parallel: bool,
+	hori_parallel: bool,
+}
+
+impl EdgeLine {
+	fn build(start: Vec2, end: Vec2) -> Self {
+		let d_y = end.y - start.y;
+		let d_x = end.x - start.x;
+		if d_x == 0.0 {
+			EdgeLine {
+				start,
+				end,
+				gradient: 0.0, // actually f32::INFINITY
+				intercept:0.0, // actually  f32::INFINITY
+				vert_parallel: true,
+				hori_parallel: false,
+			}
+		} else if d_y == 0.0 {
+			EdgeLine {
+				start,
+				end,
+				gradient: 0.0,
+				intercept: start.y,
+				vert_parallel: false,
+				hori_parallel: true,
+			}
+		} else {
+			let gradient = d_y / d_x;
+		let intercept = start.y - (gradient * start.x);
+		EdgeLine {
+			start,
+			end,
+			gradient,
+			intercept,
+			vert_parallel: false,
+			hori_parallel: false,
+		}
+		}
+	}
+	fn does_intersect(&self, other: &EdgeLine) -> bool {
+		//https://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect/565282#565282 (Ronald Goldman, published in Graphics Gems, page 304)
+		let self_segment = self.end - self.start;
+		let other_segment = other.end - other.start;
+
+		let cross_segment = self_segment.perp_dot(other_segment);
+		if cross_segment == 0.0 {
+			// find whether paralell or collinear
+			if (other.start - self.start).perp_dot(self_segment) == 0.0 {
+				// collinear, check if they overlap
+				let t_0 = (other.start - self.start).dot(self_segment)/ (self_segment.dot(self_segment));
+				let t_1 = t_0 + other_segment.dot(self_segment)/ (self_segment.dot(self_segment));
+
+				if other_segment.dot(self_segment) < 0.0 {
+					let interval = t_0 - t_1;
+					if t_0 <= 0.0 && t_0 >= 1.0 && t_1 <= 0.0 && t_1 >= 1.0 {
+					// if interval >= 0.0 && interval <= 1.0 {
+						info!("self_start {:?}", self.start);
+						info!("self_end {:?}", self.end);
+						info!("other_start {:?}", other.start);
+						info!("other_end {:?}", other.end);
+						info!("self_segment {}", self_segment);
+						info!("other_segment {}", other_segment);
+						info!("T_0 = {}, T_1 {}", t_0, t_1);
+						// overlap
+						return  true
+					} else {
+						// disjoint
+						return false
+					}
+				} else {
+					let interval = t_1 - t_0;
+					if t_0 >= 0.0 && t_0 <= 1.0 && t_1 >= 0.0 && t_1 <= 1.0 {
+					// if interval >= 0.0 && interval <= 1.0 {
+						// overlap
+						return true
+					} else {
+						// disjoint
+						return false
+					}
+				}
+			} else {
+				// parallel, non-intersecting
+				return false
+			}
+		} else {
+			// may intersect, check if intersection point is on both segments
+			let u = (other.start - self.start).perp_dot(self_segment)/cross_segment;
+			let t = (other.start - self.start).perp_dot(other_segment)/cross_segment;
+			if u >= 0.0 && u <= 1.0 && t >= 0.0 && t <= 1.0 {
+				// // special case where an edge only touches the start/end of another edge
+				// let point = self.start + t * self_segment;//, other.start + u * other_segment);
+				// if point == other.start || point == other.end || point == self.start || point == self.end {
+				// 	return false
+				// }
+				return true
+			} else {
+				return false
+			}
+		}
+
+
+		// if self.vert_parallel && other.vert_parallel {
+		// 	if self.start.x == other.start.x {
+		// 		return false
+		// 	} else {
+		// 		// check if they overlap
+		// 	}
+
+		// } else if self.hori_parallel && other.hori_parallel {
+
+		// } else if self.vert_parallel && other.hori_parallel {
+		// 	// dir left to right
+		// 	if other.start.x < other.end.x {
+		// 		// self fixed x is within the hori line
+		// 		if self.start.x >= other.start.x && self.start.x <= other.end.x {
+
+		// 		} else {
+		// 			return false
+		// 		}
+		// 	} else {
+
+		// 	}
+		// } else if self.hori_parallel && other.vert_parallel {
+		// 	// dir left to right
+		// 	if self.start.x < self.end.x {
+		// 		// other fixed x witin self line
+		// 		if other.start.x >= self.start.x && other.start.x <= self.end.x {
+		// 			// vert dir bottom to top
+		// 			if other.start.y < other.end.y {
+		// 				// hori y len overlaps vert y
+		// 				if self.start.y > other.start.y && self.start.y < other.end.y {
+		// 					return true
+		// 				} else {
+		// 					return false
+		// 				}
+		// 			} else {
+		// 				if self.start.y > other.end.y && self.start.y < other.start.y {
+		// 					return true
+		// 				} else {
+		// 					return false
+		// 				}
+		// 			}
+		// 		} else {
+		// 			return false
+		// 		}
+		// 	} else {
+		// 		if other.start.x >= self.start.x && other.start.x <= self.end.x {
+		// 			if other.start.y < other.end.y {
+		// 				if self.start.y > other.start.y && self.start.y < other.end.y {
+		// 					return true
+		// 				} else {
+		// 					return false
+		// 				}
+		// 			} else {
+		// 				if self.start.y > other.end.y && self.start.y < other.start.y {
+		// 					return true
+		// 				} else {
+		// 					return false
+		// 				}
+		// 			}
+		// 		} else {
+		// 			return false
+		// 		}
+		// 	}
+		// } else if self.vert_parallel {
+
+		// } else if other.vert_parallel {
+
+		// } else if self.hori_parallel {
+		// 	// covered by below?
+		// } else if other.hori_parallel {
+		// 	// covered by below?
+		// }
+		// // prevent dividing by zero from parallel edges
+		// let denom = self.gradient - other.gradient;
+		// if denom == 0.0 {
+		// 	// means parallel which is fine as we only supply edges from vertices within the mesh
+		// 	return false;
+		// }
+		// let x = (other.intercept - self.intercept) / denom;
+		// let y1 = self.gradient * x + self.intercept;
+		// let y2 = other.gradient * x + other.intercept;
+		// if y1 == y2 {
+		// 	// intersects but need to check that the point of intersection is within the start and end bounds of both lines
+		// 	// simple find the length of the edges and the longest edge to the supposed intercept point
+		// 	// if the edge to the interept point is larger than the length of the edge then the edge does not in fact intersect it
+		// 	let self_len = self.end.distance_squared(self.start);
+		// 	let self_intersect_len = {
+		// 		let a = self.start.distance_squared(Vec2::new(x, y1));
+		// 		let b = self.end.distance_squared(Vec2::new(x, y1));
+		// 		if a > b {
+		// 			a
+		// 		} else {
+		// 			b
+		// 		}
+		// 	};
+		// 	let other_len = other.end.distance_squared(other.start);
+		// 	let other_intersect_len = {
+		// 		let a = other.start.distance_squared(Vec2::new(x, y1));
+		// 		let b = other.end.distance_squared(Vec2::new(x, y1));
+		// 		if a > b {
+		// 			a
+		// 		} else {
+		// 			b
+		// 		}
+		// 	};
+		// 	if self_len >= self_intersect_len && other_len >= other_intersect_len {
+		// 		return true
+		// 	} else {
+		// 		false
+		// 	}
+		// } else {
+		// 	false
+		// }
+	}
 }
 
 // #[rustfmt::skip]
@@ -966,4 +1428,28 @@ mod tests {
 			.get_field_cell_value(inspect_field);
 		assert_eq!(actual, result);
 	}
+	#[test]
+	fn intersect_para() {
+		let edge1 = EdgeLine::build(Vec2::new(0.0, 0.0), Vec2::new(3.0, 3.0));
+		let edge2 = EdgeLine::build(Vec2::new(-1.0, 0.0), Vec2::new(2.0, 3.0));
+		assert!(!edge1.does_intersect(&edge2))
+	}
+	#[test]
+	fn intersect_yes() {
+		let edge1 = EdgeLine::build(Vec2::new(0.0, 0.0), Vec2::new(3.0, 3.0));
+		let edge2 = EdgeLine::build(Vec2::new(-1.0, 5.0), Vec2::new(3.0, 2.0));
+		assert!(edge1.does_intersect(&edge2))
+	}
+	#[test]
+	fn intersect_yes_but_oob() {
+		let edge1 = EdgeLine::build(Vec2::new(0.0, 0.0), Vec2::new(3.0, 3.0));
+		let edge2 = EdgeLine::build(Vec2::new(-1.0, 5.0), Vec2::new(-0.5, 1.25));
+		assert!(!edge1.does_intersect(&edge2))
+	}
+	// #[test]
+	// fn intersect_no() {
+	// 	let edge1 = EdgeLine::build(Vec2::new(0.0, 0.0), Vec2::new(3.0, 3.0));
+	// 	let edge2 = EdgeLine::build(Vec2::new(-1.0, 0.0), Vec2::new(2.0, 3.0));
+	// 	assert!(!edge1.does_intersect(&edge2))
+	// }
 }
