@@ -557,11 +557,6 @@ impl MapDimensions {
 // #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-	use bevy::render::{
-		mesh::{Indices, PrimitiveTopology},
-		render_asset::RenderAssetUsages,
-	};
-
 	use super::*;
 	#[test]
 	fn sector_costfields_top_left_sector_id_from_xyz() {

@@ -173,7 +173,7 @@ impl FlowFieldTilesBundle {
 			flow_field_cache: cache,
 		}
 	}
-	/// From a list of 2d meshes initialise a bundle
+	/// From a list of 2d meshes initialise a bundle. The vertex points of the meshese must be within the `map_length` and `map_depth` of the world
 	#[cfg(not(tarpaulin_include))]
 	#[cfg(feature = "2d")]
 	pub fn from_bevy_2d_meshes(
@@ -183,8 +183,6 @@ impl FlowFieldTilesBundle {
 		sector_resolution: u32,
 		actor_size: f32,
 	) -> Self {
-		//TODO just use new for map_dim, otherwise too easy for someone to supply meshes that aren't a factor of sector_reolustion
-		// let map_dimensions = MapDimensions::from_bevy_2d_meshes(&meshes, sector_resolution, actor_size);
 		let map_dimensions =
 			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
 		let cost_fields = SectorCostFields::from_bevy_2d_meshes(&map_dimensions, &meshes);

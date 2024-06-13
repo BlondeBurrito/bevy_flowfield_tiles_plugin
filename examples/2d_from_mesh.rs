@@ -1,4 +1,5 @@
-//! From a list of navigatable meshes construct the Flowfields
+//! From a list of navigatable meshes construct the Flowfields. The pathable
+//! (cost 1) FieldCells of each sector are shown as purple squares
 //!
 
 use bevy::{
