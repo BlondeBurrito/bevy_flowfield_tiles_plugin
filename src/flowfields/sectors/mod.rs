@@ -154,6 +154,18 @@ impl MapDimensions {
 	pub fn get_actor_scale(&self) -> u32 {
 		self.actor_scale
 	}
+	/// Based on `map_length` and resolution calculate the number of [`FieldCell`] columns across all sectors
+	pub fn get_total_field_cell_columns(&self) -> usize {
+		(self.get_length() / self.get_sector_resolution()) as usize * FIELD_RESOLUTION
+	}
+	/// Based on `map_depth` and resolution calculate the number of [`FieldCell`] rows across all sectors
+	pub fn get_total_field_cell_rows(&self) -> usize {
+		(self.get_depth() / self.get_sector_resolution()) as usize * FIELD_RESOLUTION
+	}
+	/// Based on the sector resolution calculate the `f32` size of a [`FieldCell`]
+	pub fn get_field_cell_unit_size(&self) -> f32 {
+		(self.get_sector_resolution() as usize / FIELD_RESOLUTION) as f32
+	}
 
 	/// From a position in 2D `x, y` space with an origin at `(0, 0)` and the
 	/// dimensions (pixels) of the map, calculate the sector ID that point resides in

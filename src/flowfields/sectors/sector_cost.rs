@@ -650,12 +650,9 @@ impl SectorCostFields {
 		use bevy::render::mesh::PrimitiveTopology;
 		let mut sector_cost_fields = SectorCostFields::new_with_cost(map_dimensions, 255);
 
-		let columns = (map_dimensions.get_length() / map_dimensions.get_sector_resolution())
-			as usize * FIELD_RESOLUTION;
-		let rows = (map_dimensions.get_depth() / map_dimensions.get_sector_resolution()) as usize
-			* FIELD_RESOLUTION;
-		let field_cell_unit_size =
-			(map_dimensions.get_sector_resolution() as usize / FIELD_RESOLUTION) as f32;
+		let columns = map_dimensions.get_total_field_cell_columns();
+		let rows = map_dimensions.get_total_field_cell_rows();
+		let field_cell_unit_size = map_dimensions.get_field_cell_unit_size();
 
 		// Treat each FieldCell as its own polygon
 		// to find if one polygon (A) is within another (B):
