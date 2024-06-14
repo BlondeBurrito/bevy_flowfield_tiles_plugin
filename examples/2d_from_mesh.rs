@@ -14,6 +14,7 @@ use bevy::{
 use bevy_flowfield_tiles_plugin::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 
+/// Corresponds to a unit size of the map dimenions
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 
 fn main() {
@@ -186,19 +187,19 @@ fn create_meshes(
 		Pathable,
 	));
 	let island = Mesh::new(
-		PrimitiveTopology::TriangleList,
+		PrimitiveTopology::TriangleStrip,
 		RenderAssetUsages::default(),
 	)
 	.with_inserted_attribute(
 		Mesh::ATTRIBUTE_POSITION,
 		vec![
-			[-192.0, -640.0, 0.0],
-			[192.0, -640.0, 0.0],
-			[192.0, 640.0, 0.0],
 			[-192.0, 640.0, 0.0],
+			[-192.0, -640.0, 0.0],
+			[192.0, 640.0, 0.0],
+			[192.0, -640.0, 0.0],
 		],
 	)
-	.with_inserted_indices(Indices::U32(vec![0, 1, 2, 2, 0, 3]));
+	.with_inserted_indices(Indices::U32(vec![0, 1, 2, 3]));
 	cmds.spawn((
 		MaterialMesh2dBundle {
 			mesh: meshes.add(island).into(),
@@ -251,6 +252,8 @@ fn create_flowfields_from_meshes(
 	}
 }
 
+/// Create purple squares to show where pathable FieldCells have ben calcualted
+/// from the input meshes
 fn mark_pathable_field_cells(
 	mut cmds: Commands,
 	query: Query<(&SectorCostFields, &MapDimensions)>,

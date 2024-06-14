@@ -710,7 +710,50 @@ impl SectorCostFields {
 								}
 							}
 						},
-						PrimitiveTopology::TriangleStrip => todo!(),
+						PrimitiveTopology::TriangleStrip => {
+							if let Some(mesh_vertices) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+								let points = mesh_vertices.as_float3().unwrap();
+								let indices = mesh.indices().unwrap();
+								let indices_slice: Vec<usize> = indices.iter().collect();
+								// build each edge of each triangle in the mesh represented by index points
+								let mut edge_indices = vec![];
+								if let Some(triangle_count) = points.len().checked_sub(2) {
+									for n in 0..triangle_count {
+										if n % 2 == 0 {
+											edge_indices.push(MeshTriEdge(indices_slice[n], indices_slice[n + 1]));
+											edge_indices.push(MeshTriEdge(indices_slice[n + 1], indices_slice[n + 2]));
+											edge_indices.push(MeshTriEdge(indices_slice[n + 2], indices_slice[n]));
+										} else {
+											edge_indices.push(MeshTriEdge(indices_slice[n + 1], indices_slice[n]));
+											edge_indices.push(MeshTriEdge(indices_slice[n], indices_slice[n + 2]));
+											edge_indices.push(MeshTriEdge(indices_slice[n + 2], indices_slice[n + 1]));
+										}
+									}
+								} else {
+									warn!("A TriangleStrip mesh has insufficient vertices");
+								}
+								// collect edges that only belong to a single triangle (this means ignore internal edges, we only want the edges outlining the mesh), if any MeshEdge appears more than once we remove all occurances of it
+								let copy = edge_indices.clone();
+								for edge in edge_indices {
+									let mut occurances = 0;
+									for c in &copy {
+										if edge == *c {
+											occurances +=1;
+										}
+									}
+									if occurances == 1 {
+										// found outter edge
+										// store edge line
+										let start = points[edge.0];
+										let end = points[edge.1];
+										//NB: vertex points are relative to mesh so include
+										// translation of the mesh to find global position
+										let line = EdgeLine::build(Vec2::new(start[0] + translation.x, start[1] + translation.y), Vec2::new(end[0] + translation.x, end[1] + translation.y));
+										outer_edges.push(line);
+									}
+								}
+							}
+						},
 						_ => warn!("Mesh topology must be of TriangleList or TriangleStrip for use with Flowfields"),
 					}
 		}
@@ -840,7 +883,7 @@ impl SectorCostFields {
 }
 
 /// Represents two points that form the edge between mech vertices
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct MeshTriEdge<T: PartialEq>(T, T);
 // custom impl so we can test whether two edges are teh same but with start and end coords swapped
 impl<T: PartialEq> PartialEq for MeshTriEdge<T> {
@@ -889,21 +932,23 @@ impl EdgeLine {
 					(other.start - self.start).dot(self_segment) / (self_segment.dot(self_segment));
 				let t_1 = t_0 + other_segment.dot(self_segment) / (self_segment.dot(self_segment));
 
-				if other_segment.dot(self_segment) < 0.0 {
-					if t_0 <= 0.0 && t_0 >= 1.0 && t_1 <= 0.0 && t_1 >= 1.0 {
-						// overlap
-						Intersection::Touch
-					} else {
-						// disjoint
-						Intersection::None
-					}
-				} else if (0.0..=1.0).contains(&t_0) && (0.0..=1.0).contains(&t_1) {
-						// overlap
-						Intersection::Touch
-					} else {
-						// disjoint
-						Intersection::None
+				// if other_segment.dot(self_segment) < 0.0 {
+				// 	if (t_0 <= 0.0 || t_0 >= 1.0) && (t_1 <= 0.0 || t_1 >= 1.0) {
+				// 		// overlap
+				// 	} else {
+				// 		// disjoint
+				// 		Intersection::None
+				// 	}
+				// } else {
+
+				if (0.0..=1.0).contains(&t_0) && (0.0..=1.0).contains(&t_1) {
+					// overlap
+					Intersection::Touch
+				} else {
+					// disjoint
+					Intersection::None
 				}
+			// }
 			} else {
 				// parallel, non-intersecting
 				Intersection::None
