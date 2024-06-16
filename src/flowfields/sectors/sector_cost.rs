@@ -637,7 +637,7 @@ impl SectorCostFields {
 		sector_cost_fields.scale_all_costfields(map_dimensions);
 		sector_cost_fields
 	}
-	/// From a list of meshes extract the outter edges of each mesh and project an (MxN) FieldCell representation of edges over the dimensions. The projections undergo two tests to see if a FieldCell sits inside a mesh (thereby being marked as pathable):
+	/// From a list of meshes extract the outer edges of each mesh and project an (MxN) FieldCell representation of edges over the dimensions. The projections undergo two tests to see if a FieldCell sits inside a mesh (thereby being marked as pathable):
 	/// - The top-right vertex of each field cell is tested for mesh edge intersections, a horizontal line is taken from the vertex point to max-x and if the line intersects mesh edges an odd number of times, or touches an edge an even number of times, then it is marked as potentially being within the mesh
 	/// - From the marked FieldCells the four edges of each is then tested to see if it intersects any mesh edges, if so then it is overlapping a mesh boundary and so not fully inside the mesh, otherwise it is in the mesh and considered a pathable cell with default cost of 1
 	#[cfg(feature = "2d")]
@@ -729,7 +729,7 @@ impl SectorCostFields {
 						}
 					}
 					if occurances == 1 {
-						// found outter edge
+						// found outer edge
 						// store edge line
 						let start = points[edge.0];
 						let end = points[edge.1];

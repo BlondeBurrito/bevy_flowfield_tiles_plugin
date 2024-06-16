@@ -173,7 +173,7 @@ impl FlowFieldTilesBundle {
 			flow_field_cache: cache,
 		}
 	}
-	/// From a list of 2d meshes initialise a bundle. The vertex points of the meshese must be within the `map_length` and `map_depth` of the world
+	/// From a list of 2d meshes and their translation initialise a bundle. The vertex points of the meshes must be within the `map_length` and `map_depth` of the world
 	#[cfg(not(tarpaulin_include))]
 	#[cfg(feature = "2d")]
 	pub fn from_bevy_2d_meshes(
