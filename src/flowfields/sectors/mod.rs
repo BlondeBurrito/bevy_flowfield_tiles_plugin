@@ -122,7 +122,13 @@ impl MapDimensions {
 		if actor_size < 0.0 {
 			panic!("Actor size cannot be less than zero");
 		}
+		if actor_size >= sector_resolution as f32 {
+			panic!("actor_size cannot be bigger than sector_resolution");
+		}
 		let actor_scale = (actor_size / (sector_resolution as f32 / 10.0)).ceil() as u32;
+		if actor_scale >= 10 {
+			panic!("Actors cannot be larger than an entire sector, actor_size and/or sector_resolution is incorrect. Size: {}, resolution {}, has produced an actor scale factor of {}. The scale factor must be less than 10 (`scale=actor_size/(sector_resolution * 0.1)`).", actor_size, sector_resolution, actor_scale);
+		}
 		MapDimensions {
 			size: (length, depth),
 			sector_resolution,
@@ -132,9 +138,13 @@ impl MapDimensions {
 	pub fn get_size(&self) -> (u32, u32) {
 		self.size
 	}
+	/// Number of `x` units in size
 	pub fn get_length(&self) -> u32 {
 		self.size.0
 	}
+	/// 2d: number of `y` units in size
+	///
+	/// 3d: number of `z` units in size
 	pub fn get_depth(&self) -> u32 {
 		self.size.1
 	}
@@ -143,6 +153,18 @@ impl MapDimensions {
 	}
 	pub fn get_actor_scale(&self) -> u32 {
 		self.actor_scale
+	}
+	/// Based on `map_length` and resolution calculate the number of [`FieldCell`] columns across all sectors
+	pub fn get_total_field_cell_columns(&self) -> usize {
+		(self.get_length() / self.get_sector_resolution()) as usize * FIELD_RESOLUTION
+	}
+	/// Based on `map_depth` and resolution calculate the number of [`FieldCell`] rows across all sectors
+	pub fn get_total_field_cell_rows(&self) -> usize {
+		(self.get_depth() / self.get_sector_resolution()) as usize * FIELD_RESOLUTION
+	}
+	/// Based on the sector resolution calculate the `f32` size of a [`FieldCell`]
+	pub fn get_field_cell_unit_size(&self) -> f32 {
+		(self.get_sector_resolution() as usize / FIELD_RESOLUTION) as f32
 	}
 
 	/// From a position in 2D `x, y` space with an origin at `(0, 0)` and the
@@ -490,6 +512,58 @@ impl MapDimensions {
 			}
 		}
 	}
+	// /// From a list of meshes find the maximum and minimum x-y dimensions across all meshes to represent the size of the world as an MxN set of Flowfields
+	// #[cfg(feature = "2d")]
+	// pub fn from_bevy_2d_meshes(meshes: &Vec<&Mesh>, sector_resolution: u32, actor_size: f32) -> Self {
+	// 	let mut min_x = None;
+	// 	let mut max_x = None;
+	// 	let mut min_y = None;
+	// 	let mut max_y = None;
+
+	// 	for mesh in meshes {
+	// 		let vert_attrib = mesh.attribute(Mesh::ATTRIBUTE_POSITION);
+	// 		if let Some(attrib) = vert_attrib {
+	// 			if let Some(vertices) = attrib.as_float3() {
+	// 				for vertex in vertices {
+	// 					let x = vertex[0];
+	// 					let y = vertex[1];
+	// 					if min_x.is_none() {
+	// 						min_x = Some(x);
+	// 					} else if min_x.unwrap() > x {
+	// 							min_x = Some(x);
+	// 						}
+	// 					if max_x.is_none() {
+	// 						max_x = Some(x);
+	// 					} else if max_x.unwrap() < x {
+	// 							max_x = Some(x);
+	// 					}
+	// 					if min_y.is_none() {
+	// 						min_y = Some(y);
+	// 					} else if min_y.unwrap() > y {
+	// 						min_y = Some(y);
+	// 					}
+	// 					if max_y.is_none() {
+	// 						max_y = Some(y);
+	// 					} else if max_y.unwrap() < y {
+	// 						max_y = Some(y);
+	// 					}
+	// 				}
+	// 			} else {
+	// 				warn!("A mesh cannot represent its vertices in `as_float3` format, it cannot be used to create flowfields");
+	// 			}
+	// 		} else {
+	// 			warn!("A mesh has no vertices, it cannot be used to create flowfields");
+	// 		}
+	// 	}
+
+	// 	if min_x.is_some() && max_x.is_some() && min_y.is_some() && max_y.is_some() {
+	// 		let length = (max_x.unwrap() - min_x.unwrap()) as u32;
+	// 		let depth = (max_y.unwrap() - min_y.unwrap()) as u32;
+	// 		MapDimensions::new(length, depth, sector_resolution, actor_size)
+	// 	} else {
+	// 		panic!("Unable to determine world size from meshes");
+	// 	}
+	// }
 }
 
 // #[rustfmt::skip]
@@ -809,4 +883,30 @@ mod tests {
 			.unwrap();
 		assert_eq!(actual, result);
 	}
+	// #[test]
+	// fn from_2d_meshes() {
+	// 	let mut meshes = vec![];
+	// 	let mesh1 = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default())
+	// 	.with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
+	// 		[0.0, 0.0, 0.0],
+	// 		[0.0, 10.0, 0.0],
+	// 		[10.0, 10.0, 0.0],
+	// 	])
+	// 	.with_inserted_indices(Indices::U32(vec![0, 1, 2]));
+	// 	meshes.push(&mesh1);
+	// 	let mesh2 = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default())
+	// 	.with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
+	// 		[0.0, 0.0, 0.0],
+	// 		[-20.0, 0.0, 0.0],
+	// 		[-20.0, -10.0, 0.0],
+	// 	])
+	// 	.with_inserted_indices(Indices::U32(vec![0, 1, 2]));
+	// 	meshes.push(&mesh2);
+	// 	let sector_resolution = 10;
+	// 	let actor_size = 32.0;
+	// 	let result = MapDimensions::from_bevy_2d_meshes(&meshes, sector_resolution, actor_size);
+	// 	let result_size = result.size;
+	// 	let actual_size = (30, 20);
+	// 	assert_eq!(actual_size, result_size);
+	// }
 }
