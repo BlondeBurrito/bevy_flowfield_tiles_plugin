@@ -1,6 +1,9 @@
 //! From a list of navigatable meshes construct the Flowfields. The pathable
-//! (cost 1) FieldCells of each sector are shown as purple squares
+//! (cost 1) FieldCells of each sector are shown as purple squares.
 //!
+//! Note that if two meshes overlap/touch then the edge between them will be
+//! marked as impassable.
+//! 
 
 use bevy::{
 	prelude::*,
@@ -33,15 +36,8 @@ fn main() {
 			(
 				create_flowfields_from_meshes,
 				mark_pathable_field_cells,
-				// get_or_request_route,
-				// spawn_actors,
-				// despawn_at_destination,
-				// update_counters,
-				// check_if_route_exhausted,
-				// despawn_tunneled_actors,
 			),
 		)
-		// .add_systems(Update, actor_steering)
 		.run();
 }
 
