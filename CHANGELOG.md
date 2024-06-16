@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2024-06-16
+
+### Documentation
+
+- FlowfieldTilesBundle -> FlowFieldTilesBundle fix in readme (#56)
+
+
+
+
+### Features
+
+- Initialise Flowfields from a list of 2d meshes (#59)
+
+A vector of 2d Bevy meshes can be used to initialise the Flowfields where any cells within the boundaries of a mesh are marked as having a pathing cost of 1. TriangleList and TriangleStrip topologies are both supported. 
+
+Note that if two meshes overlap/touch then the boundaries of those meshes will be marked as impassable. The aim in a future update is to treat overlapping/touching boundaries as continuous pathable space - this update helps lay the groundwork for being able to update Flowfields during runtime with user-spawned meshes which will bring a more high-level API to make the way in which a user interacts with this plugin more friendly. Once this 2d functionality is complete a 3d variant will be introduced
+
+
+### Miscellaneous Tasks
+
+- Clippy and remove unused code (#58)
+
+
+
+
+### Performance
+
+- Init benchmarks with heightmaps (#55)
+
+
+
+
+### Testing
+
+- Enable sparse benchmark
+
+
+
+
 ## [0.8.0] - 2024-02-27
 
 ### Bug Fixes
