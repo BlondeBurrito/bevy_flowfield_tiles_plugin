@@ -3,7 +3,7 @@
 //!
 //! Note that if two meshes overlap/touch then the edge between them will be
 //! marked as impassable.
-//! 
+//!
 
 use bevy::{
 	prelude::*,
@@ -33,10 +33,7 @@ fn main() {
 		.add_systems(Startup, (setup, create_wall_colliders, create_meshes))
 		.add_systems(
 			Update,
-			(
-				create_flowfields_from_meshes,
-				mark_pathable_field_cells,
-			),
+			(create_flowfields_from_meshes, mark_pathable_field_cells),
 		)
 		.run();
 }
@@ -242,6 +239,8 @@ fn create_flowfields_from_meshes(
 				map_depth,
 				sector_resolution,
 				actor_size,
+				1,
+				255,
 			));
 			*is_complete = true;
 		}

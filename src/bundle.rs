@@ -173,7 +173,11 @@ impl FlowFieldTilesBundle {
 			flow_field_cache: cache,
 		}
 	}
-	/// From a list of 2d meshes and their translation initialise a bundle. The vertex points of the meshes must be within the `map_length` and `map_depth` of the world
+	/// From a list of 2d meshes and their translation initialise a bundle. The vertex points of the meshes must be within the `map_length` and `map_depth` of the world.
+	///
+	/// The default cell Costs can be set with `internal_cost` and
+	/// `external_cost` for cells within any meshs and for cells outside of any
+	/// meshes
 	#[cfg(not(tarpaulin_include))]
 	#[cfg(feature = "2d")]
 	pub fn from_bevy_2d_meshes(
@@ -182,10 +186,17 @@ impl FlowFieldTilesBundle {
 		map_depth: u32,
 		sector_resolution: u32,
 		actor_size: f32,
+		internal_cost: u8,
+		external_cost: u8,
 	) -> Self {
 		let map_dimensions =
 			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-		let cost_fields = SectorCostFields::from_bevy_2d_meshes(&map_dimensions, &meshes);
+		let cost_fields = SectorCostFields::from_bevy_2d_meshes(
+			&map_dimensions,
+			&meshes,
+			internal_cost,
+			external_cost,
+		);
 		let mut portals = SectorPortals::new(
 			map_dimensions.get_length(),
 			map_dimensions.get_depth(),
