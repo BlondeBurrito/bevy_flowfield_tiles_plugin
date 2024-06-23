@@ -639,16 +639,18 @@ impl SectorCostFields {
 	}
 	/// From a list of meshes extract the outer edges of each mesh and project an (MxN) FieldCell representation of edges over the dimensions. The projections undergo two tests to see if a FieldCell sits inside a mesh (thereby being marked as pathable):
 	/// - The top-right vertex of each field cell is tested for mesh edge intersections, a horizontal line is taken from the vertex point to max-x and if the line intersects mesh edges an odd number of times, or touches an edge an even number of times, then it is marked as potentially being within the mesh
-	/// - From the marked FieldCells the four edges of each is then tested to see if it intersects any mesh edges, if so then it is overlapping a mesh boundary and so not fully inside the mesh, otherwise it is in the mesh and considered a pathable cell with default cost of 1
+	/// - From the marked FieldCells the four edges of each is then tested to see if it intersects any mesh edges, if so then it is overlapping a mesh boundary and so not fully inside the mesh, otherwise it is in the mesh and considered a pathable cell and given the cost `internal_cost` - all cells outside of the meshes are initialised with a cost of `external_cost`
 	#[cfg(feature = "2d")]
 	pub fn from_bevy_2d_meshes(
 		map_dimensions: &MapDimensions,
 		meshes: &Vec<(&Mesh, Vec2)>,
+		internal_cost: u8,
+		external_cost: u8,
 	) -> Self {
 		// init the fields so we already have the required sectors inserted
 
 		use bevy::render::mesh::PrimitiveTopology;
-		let mut sector_cost_fields = SectorCostFields::new_with_cost(map_dimensions, 255);
+		let mut sector_cost_fields = SectorCostFields::new_with_cost(map_dimensions, external_cost);
 
 		let columns = map_dimensions.get_total_field_cell_columns();
 		let rows = map_dimensions.get_total_field_cell_rows();
@@ -861,7 +863,12 @@ impl SectorCostFields {
 			if let Some((sector, field_cell)) =
 				map_dimensions.get_sector_and_field_cell_from_xy(position)
 			{
-				sector_cost_fields.set_field_cell_value(sector, 1, field_cell, map_dimensions);
+				sector_cost_fields.set_field_cell_value(
+					sector,
+					internal_cost,
+					field_cell,
+					map_dimensions,
+				);
 			}
 		}
 		sector_cost_fields.scale_all_costfields(map_dimensions);
