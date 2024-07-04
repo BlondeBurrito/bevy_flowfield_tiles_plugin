@@ -12,6 +12,7 @@ Inspired by the work of [Elijah Emerson](https://www.gameaipro.com/GameAIPro/Gam
 
 | bevy | bevy_flowfield_tiles_plugin |
 |------|-----------------------------|
+| 0.14 |  0.10  |
 | 0.13 |  0.7 - 0.9  |
 | 0.12 |  0.5 - 0.6  |
 | 0.11 |  0.1 - 0.4  |

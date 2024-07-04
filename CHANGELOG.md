@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2024-07-04
+
+### Features
+
+- Enable setting internal and external cell costs when using 2d meshes (#60)
+
+
+
+- Updated to bevy 0.14 (#61)
+
+
+
+
 ## [0.9.0] - 2024-06-16
 
 ### Documentation
