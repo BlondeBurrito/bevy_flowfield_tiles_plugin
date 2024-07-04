@@ -90,7 +90,10 @@ fn setup_navigation(
 	));
 	// create the controllable actor in the top right corner
 	let mesh = meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: 0.5 }));
-	let material = materials.add(Color::BLUE);
+	let material = materials.add(StandardMaterial {
+		base_color: Color::Srgba(Srgba::BLUE),
+		..default()
+	});
 	cmds.spawn(PbrBundle {
 		mesh,
 		material,
@@ -119,7 +122,7 @@ fn user_input(
 			.cursor_position()
 			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
 			.map(|ray| {
-				ray.intersect_plane(Vec3::ZERO, Plane3d::new(Vec3::Y))
+				ray.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))
 					.map(|distance| ray.get_point(distance))
 			});
 		if let Some(op_world_position) = ray_point {

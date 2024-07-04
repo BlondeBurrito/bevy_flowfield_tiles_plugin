@@ -102,12 +102,11 @@ fn setup_visualisation(mut cmds: Commands) {
 					let grey_scale = (255.0 - *value as f32) / 255.0;
 					cmds.spawn(SpriteBundle {
 						sprite: Sprite {
-							color: Color::Rgba {
-								red: grey_scale,
-								green: grey_scale,
-								blue: grey_scale,
-								alpha: 1.0,
-							},
+							color: Color::srgb(
+								grey_scale,
+								grey_scale,
+								grey_scale,
+							),
 							..default()
 						},
 						transform: Transform {
@@ -128,12 +127,11 @@ fn setup_navigation(mut cmds: Commands) {
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
 		sprite: Sprite {
-			color: Color::Rgba {
-				red: 230.0,
-				green: 0.0,
-				blue: 255.0,
-				alpha: 1.0,
-			},
+			color: Color::srgb(
+				230.0,
+				0.0,
+				255.0,
+			),
 			..default()
 		},
 		transform: Transform {
