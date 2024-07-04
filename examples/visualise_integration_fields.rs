@@ -196,9 +196,9 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 fn get_colour(cost: u16) -> Color {
 	match cost {
 		0 => Color::WHITE,
-		1 => Color::rgb(1.0, 0.95, 0.68),
-		65535 => Color::rgb(0.5, 0.5, 0.5),
-		_ => Color::rgb(
+		1 => Color::srgb(1.0, 0.95, 0.68),
+		65535 => Color::srgb(0.5, 0.5, 0.5),
+		_ => Color::srgb(
 			1.0,
 			0.95 * 0.9_f32.powf(cost as f32),
 			0.68 * 0.9_f32.powf(cost as f32),

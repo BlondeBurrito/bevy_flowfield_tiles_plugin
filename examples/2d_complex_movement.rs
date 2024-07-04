@@ -121,12 +121,11 @@ fn setup_navigation(mut cmds: Commands) {
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
 		sprite: Sprite {
-			color: Color::Rgba {
-				red: 230.0,
-				green: 0.0,
-				blue: 255.0,
-				alpha: 1.0,
-			},
+			color: Color::srgb(
+				230.0,
+				0.0,
+				255.0,
+			),
 			..default()
 		},
 		transform: Transform {

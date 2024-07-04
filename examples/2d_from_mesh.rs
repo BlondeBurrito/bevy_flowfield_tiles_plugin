@@ -267,12 +267,11 @@ fn mark_pathable_field_cells(
 							{
 								cmds.spawn(SpriteBundle {
 									sprite: Sprite {
-										color: Color::Rgba {
-											red: 230.0,
-											green: 0.0,
-											blue: 255.0,
-											alpha: 1.0,
-										},
+										color: Color::srgb(
+											230.0,
+											0.0,
+											255.0,
+										),
 										..default()
 									},
 									transform: Transform {

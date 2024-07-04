@@ -18,7 +18,7 @@ exclude = ["crates/examples_utils"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.13", default-features = false, features = ["bevy_render"] }
+bevy = { version = "0.14", default-features = false, features = ["bevy_render"] }
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
 csv = { version = "1" }
@@ -50,7 +50,7 @@ publish = true
 criterion = "0.5"
 bevy = { workspace = true, default-features = true }
 rand = "0.8"
-bevy_xpbd_2d = { version = "0.4", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+bevy_xpbd_2d = { version = "0.5", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
 # examples_utils = { path = "crates/examples_utils" }
 
 [dependencies]
