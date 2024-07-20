@@ -98,7 +98,7 @@ impl SectorCostFields {
 	/// Iterate over all sectors and scale any impassable [FieldCell] based on `actor_scale`.
 	///
 	/// This can be expensive so should typically be used as part of data initialisation, i.e when loading [SectorCostFields] from a file or within a loading type of operation to a world
-	fn scale_all_costfields(&mut self, map_dimensions: &MapDimensions) {
+	pub fn scale_all_costfields(&mut self, map_dimensions: &MapDimensions) {
 		let sector_ids: Vec<SectorID> = self.baseline.keys().cloned().collect();
 		for sector_id in sector_ids.iter() {
 			self.scaled.insert(
