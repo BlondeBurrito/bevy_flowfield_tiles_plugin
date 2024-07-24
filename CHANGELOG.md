@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.1] - 2024-07-24
+
+### Features
+
+- Members of FlowFieldTilesBundle are public, make costfield scaling function public (#62)
+
+- by making these items public users are able to more easy write custom ways of initialising the bundle
+
+
 ## [0.10.0] - 2024-07-04
 
 ### Features
