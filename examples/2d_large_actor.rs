@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
-use bevy_xpbd_2d::prelude::*;
+use avian2d::prelude::*;
 
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
