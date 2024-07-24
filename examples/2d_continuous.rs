@@ -7,7 +7,7 @@ use bevy::{
 };
 
 use bevy_flowfield_tiles_plugin::prelude::*;
-use bevy_xpbd_2d::prelude::*;
+use avian2d::prelude::*;
 use rand::seq::SliceRandom;
 
 /// Dimension of square sprites making up the world

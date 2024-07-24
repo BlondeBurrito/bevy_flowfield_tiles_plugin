@@ -15,7 +15,7 @@ use bevy::{
 };
 
 use bevy_flowfield_tiles_plugin::prelude::*;
-use bevy_xpbd_2d::prelude::*;
+use avian2d::prelude::*;
 
 /// Corresponds to a unit size of the map dimenions
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
