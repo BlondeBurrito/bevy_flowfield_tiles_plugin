@@ -10,17 +10,17 @@ use bevy::prelude::*;
 #[derive(Bundle)]
 pub struct FlowFieldTilesBundle {
 	/// [CostField]s of all sectors
-	sector_cost_fields: SectorCostFields,
+	pub sector_cost_fields: SectorCostFields,
 	/// Portals for all sectors
-	sector_portals: SectorPortals,
+	pub sector_portals: SectorPortals,
 	/// Graph describing how to get from one sector to another
-	portal_graph: PortalGraph,
+	pub portal_graph: PortalGraph,
 	/// Size of the world
-	map_dimensions: MapDimensions,
+	pub map_dimensions: MapDimensions,
 	/// Cache of overarching portal-portal routes
-	route_cache: RouteCache,
+	pub route_cache: RouteCache,
 	/// Cache of [FlowField]s that can be queried in a steering pipeline
-	flow_field_cache: FlowFieldCache,
+	pub flow_field_cache: FlowFieldCache,
 }
 
 impl FlowFieldTilesBundle {
