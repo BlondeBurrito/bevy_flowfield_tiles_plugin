@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Nix dependencies
-        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld
+        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld libwayland-dev
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --release --workspace --all-features
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Nix dependencies
-        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld
+        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld libwayland-dev
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release --workspace
