@@ -380,20 +380,9 @@ impl RouteCache {
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`
 	pub fn add_to_queue(
 		&mut self,
-		source_sector: SectorID,
-		source_field: FieldCell,
-		target_sector: SectorID,
-		goal_id: FieldCell,
-		elapsed_duration: Duration,
+		route_data: RouteMetadata,
 		route: Vec<(SectorID, FieldCell)>,
 	) {
-		let route_data = RouteMetadata {
-			source_sector,
-			source_field,
-			target_sector,
-			target_goal: goal_id,
-			time_generated: elapsed_duration,
-		};
 		self.route_queue.insert(route_data, route);
 	}
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`

@@ -74,11 +74,7 @@ pub fn event_insert_route_queue(
 							filter_path(&mut path, event.target_goal);
 						}
 						cache.add_to_queue(
-							event.source_sector,
-							event.source_field_cell,
-							event.target_sector,
-							event.target_goal,
-							time.elapsed(),
+							rm,
 							path,
 						);
 					} else {
@@ -97,11 +93,7 @@ pub fn event_insert_route_queue(
 							// then there is a local route
 							if vis {
 								cache.add_to_queue(
-									event.source_sector,
-									event.source_field_cell,
-									event.target_sector,
-									event.target_goal,
-									time.elapsed(),
+									rm,
 									vec![(event.target_sector, event.target_goal)],
 								);
 							}
