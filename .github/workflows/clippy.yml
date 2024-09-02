@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Nix dependencies
-        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld
+        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld libwayland-dev
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings -D clippy::cargo_common_metadata -D clippy::missing_docs_in_private_items -D clippy::todo -W clippy::unimplemented
