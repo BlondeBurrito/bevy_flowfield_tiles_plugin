@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.2] - 2024-09-02
+
+### Miscellaneous Tasks
+
+- Bump MSRV, fix clippy lint syntax
+
+
+
+
+### Performance
+
+- Enable wayland support for bevy  (#66)
+
+prevents examples from lagging on wayland sessions. If not enabled bevy is built with x11 support only, and lags like crazy for no fault of the pathing algo, giving bad impression to the user
+
+---------
+
+
+### Refactor
+
+- Migrate example physics to avian2d (#64)
+
+
+
+
 ## [0.10.1] - 2024-07-24
 
 ### Features
