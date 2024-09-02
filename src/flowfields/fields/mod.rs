@@ -488,28 +488,36 @@ pub struct IntegrationBuilder {
 	/// origin sector of the actor
 	path: Vec<(SectorID, FieldCell)>,
 	//TODO shouldn't duplicate sector ids and cells
-	/// List of [IntegrationField] aligned with Sector and Portals whereby the `integration_fields` is initially `None` and gets built as the [FlowFieldCache] queue gets processed
+	/// List of [IntegrationField] aligned with Sector and Portals whereby the
+	/// `integration_fields` is initially `None` and gets built as the
+	/// [FlowFieldCache] queue gets processed
 	integration_fields: Option<Vec<(SectorID, Vec<FieldCell>, IntegrationField)>>,
 }
 
 impl IntegrationBuilder {
+	/// Create a new instance [IntegrationBuilder] initialised with a `path`
 	pub fn new(path: Vec<(SectorID, FieldCell)>) -> Self {
 		IntegrationBuilder {
 			path,
 			integration_fields: None,
 		}
 	}
+	/// Get the series of sectors and connecting portals of the path
 	pub fn get_path(&self) -> &Vec<(SectorID, FieldCell)> {
 		&self.path
 	}
+	/// Get the list of fields
 	pub fn get_integration_fields(
 		&self,
 	) -> &Option<Vec<(SectorID, Vec<FieldCell>, IntegrationField)>> {
 		&self.integration_fields
 	}
+	//TODO maybe rewrite as is_complete
+	/// Returns true if the `IntegrationField` hasn't been built yet`
 	pub fn is_pending(&self) -> bool {
 		self.integration_fields.is_none()
 	}
+	/// Set the IntegrationFields of the path
 	pub fn add_integration_fields(
 		&mut self,
 		fields: Vec<(SectorID, Vec<FieldCell>, IntegrationField)>,
@@ -520,7 +528,10 @@ impl IntegrationBuilder {
 
 /// Each generated [FlowField] is placed into this cache so that multiple actors can read from the same dataset.
 ///
-/// Each entry is given an ID of `(sector_id, goal_id)` and actors can poll the cache to retrieve the field once it's built and inserted. Note that `goal_id` can refer to the true end-goal or it can refer to a portal position when a path spans multiple sectors
+/// Each entry is given an ID of `(sector_id, goal_id)` and actors can poll the
+/// cache to retrieve the field once it's built and inserted. Note that
+/// `goal_id` can refer to the true end-goal or it can refer to a portal
+/// position when a path spans multiple sectors
 #[derive(Component, Default)]
 pub struct FlowFieldCache {
 	/// Routes describing the sector path and [IntegrationField]s where the
@@ -539,14 +550,17 @@ impl FlowFieldCache {
 	pub fn get_mut(&mut self) -> &mut BTreeMap<FlowFieldMetadata, FlowField> {
 		&mut self.flows
 	}
+	/// Get a mutable reference to the queue map
 	pub fn get_queue_mut(&mut self) -> &mut BTreeMap<RouteMetadata, IntegrationBuilder> {
 		&mut self.queue
 	}
+	/// Insert a route into the queue to be built
 	pub fn add_to_queue(&mut self, metadata: RouteMetadata, path: Vec<(SectorID, FieldCell)>) {
 		let int_builder = IntegrationBuilder::new(path);
 		self.queue.insert(metadata, int_builder);
 	}
-	/// Get a [FlowField] based on the `sector_id` and `goal_id`. Returns [None] if the cache doesn't contain a record
+	/// Get a [FlowField] based on the `sector_id` and `goal_id`. Returns
+	/// [None] if the cache doesn't contain a record
 	pub fn get_field(&self, sector_id: SectorID, goal_id: FieldCell) -> Option<&FlowField> {
 		let flow_meta = FlowFieldMetadata {
 			sector_id,
@@ -575,7 +589,7 @@ impl FlowFieldCache {
 	pub fn remove_field(&mut self, flow_meta: FlowFieldMetadata) {
 		self.flows.remove(&flow_meta);
 	}
-	/// Remove a [RouteMetadata] from the cache integratino queue (when it
+	/// Remove a [RouteMetadata] from the cache integration queue (when it
 	/// needs regenerating from a [CostField] update)
 	pub fn remove_queue_item(&mut self, route_meta: RouteMetadata) {
 		self.queue.remove(&route_meta);

@@ -116,7 +116,7 @@ pub fn event_insert_route_queue(
 }
 
 /// Generated portal-portal routes contain two elements for each sector, one
-/// for an actors entry and when for an actors exit, we only need to know
+/// for an actors entry and one for an actors exit, we only need to know
 /// about the elements which an actor would use to exit the sector so we filter
 /// the route and trim it down
 pub fn filter_path(path: &mut Vec<(SectorID, FieldCell)>, target_goal: FieldCell) {
@@ -185,7 +185,7 @@ pub fn create_queued_integration_fields(
 }
 
 /// Portals may represent multiple [FieldCell]s along a boundary, expand them
-/// to provide multiple goal [FieldCell]s for crossing from one secgtor to another
+/// to provide multiple goal [FieldCell]s for crossing from one sector to another
 #[cfg(not(tarpaulin_include))]
 fn exapnd_sector_portals(
 	path: &[(SectorID, FieldCell)],

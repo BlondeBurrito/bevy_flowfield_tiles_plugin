@@ -76,7 +76,8 @@ impl Field<u16> for IntegrationField {
 	}
 }
 impl IntegrationField {
-	/// Creates a new [IntegrationField] where all cells are set to `u16::MAX` apart from the `goals` which is set to `0`
+	/// Creates a new [IntegrationField] where all cells are set to `u16::MAX`
+	/// apart from the `goals` which is set to `0`
 	pub fn new(goals: &Vec<FieldCell>) -> Self {
 		let mut field = IntegrationField([[u16::MAX; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
 		for goal in goals {
@@ -84,7 +85,8 @@ impl IntegrationField {
 		}
 		field
 	}
-	/// Reset all the cells of the [IntegrationField] to `u16::MAX` apart from the `goals` which are the starting points of calculating the field which is set to `0`
+	/// Reset all the cells of the [IntegrationField] to `u16::MAX` apart from
+	/// the `goals` which are the starting points of calculating the field which is set to `0`
 	pub fn reset(&mut self, goals: &Vec<FieldCell>) {
 		for i in 0..FIELD_RESOLUTION {
 			for j in 0..FIELD_RESOLUTION {
