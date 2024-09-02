@@ -2,7 +2,7 @@
 version = "0.10.1"
 authors = ["BlondeBurrito"]
 edition = "2021"
-rust-version = "1.76"
+rust-version = "1.80"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
@@ -29,6 +29,8 @@ cargo_common_metadata = "deny"
 missing_docs_in_private_items = "deny"
 todo = "deny"
 unimplemented = "warn"
+[workspace.lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(tarpaulin_include)'] }
 
 [package]
 name = "bevy_flowfield_tiles_plugin"
