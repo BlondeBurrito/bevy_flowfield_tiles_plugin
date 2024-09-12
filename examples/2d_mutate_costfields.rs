@@ -350,7 +350,7 @@ fn check_if_route_is_old(
 	let cache = route_q.get_single().unwrap();
 	for mut pathing in &mut actor_q {
 		if let Some(metadata) = pathing.metadata {
-			if let Some((cache_metadata, _route)) = cache.get().get_key_value(&metadata) {
+			if let Some((cache_metadata, _route)) = cache.get_routes().get_key_value(&metadata) {
 				if metadata.get_time_generated() != cache_metadata.get_time_generated() {
 					// cached route is newer meaning fields have been rebuilt
 					// reset cached pathing so a new route can be requested

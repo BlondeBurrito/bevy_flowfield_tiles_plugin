@@ -83,7 +83,7 @@ fn flow_maze(
 ) {
 	let mut flow_cache = FlowFieldCache::default();
 	// generate flow
-	for (_key, portal_path) in route_cache.get().iter() {
+	for (_key, portal_path) in route_cache.get_routes().iter() {
 		// original order is from actor to goal, int fields need to be processed the other way around
 		let mut path = portal_path.clone();
 		path.reverse();

@@ -61,7 +61,7 @@ pub fn event_insert_route_queue(
 					event.target_goal,
 					time.elapsed(),
 				);
-				if !cache.get().contains_key(&rm) {
+				if !cache.get_routes().contains_key(&rm) {
 					is_duplicate = false;
 					if let Some(mut path) = graph.find_best_path(
 						(event.source_sector, event.source_field_cell),
@@ -75,7 +75,7 @@ pub fn event_insert_route_queue(
 						}
 						cache.add_to_queue(
 							rm,
-							path,
+							Route::new(path),
 						);
 					} else {
 						// a portal based route could not be found or the actor
@@ -94,7 +94,7 @@ pub fn event_insert_route_queue(
 							if vis {
 								cache.add_to_queue(
 									rm,
-									vec![(event.target_sector, event.target_goal)],
+									Route::new(vec![(event.target_sector, event.target_goal)]),
 								);
 							}
 						}
@@ -134,15 +134,15 @@ pub fn filter_path(path: &mut Vec<(SectorID, FieldCell)>, target_goal: FieldCell
 /// which an actor can use as a high-level pathfinding route while publishing a
 /// new item into the [FlowFieldCache] queue
 #[cfg(not(tarpaulin_include))]
-pub fn process_route_queue(mut cache_q: Query<(&mut RouteCache, &mut FlowFieldCache)>) {
-	for (mut r_cache, mut f_cache) in &mut cache_q {
-		while let Some((metadata, path_to_goal)) = r_cache.get_queue_mut().pop_first() {
-			let mut path_from_goal = path_to_goal.clone();
-			path_from_goal.reverse();
+pub fn process_route_queue(mut cache_q: Query<(&mut RouteCache, &mut FlowFieldCache, &SectorCostFields)>) {
+	for (mut r_cache, mut f_cache, cost_fields) in &mut cache_q {
+		while let Some((metadata, route_to_goal)) = r_cache.get_queue_mut().pop_first() {
+			let mut route_from_goal = route_to_goal.clone();
+			route_from_goal.get_mut().reverse();
 			// store a route from actor to goal so that can actor can use it for high-level pathfinding while the more accurate flowfield representation gets built in the background
-			r_cache.insert_route_with_metadata(metadata, path_to_goal);
+			r_cache.insert_route_with_metadata(metadata, route_to_goal);
 			// add the route from goal to actor into the flowfield cache queue
-			f_cache.add_to_queue(metadata, path_from_goal);
+			f_cache.add_to_queue(metadata, route_from_goal, cost_fields);
 		}
 	}
 }
@@ -158,59 +158,76 @@ pub fn create_queued_integration_fields(
 		&MapDimensions,
 	)>,
 ) {
-	for (mut f_cache, sector_portals, sector_cost_fields_scaled, map_dimensions) in &mut cache_q {
+	for (mut f_cache, sector_portals, sector_cost_fields, map_dimensions) in &mut cache_q {
 		if let Some(mut entry) = f_cache.get_queue_mut().first_entry() {
-			if entry.get().is_pending() {
-				let sectors_expanded_goals = exapnd_sector_portals(
-					entry.get().get_path(),
-					sector_portals,
-					sector_cost_fields_scaled,
-					map_dimensions,
-				);
-				// build the integration fields
-				let sector_int_fields =
-					build_integration_fields(&sectors_expanded_goals, sector_cost_fields_scaled);
-				entry.get_mut().add_integration_fields(sector_int_fields);
+			let mut_builder = entry.get_mut();
+			// expand portal goals if not done so
+			if !mut_builder.has_expanded_portals() {
+				mut_builder.expand_field_portals(sector_portals, sector_cost_fields, map_dimensions);
+				mut_builder.set_expanded_portals();
 			}
+			// compute line of sight if not done so
+			if !mut_builder.has_los_pass() {
+				mut_builder.calculate_los();
+				mut_builder.set_los_pass();
+			}
+			// if the fields haven't been built then build them
+			if !mut_builder.has_cost_pass() {
+				// let sector_int_fields = build_integration_fields(&sectors_expanded_goals, sector_cost_fields_scaled);
+				mut_builder.build_integrated_cost(sector_cost_fields);
+				mut_builder.set_cost_pass();
+			}
+			// if entry.get().is_pending() {
+			// 	let sectors_expanded_goals = exapnd_sector_portals(
+			// 		entry.get().get_path(),
+			// 		sector_portals,
+			// 		sector_cost_fields_scaled,
+			// 		map_dimensions,
+			// 	);
+			// 	// build the integration fields
+			// 	// let sector_int_fields =
+			// 	// 	build_integration_fields(&sectors_expanded_goals, sector_cost_fields_scaled);
+			// 	// entry.get_mut().add_integration_fields(sector_int_fields);
+			// }
 		}
 	}
 }
 
-/// Portals may represent multiple [FieldCell]s along a boundary, expand them
-/// to provide multiple goal [FieldCell]s for crossing from one sector to another
-#[cfg(not(tarpaulin_include))]
-fn exapnd_sector_portals(
-	path: &[(SectorID, FieldCell)],
-	sector_portals: &SectorPortals,
-	sector_cost_fields_scaled: &SectorCostFields,
-	map_dimensions: &MapDimensions,
-) -> Vec<(SectorID, Vec<FieldCell>)> {
-	let mut sectors_expanded_goals = Vec::new();
-	for (i, (sector_id, goal)) in path.iter().enumerate() {
-		// first element is always the end target, don't bother with portal expansion
-		if i == 0 {
-			sectors_expanded_goals.push((*sector_id, vec![*goal]));
-		} else {
-			// portals represent the boundary to another sector, a portal can be spread over
-			// multple field cells, expand the portal to provide multiple goal
-			// targets for moving to another sector
-			let neighbour_sector_id = path[i - 1].0;
-			let g = sector_portals
-				.get()
-				.get(sector_id)
-				.unwrap()
-				.expand_portal_into_goals(
-					sector_cost_fields_scaled,
-					sector_id,
-					goal,
-					&neighbour_sector_id,
-					map_dimensions,
-				);
-			sectors_expanded_goals.push((*sector_id, g));
-		}
-	}
-	sectors_expanded_goals
-}
+// /// Portals may represent multiple [FieldCell]s along a boundary, expand them
+// /// to provide multiple goal [FieldCell]s for crossing from one sector to another
+// #[cfg(not(tarpaulin_include))]
+// fn exapnd_sector_portals(
+// 	path: &[(SectorID, FieldCell)],
+// 	sector_portals: &SectorPortals,
+// 	sector_cost_fields_scaled: &SectorCostFields,
+// 	map_dimensions: &MapDimensions,
+// ) -> Vec<(SectorID, Vec<FieldCell>)> {
+// 	let mut sectors_expanded_goals = Vec::new();
+// 	for (i, (sector_id, goal)) in path.iter().enumerate() {
+// 		// first element is always the end target, don't bother with portal expansion
+// 		if i == 0 {
+// 			sectors_expanded_goals.push((*sector_id, vec![*goal]));
+// 		} else {
+// 			// portals represent the boundary to another sector, a portal can be spread over
+// 			// multple field cells, expand the portal to provide multiple goal
+// 			// targets for moving to another sector
+// 			let neighbour_sector_id = path[i - 1].0;
+// 			let g = sector_portals
+// 				.get()
+// 				.get(sector_id)
+// 				.unwrap()
+// 				.expand_portal_into_goals(
+// 					sector_cost_fields_scaled,
+// 					sector_id,
+// 					goal,
+// 					&neighbour_sector_id,
+// 					map_dimensions,
+// 				);
+// 			sectors_expanded_goals.push((*sector_id, g));
+// 		}
+// 	}
+// 	sectors_expanded_goals
+// }
 
 /// Iterate over each sector with the expanded portal goals and calculate the
 /// [IntegrationField] for it
@@ -221,13 +238,13 @@ fn build_integration_fields(
 ) -> Vec<(SectorID, Vec<FieldCell>, IntegrationField)> {
 	let mut sector_int_fields = Vec::new();
 	for (sector_id, goals) in sectors_expanded_goals.iter() {
-		let mut int_field = IntegrationField::new(goals);
-		let cost_field = sector_cost_fields_scaled
-			.get_scaled()
-			.get(sector_id)
-			.unwrap();
-		int_field.calculate_field(goals, cost_field);
-		sector_int_fields.push((*sector_id, goals.clone(), int_field));
+		// let mut int_field = IntegrationField::new(goals);
+		// let cost_field = sector_cost_fields_scaled
+		// 	.get_scaled()
+		// 	.get(sector_id)
+		// 	.unwrap();
+		// int_field.calculate_field(goals, cost_field);
+		// sector_int_fields.push((*sector_id, goals.clone(), int_field));
 	}
 	sector_int_fields
 }
@@ -239,10 +256,10 @@ pub fn create_flow_fields(mut cache_q: Query<&mut FlowFieldCache>, time: Res<Tim
 	for mut field_cache in &mut cache_q {
 		if let Some(mut entry) = field_cache.get_queue_mut().first_entry() {
 			// if the integration fields havbe been created then remove form queue and calculate flowfields
-			if !entry.get_mut().is_pending() {
-				let int = entry.remove();
-				let sector_int_fields = int.get_integration_fields().as_deref().unwrap();
-				let path = int.get_path();
+			if entry.get_mut().has_cost_pass() {
+				let int_builder = entry.remove();
+				let sector_int_fields = int_builder.get_integration_fields();
+				let path = int_builder.get_route().get();
 				// build the flow fields
 				for (i, (sector_id, goals, int_field)) in sector_int_fields.iter().enumerate() {
 					let mut flow_field = FlowField::default();

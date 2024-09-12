@@ -193,7 +193,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	});
 }
 /// Get the colour of a UI node
-fn get_colour(cost: u16) -> Color {
+fn get_colour(cost: u32) -> Color {
 	match cost {
 		0 => Color::WHITE,
 		1 => Color::srgb(1.0, 0.95, 0.68),

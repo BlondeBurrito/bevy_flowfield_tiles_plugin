@@ -64,7 +64,7 @@ impl FieldCell {
 			panic!("{:?} does not sit along the boundary", self);
 		}
 	}
-	/// Using the Bresenham line algorithm get a list of [FieldCell] that lie along a line between two points
+	/// Using the Bresenham line algorithm get a list of [FieldCell] that lie along a line between two points. Note that the list will contain the source (`self`) and `target` [FieldCell]
 	pub fn get_cells_between_points(&self, target: &FieldCell) -> Vec<FieldCell> {
 		let source_col = self.get_column() as i32;
 		let source_row = self.get_row() as i32;
@@ -313,30 +313,50 @@ impl RouteMetadata {
 		self.time_generated
 	}
 }
-/// Each key makes use of custom Ord and Eq implementations based on comparing `(source_id, target_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a list of `(sector_id, goal_id)` referring to the sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
+
+/// List of sector-portal (or just the end goal) route describing the sector path an actor should take to move to a destination sector
+#[derive(Default, Clone, Debug)]
+pub struct Route(Vec<(SectorID, FieldCell)>);
+
+impl Route {
+	/// Get the sector to sector path including portals/goals
+	pub fn get(&self) -> &Vec<(SectorID, FieldCell)> {
+		&self.0
+	}
+	/// Get a mutable reference to the sector to sector path including portals/goals
+	pub fn get_mut(&mut self) -> &mut Vec<(SectorID, FieldCell)> {
+		&mut self.0
+	}
+	/// Create a new instance of [Route] with the given `path`
+	pub fn new(path: Vec<(SectorID, FieldCell)>) -> Self {
+		Route(path)
+	}
+}
+
+/// Each key makes use of custom Ord and Eq implementations based on comparing `(source_id, target_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
 #[derive(Component, Default, Clone)]
 pub struct RouteCache {
 	/// A queue of high-level routes which get processed into the `routes` field
-	route_queue: BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>>,
+	route_queue: BTreeMap<RouteMetadata, Route>,
 	/// High-level routes describing the path from an actor to an end goal
-	routes: BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>>,
+	routes: BTreeMap<RouteMetadata, Route>,
 }
 
 impl RouteCache {
 	/// Get a refernce to the map of queued routes
-	pub fn get_queue(&self) -> &BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
+	pub fn get_queue(&self) -> &BTreeMap<RouteMetadata, Route> {
 		&self.route_queue
 	}
 	/// Get a mutable reference to the map of queued routes
-	pub fn get_queue_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
+	pub fn get_queue_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Route> {
 		&mut self.route_queue
 	}
 	/// Get the map of routes
-	pub fn get(&self) -> &BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
+	pub fn get_routes(&self) -> &BTreeMap<RouteMetadata, Route> {
 		&self.routes
 	}
 	/// Get a mutable reference to the map of routes
-	pub fn get_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Vec<(SectorID, FieldCell)>> {
+	pub fn get_mut(&mut self) -> &mut BTreeMap<RouteMetadata, Route> {
 		&mut self.routes
 	}
 	/// Get a high-level sector to sector route. Returns [None] if it doesn't exist
@@ -346,7 +366,7 @@ impl RouteCache {
 		source_field: FieldCell,
 		target_sector: SectorID,
 		goal_id: FieldCell,
-	) -> Option<&Vec<(SectorID, FieldCell)>> {
+	) -> Option<&Route> {
 		let route_data = RouteMetadata {
 			source_sector,
 			source_field,
@@ -365,7 +385,7 @@ impl RouteCache {
 		source_field: FieldCell,
 		target_sector: SectorID,
 		goal_id: FieldCell,
-	) -> Option<(&RouteMetadata, &Vec<(SectorID, FieldCell)>)> {
+	) -> Option<(&RouteMetadata, &Route)> {
 		let route_data = RouteMetadata {
 			source_sector,
 			source_field,
@@ -381,7 +401,7 @@ impl RouteCache {
 	pub fn add_to_queue(
 		&mut self,
 		route_data: RouteMetadata,
-		route: Vec<(SectorID, FieldCell)>,
+		route: Route,
 	) {
 		self.route_queue.insert(route_data, route);
 	}
@@ -393,7 +413,7 @@ impl RouteCache {
 		target_sector: SectorID,
 		goal_id: FieldCell,
 		elapsed_duration: Duration,
-		route: Vec<(SectorID, FieldCell)>,
+		route: Route,
 	) {
 		let route_data = RouteMetadata {
 			source_sector,
@@ -408,7 +428,7 @@ impl RouteCache {
 	pub fn insert_route_with_metadata(
 		&mut self,
 		route_metadata: RouteMetadata,
-		route: Vec<(SectorID, FieldCell)>,
+		route: Route,
 	) {
 		self.routes.insert(route_metadata, route);
 	}
@@ -469,52 +489,6 @@ impl PartialOrd for FlowFieldMetadata {
 	}
 }
 
-/// Grouping of high-level route from goal to actor where the integration
-/// fields get populated when the builder arrives at the front of the queue
-#[derive(Default)]
-pub struct IntegrationBuilder {
-	/// Sector and Portals describing the route from the target goal to the
-	/// origin sector of the actor
-	path: Vec<(SectorID, FieldCell)>,
-	//TODO shouldn't duplicate sector ids and cells
-	/// List of [IntegrationField] aligned with Sector and Portals whereby the
-	/// `integration_fields` is initially `None` and gets built as the
-	/// [FlowFieldCache] queue gets processed
-	integration_fields: Option<Vec<(SectorID, Vec<FieldCell>, IntegrationField)>>,
-}
-
-impl IntegrationBuilder {
-	/// Create a new instance [IntegrationBuilder] initialised with a `path`
-	pub fn new(path: Vec<(SectorID, FieldCell)>) -> Self {
-		IntegrationBuilder {
-			path,
-			integration_fields: None,
-		}
-	}
-	/// Get the series of sectors and connecting portals of the path
-	pub fn get_path(&self) -> &Vec<(SectorID, FieldCell)> {
-		&self.path
-	}
-	/// Get the list of fields
-	pub fn get_integration_fields(
-		&self,
-	) -> &Option<Vec<(SectorID, Vec<FieldCell>, IntegrationField)>> {
-		&self.integration_fields
-	}
-	//TODO maybe rewrite as is_complete
-	/// Returns true if the `IntegrationField` hasn't been built yet`
-	pub fn is_pending(&self) -> bool {
-		self.integration_fields.is_none()
-	}
-	/// Set the IntegrationFields of the path
-	pub fn add_integration_fields(
-		&mut self,
-		fields: Vec<(SectorID, Vec<FieldCell>, IntegrationField)>,
-	) {
-		self.integration_fields = Some(fields);
-	}
-}
-
 /// Each generated [FlowField] is placed into this cache so that multiple actors can read from the same dataset.
 ///
 /// Each entry is given an ID of `(sector_id, goal_id)` and actors can poll the
@@ -544,8 +518,8 @@ impl FlowFieldCache {
 		&mut self.queue
 	}
 	/// Insert a route into the queue to be built
-	pub fn add_to_queue(&mut self, metadata: RouteMetadata, path: Vec<(SectorID, FieldCell)>) {
-		let int_builder = IntegrationBuilder::new(path);
+	pub fn add_to_queue(&mut self, metadata: RouteMetadata, path: Route, cost_fields: &SectorCostFields) {
+		let int_builder = IntegrationBuilder::new(path, cost_fields);
 		self.queue.insert(metadata, int_builder);
 	}
 	/// Get a [FlowField] based on the `sector_id` and `goal_id`. Returns
