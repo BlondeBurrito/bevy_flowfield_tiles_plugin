@@ -1,4 +1,5 @@
-//! Calculates an [IntegrationField] from a [CostField] and displays the cell values in a UI grid
+//! Calculates an [IntegrationField] from a [CostField] and displays the cell
+//! cost values in a UI grid
 //!
 
 use bevy::prelude::*;
@@ -15,10 +16,11 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// calculate the field
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
 	let cost_field = CostField::from_ron(path);
-	let mut int_field = IntegrationField::default();
-	let source = vec![FieldCell::new(4, 4)];
-	int_field.reset(&source);
-	int_field.calculate_field(&source, &cost_field);
+	let goal = FieldCell::new(4, 4);
+	let mut int_field = IntegrationField::new(&goal, &cost_field);
+	let active_wavefront = vec![goal];
+	int_field.calculate_sector_goal_los(&active_wavefront, &goal);
+	int_field.calculate_field(&cost_field);
 	// create a UI grid
 	cmds.spawn(Camera2dBundle::default());
 	cmds.spawn(NodeBundle {
@@ -73,7 +75,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 						})
 						.with_children(|p| {
 							p.spawn(TextBundle::from_section(
-								value.to_string(),
+								(value & INT_FILTER_BITS_COST).to_string(),
 								TextStyle {
 									font: asset_server.load("fonts/FiraMono-Medium.ttf"),
 									font_size: 15.0,

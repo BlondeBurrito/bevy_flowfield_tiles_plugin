@@ -177,76 +177,8 @@ pub fn create_queued_integration_fields(
 				mut_builder.build_integrated_cost(sector_cost_fields);
 				mut_builder.set_cost_pass();
 			}
-			// if entry.get().is_pending() {
-			// 	let sectors_expanded_goals = exapnd_sector_portals(
-			// 		entry.get().get_path(),
-			// 		sector_portals,
-			// 		sector_cost_fields_scaled,
-			// 		map_dimensions,
-			// 	);
-			// 	// build the integration fields
-			// 	// let sector_int_fields =
-			// 	// 	build_integration_fields(&sectors_expanded_goals, sector_cost_fields_scaled);
-			// 	// entry.get_mut().add_integration_fields(sector_int_fields);
-			// }
 		}
 	}
-}
-
-// /// Portals may represent multiple [FieldCell]s along a boundary, expand them
-// /// to provide multiple goal [FieldCell]s for crossing from one sector to another
-// #[cfg(not(tarpaulin_include))]
-// fn exapnd_sector_portals(
-// 	path: &[(SectorID, FieldCell)],
-// 	sector_portals: &SectorPortals,
-// 	sector_cost_fields_scaled: &SectorCostFields,
-// 	map_dimensions: &MapDimensions,
-// ) -> Vec<(SectorID, Vec<FieldCell>)> {
-// 	let mut sectors_expanded_goals = Vec::new();
-// 	for (i, (sector_id, goal)) in path.iter().enumerate() {
-// 		// first element is always the end target, don't bother with portal expansion
-// 		if i == 0 {
-// 			sectors_expanded_goals.push((*sector_id, vec![*goal]));
-// 		} else {
-// 			// portals represent the boundary to another sector, a portal can be spread over
-// 			// multple field cells, expand the portal to provide multiple goal
-// 			// targets for moving to another sector
-// 			let neighbour_sector_id = path[i - 1].0;
-// 			let g = sector_portals
-// 				.get()
-// 				.get(sector_id)
-// 				.unwrap()
-// 				.expand_portal_into_goals(
-// 					sector_cost_fields_scaled,
-// 					sector_id,
-// 					goal,
-// 					&neighbour_sector_id,
-// 					map_dimensions,
-// 				);
-// 			sectors_expanded_goals.push((*sector_id, g));
-// 		}
-// 	}
-// 	sectors_expanded_goals
-// }
-
-/// Iterate over each sector with the expanded portal goals and calculate the
-/// [IntegrationField] for it
-#[cfg(not(tarpaulin_include))]
-fn build_integration_fields(
-	sectors_expanded_goals: &[(SectorID, Vec<FieldCell>)],
-	sector_cost_fields_scaled: &SectorCostFields,
-) -> Vec<(SectorID, Vec<FieldCell>, IntegrationField)> {
-	let mut sector_int_fields = Vec::new();
-	for (sector_id, goals) in sectors_expanded_goals.iter() {
-		// let mut int_field = IntegrationField::new(goals);
-		// let cost_field = sector_cost_fields_scaled
-		// 	.get_scaled()
-		// 	.get(sector_id)
-		// 	.unwrap();
-		// int_field.calculate_field(goals, cost_field);
-		// sector_int_fields.push((*sector_id, goals.clone(), int_field));
-	}
-	sector_int_fields
 }
 
 /// When a queued item has had its [IntegrationField]s built generate the

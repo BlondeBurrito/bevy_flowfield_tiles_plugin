@@ -144,6 +144,11 @@ path = "examples/visualise_portals.rs"
 required-features = ["csv", "2d"]
 
 [[example]]
+name = "visualise_integration_field_los"
+path = "examples/visualise_integration_field_los.rs"
+required-features = ["ron"]
+
+[[example]]
 name = "visualise_integration_field"
 path = "examples/visualise_integration_field.rs"
 required-features = ["ron"]

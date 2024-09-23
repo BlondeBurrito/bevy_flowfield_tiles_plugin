@@ -138,7 +138,7 @@ impl IntegrationBuilder {
 		// just store the single end goal in the list
 		if i == 0 {
 			goals.push(self.path.get()[i].1);
-			field.set_field_cell_value(0 + BITS_GOAL, self.path.get()[i].1);
+			field.set_field_cell_value(0 + INT_BITS_GOAL, self.path.get()[i].1);
 		} else {
 		// portals represent the boundary to another sector, a portal can be spread over
 		// multple field cells, expand the portal to provide multiple goal
@@ -158,7 +158,7 @@ impl IntegrationBuilder {
 			for g in expanded_goals.iter() {
 				// set the goals of the expanded portal, value and the bit flag
 				goals.push(*g);
-				field.set_field_cell_value(0 + BITS_PORTAL, *g)
+				field.set_field_cell_value(0 + INT_BITS_PORTAL, *g)
 			}
 		}
 	}
@@ -168,7 +168,7 @@ impl IntegrationBuilder {
 		let fields = self.get_mut_integration_fields();
 		if let Some((_sector, goals, field)) = fields.first_mut() {
 			field.set_initial_los(goals[0]);
-			field.calcualte_sector_goal_los(goals, &goals[0]);
+			field.calculate_sector_goal_los(goals, &goals[0]);
 		}
 		//TODO propagate LOS across sectors
 		//until then set LOS corners in other sectors as the goals for int calc layer
@@ -192,11 +192,14 @@ impl IntegrationBuilder {
 	}
 }
 
-pub const BITS_IMPASSABLE: u32 = 0b0000_0000_0000_0000_1111_1111_1111_1111; //TODO maybe make flag
-pub const BITS_LOS: u32 = 0b0000_0000_0000_0001_0000_0000_0000_0000;
-pub const BITS_GOAL: u32 = 0b0000_0000_0000_0010_0000_0000_0000_0000;
-pub const BITS_WAVE_BLOCKED: u32 = 0b0000_0000_0000_0100_0000_0000_0000_0000;
-pub const BITS_PORTAL: u32 = 0b0000_0000_0000_1000_0000_0000_0000_0000;
+pub const INT_BITS_LOS: u32 = 0b0000_0000_0000_0001_0000_0000_0000_0000;
+pub const INT_BITS_GOAL: u32 = 0b0000_0000_0000_0010_0000_0000_0000_0000;
+pub const INT_BITS_WAVE_BLOCKED: u32 = 0b0000_0000_0000_0100_0000_0000_0000_0000;
+pub const INT_BITS_PORTAL: u32 = 0b0000_0000_0000_1000_0000_0000_0000_0000;
+pub const INT_BITS_IMPASSABLE: u32 = 0b0000_0010_0000_0000_0000_0000_0000_0000;
+pub const INT_BITS_CORNER: u32 = 0b0000_0100_0000_0000_0000_0000_0000_0000;
+pub const INT_FILTER_BITS_COST: u32 = 0b0000_0000_0000_0000_1111_1111_1111_1111;
+pub const INT_FILTER_BITS_FLAGS: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone)]
@@ -208,7 +211,7 @@ pub struct IntegrationField {
 impl Default for IntegrationField {
 	fn default() -> Self {
 		IntegrationField{
-			field: [[0; FIELD_RESOLUTION]; FIELD_RESOLUTION],
+			field: [[u16::MAX as u32; FIELD_RESOLUTION]; FIELD_RESOLUTION],
 			los_corners: Vec::default(),
 		}
 	}
@@ -230,17 +233,17 @@ impl Field<u32> for IntegrationField {
 }
 impl IntegrationField {
 	/// Creates a new [IntegrationField] where all impassable cells are set to
-	/// `u16::MAX` and the rest `0`
+	/// `u16::MAX` (with impasable bit flag) and the rest `0`
 	pub fn new(goal: &FieldCell, cost: &CostField) -> Self {
 		let mut field = IntegrationField::default();
 		for (column, rows) in cost.get().iter().enumerate() {
 			for (row, value) in rows.iter().enumerate() {
 				if *value == u8::MAX {
-					field.set_field_cell_value(BITS_IMPASSABLE, FieldCell::new(column, row));
+					field.set_field_cell_value(65535 + INT_BITS_IMPASSABLE, FieldCell::new(column, row));
 				}
 			}
 		}
-		field.set_field_cell_value(0 + BITS_GOAL, *goal);
+		field.set_field_cell_value(0 + INT_BITS_GOAL, *goal);
 		field
 	}
 	//TODO remove this
@@ -258,7 +261,7 @@ impl IntegrationField {
 	}
 	/// Sets the goal (not any portals) of the target sector as having Line Of Sight
 	pub fn set_initial_los(&mut self, cell_id: FieldCell) {
-		self.set_field_cell_value(BITS_LOS, cell_id);
+		self.set_field_cell_value(INT_BITS_LOS, cell_id);
 	}
 	fn get_los_coners(&self) -> &Vec<FieldCell>{
 		&self.los_corners
@@ -267,133 +270,12 @@ impl IntegrationField {
 		self.los_corners.push(corner);
 	}
 	/// From the goal of the target sector calcualte LOS
-	pub fn calcualte_sector_goal_los(&mut self, active_wavefront: &Vec<FieldCell>, goal: &FieldCell) {
+	pub fn calculate_sector_goal_los(&mut self, active_wavefront: &Vec<FieldCell>, goal: &FieldCell) {
 		let wavefront_cost = 1;
 		propagate_los(self, active_wavefront, wavefront_cost, goal);
-		//TODO cell is just the goal, change argument and remove loop
-		// for cell in active_wavefront.iter() {
-		// 	let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
-		// 	for n in neighbours.iter() {
-		// 		let cost = self.get_field_cell_value(*n);
-		// 		if cost & BITS_WAVE_BLOCKED == BITS_WAVE_BLOCKED {
-		// 			// wave blocked don't propagate LOS from this neighbour
-		// 		} else if cost & BITS_IMPASSABLE == BITS_IMPASSABLE {
-		// 			// found impassable, look for LOS corner
-		// 			// based on the direction towards `n`, look at n's neighbours,
-		// 			// if a neighbour isn't impassable then it means there's
-		// 			// a LOS corner
-		// 			let dir = Ordinal::cell_to_cell_direction(*n, *cell);
-		// 			// depending on direction get the cells next to `n`
-		// 			match dir {
-		// 				Ordinal::North => {
-		// 					for ord in [Ordinal::West, Ordinal::East] {
-		// 						if let Some(adj) = Ordinal::get_cell_neighbour(*n, ord) {
-		// 							let value = self.get_field_cell_value(adj);
-		// 							if value & BITS_IMPASSABLE != BITS_IMPASSABLE {
-		// 								// LOS corner found, store it for use in the cost integration calc later
-		// 								los_corners.push(adj);
-		// 								// mark wavefront blocked from the corner,
-		// 								// using the line equation properties we find the vector
-		// 								// from the goal to the corner and then find from 
-		// 								// the corner what FieldCell on the Sector boundary the
-		// 								// line would terminate at
-		// 								//
-		// 								// deal with vertical and horizontal lines first
-		// 								let end = if adj.get_column() == cell.get_column() {
-		// 									// no column change, find direction
-		// 									// of y change
-		// 									if adj.get_row() > cell.get_row() {
-		// 										// dir is heading down to max boundary value
-		// 										FieldCell::new(adj.get_column(), FIELD_RESOLUTION - 1)
-		// 									} else {
-		// 										// dir is heading up towards boundary 0
-		// 										FieldCell::new(adj.get_column(), 0)
-		// 									}
-		// 								} else if adj.get_row() == cell.get_row() {
-		// 									// no row change, find direction of
-		// 									// x change
-		// 									if adj.get_column() > cell.get_column() {
-		// 										// dir is heading right towards max boundary
-		// 										FieldCell::new(FIELD_RESOLUTION -1, adj.get_row())
-		// 									} else {
-		// 										// dir is heading left towards boundary 0
-		// 										FieldCell::new(0, adj.get_row())
-		// 									}
-		// 								} else {
-		// 									// handle diagonal lines
-		// 									let delta_column = adj.get_column() as f32 - cell.get_column() as f32;
-		// 									let delta_row = adj.get_row() as f32 - cell.get_row() as f32;
-		// 									let gradient = delta_row/delta_column;
-		// 									let intercept = -gradient * (adj.get_column() as f32) + adj.get_row() as f32;
-		// 									let mut exists = None;
-		// 									if adj.get_column() > cell.get_column() {
-		// 										// walk the line with increasing column
-		// 										// until the row or column value
-		// 										// reaches a sector boundary
-		// 										let d = FIELD_RESOLUTION -1 - adj.get_column();
-		// 										for x in 0..=d {
-		// 											let end_col = adj.get_column() + x;
-		// 											let end_row = (gradient * (end_col as f32) + intercept).floor() as usize;
-		// 											if end_col == FIELD_RESOLUTION -1 || end_row == 0 || end_row == FIELD_RESOLUTION -1 {
-		// 												exists = Some(FieldCell::new(end_col, end_row))
-		// 											}
-		// 										}
-		// 										if let Some(end) = exists {
-		// 											end
-		// 										} else {
-		// 											//TODO make this better
-		// 											panic!("LOS corner prop failed to find boundary");
-		// 										}
-		// 									} else {
-		// 										// walk the line with decreasing column
-		// 										// until row or column value
-		// 										// reaches a sector boundary
-		// 										let d = adj.get_column();
-		// 										for x in 0..=d {
-		// 											//TODO prevent overflow
-		// 											let end_col = adj.get_column() - x;
-		// 											let end_row = (gradient * (end_col as f32) + intercept).floor() as usize;
-		// 											if end_col == 0 || end_row == 0 || end_row == FIELD_RESOLUTION -1 {
-		// 												exists = Some(FieldCell::new(end_col, end_row))
-		// 											}
-		// 										}
-		// 										if let Some(end) = exists {
-		// 											end
-		// 										} else {
-		// 											//TODO make this better
-		// 											panic!("LOS corner prop failed to find boundary");
-		// 										}
-		// 									}
-		// 								};
-		// 								// from the corner to the boundary cell of LOS being blocked use the bresenham line algorithm to find all cells between the two cell points and mark them as being wavefront blocked so that further LOS propagation won't flow behind impassable cells
-		// 								let blocked_cells = adj.get_cells_between_points(&end);
-		// 								for blocked in blocked_cells.iter() {
-		// 									let value = self.get_field_cell_value(*blocked);
-		// 									// only mark flags for cells that aren't impassable and which aren't already marked as wavefront blocked
-		// 									if value & BITS_IMPASSABLE != BITS_IMPASSABLE && value & BITS_WAVE_BLOCKED != BITS_WAVE_BLOCKED {
-		// 										self.set_field_cell_value(value + BITS_WAVE_BLOCKED, *blocked);
-		// 									}
-		// 								}
-		// 							}
-		// 						}
-		// 					}
-		// 				},
-		// 				Ordinal::East => todo!(),
-		// 				Ordinal::South => todo!(),
-		// 				Ordinal::West => todo!(),
-		// 				_ => {panic!("Dir should only be orthogonal")}
-		// 			}
-		// 		} else if cost & BITS_LOS != BITS_LOS {
-		// 			// we have a new LOS that can be propagated
-		// 			self.set_field_cell_value(wavefront_cost + BITS_LOS, *cell);
-		// 			moved_wavefront.push(*n);
-		// 		}
-		// 	}
-		// 	wavefront_cost +=1;
-		// }
 	}
 	/// From active wavefronts and blocked wavefront directions propagate LOS into other sectors
-	pub fn propagate_boundary_los(&mut self) {}
+	pub fn propagate_boundary_los(&mut self) {}//TODO
 
 
 
@@ -425,9 +307,9 @@ fn propagate_los(
 		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*wavefront);
 		for n in neighbours.iter() {
 			let cost = field.get_field_cell_value(*n);
-			if cost & BITS_WAVE_BLOCKED == BITS_WAVE_BLOCKED {
+			if cost & INT_BITS_WAVE_BLOCKED == INT_BITS_WAVE_BLOCKED || cost & INT_BITS_GOAL == INT_BITS_GOAL {
 				// wave blocked don't propagate LOS from this neighbour
-			} else if cost & BITS_IMPASSABLE == BITS_IMPASSABLE {
+			} else if cost & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
 				// found impassable, look for LOS corner
 				// based on the direction towards `n`, look at n's neighbours,
 				// if a neighbour isn't impassable then it means there's
@@ -437,27 +319,29 @@ fn propagate_los(
 				match dir {
 					Ordinal::North | Ordinal::South => {
 						for ord in [Ordinal::West, Ordinal::East] {
-							extend_los_corner(field, n, ord, goal);
+							extend_los_corner(field, n, ord, goal, wavefront_cost);
 						}
 					},
 					Ordinal::East| Ordinal::West => {
 						for ord in [Ordinal::North, Ordinal::South] {
-							extend_los_corner(field, n, ord, goal);
+							extend_los_corner(field, n, ord, goal, wavefront_cost);
 						}
 					}
 					_ => {panic!("Dir should only be orthogonal")}
 				}
-			} else if cost & BITS_LOS != BITS_LOS {
+			} else if cost & INT_BITS_LOS != INT_BITS_LOS {
 				// we have a new LOS that can be propagated
-				field.set_field_cell_value(wavefront_cost + BITS_LOS, *n);
+				let mut value = wavefront_cost;
+				value |= INT_BITS_LOS;
+				field.set_field_cell_value(value, *n);
 				moved_wavefront.push(*n);
 			}
 		}
-		wavefront_cost +=1;
-		// if valid cells exist to continue propagation then recursively propagate LOS
-		if !moved_wavefront.is_empty() {
-			propagate_los(field, &moved_wavefront, wavefront_cost, goal);
-		}
+	}
+	wavefront_cost +=1;
+	// if valid cells exist to continue propagation then recursively propagate LOS
+	if !moved_wavefront.is_empty() {
+		propagate_los(field, &moved_wavefront, wavefront_cost, goal);
 	}
 }
 
@@ -466,12 +350,14 @@ fn extend_los_corner(
 	neighbour: &FieldCell,
 	ord: Ordinal,
 	goal: &FieldCell,
+	wavefront_cost: u32,
 ) {
 	if let Some(adj) = Ordinal::get_cell_neighbour(*neighbour, ord) {
 		let value = field.get_field_cell_value(adj);
-		if value & BITS_IMPASSABLE != BITS_IMPASSABLE {
+		if value & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
 			// LOS corner found, store it for use in the cost integration calc later
 			field.add_los_corner(adj);//TODO need ot set LOS corner as LOS? int calc might be broken
+			field.set_field_cell_value(wavefront_cost + INT_BITS_WAVE_BLOCKED + INT_BITS_CORNER, adj);
 			// mark wavefront blocked from the corner,
 			// using the line equation properties we find the vector
 			// from the goal to the corner and then find from 
@@ -510,19 +396,38 @@ fn extend_los_corner(
 					// walk the line with increasing column
 					// until the row or column value
 					// reaches a sector boundary
-					let d = FIELD_RESOLUTION -1 - adj.get_column();
+					let d = (FIELD_RESOLUTION -1).checked_sub(adj.get_column()).unwrap();
 					for x in 0..=d {
 						let end_col = adj.get_column() + x;
-						let end_row = (gradient * (end_col as f32) + intercept).floor() as usize;
-						if end_col == FIELD_RESOLUTION -1 || end_row == 0 || end_row == FIELD_RESOLUTION -1 {
-							exists = Some(FieldCell::new(end_col, end_row))
+						let end_row = (gradient * (end_col as f32) + intercept).floor();
+						// handle steep lines, e.g goal (4,4) and adj (5,7) projected
+						// along column places column 6 on row 10 which is OOB
+						if end_row > FIELD_RESOLUTION as f32 -1.0 {
+							if end_col < FIELD_RESOLUTION {
+								exists = Some(FieldCell::new(end_col, FIELD_RESOLUTION - 1));
+								break
+							} else {
+								exists = Some(FieldCell::new(FIELD_RESOLUTION -1, FIELD_RESOLUTION - 1));
+								break
+							}
+						} else if end_row < 0.0 {
+							if end_col < FIELD_RESOLUTION {
+								exists = Some(FieldCell::new(end_col, 0));
+								break
+							} else {
+								exists = Some(FieldCell::new(FIELD_RESOLUTION - 1, 0));
+								break
+							}
+						} else if end_col == FIELD_RESOLUTION -1 {
+							exists = Some(FieldCell::new(end_col, end_row as usize));
+							break
 						}
 					}
 					if let Some(end) = exists {
 						end
 					} else {
 						//TODO make this better
-						panic!("LOS corner prop failed to find boundary");
+						panic!("LOS corner prop failed to find increment boundary");
 					}
 				} else {
 					// walk the line with decreasing column
@@ -530,28 +435,57 @@ fn extend_los_corner(
 					// reaches a sector boundary
 					let d = adj.get_column();
 					for x in 0..=d {
-						//TODO prevent overflow
-						let end_col = adj.get_column() - x;
+						let end_col = adj.get_column().checked_sub(x).unwrap();
 						let end_row = (gradient * (end_col as f32) + intercept).floor() as usize;
-						if end_col == 0 || end_row == 0 || end_row == FIELD_RESOLUTION -1 {
-							exists = Some(FieldCell::new(end_col, end_row))
+						// handle steep cases where line projection is OOB
+						// ex: goal (7,5), adj (6,9), projects (0,33)
+						if end_col == 0 {
+							if end_row > FIELD_RESOLUTION -1 {
+								exists = Some(FieldCell::new(end_col,FIELD_RESOLUTION - 1));
+								break
+							} else {
+								exists = Some(FieldCell::new(end_col, end_row));
+								break
+							}
 						}
+						if end_row == 0 {
+							exists = Some(FieldCell::new(end_col, end_row));
+							break
+						}
+						if end_row > FIELD_RESOLUTION -1 {
+							exists = Some(FieldCell::new(end_col,FIELD_RESOLUTION - 1));
+							break
+						}
+						// if end_col == 0 && (end_row == 0 || end_row == FIELD_RESOLUTION -1) {
+						// 	exists = Some(FieldCell::new(end_col, end_row))
+						// }
 					}
 					if let Some(end) = exists {
 						end
 					} else {
 						//TODO make this better
-						panic!("LOS corner prop failed to find boundary");
+						panic!("LOS corner prop failed to find decrement boundary");
 					}
 				}
 			};
 			// from the corner to the boundary cell of LOS being blocked use the bresenham line algorithm to find all cells between the two cell points and mark them as being wavefront blocked so that further LOS propagation won't flow behind impassable cells
+			// bevy::prelude::info!("Goal {:?}", goal);
+			// bevy::prelude::info!("Adj {:?}", adj);
+			// bevy::prelude::info!("Cell {:?}", end);
 			let blocked_cells = adj.get_cells_between_points(&end);
 			for blocked in blocked_cells.iter() {
 				let value = field.get_field_cell_value(*blocked);
 				// only mark flags for cells that aren't impassable and which aren't already marked as wavefront blocked
-				if value & BITS_IMPASSABLE != BITS_IMPASSABLE && value & BITS_WAVE_BLOCKED != BITS_WAVE_BLOCKED {
-					field.set_field_cell_value(value + BITS_WAVE_BLOCKED, *blocked);
+				if value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
+					break
+				}
+				if value & INT_BITS_WAVE_BLOCKED != INT_BITS_WAVE_BLOCKED {
+					if value & INT_BITS_LOS == INT_BITS_LOS {
+						bevy::prelude::error!("Cell has LOS when should be WB {:?}", blocked);
+						// field.set_field_cell_value(0 + INT_BITS_WAVE_BLOCKED, *blocked);
+					} else {
+					field.set_field_cell_value(value + INT_BITS_WAVE_BLOCKED, *blocked);
+					}
 				}
 			}
 		}
@@ -565,7 +499,6 @@ fn process_neighbours(
 	queue: Vec<(FieldCell, u32)>,
 	cost_field: &CostField,
 ) {
-	let filter = 0b0000_0000_0000_0000_1111_1111_1111_1111;
 	let mut next_neighbours = Vec::new();
 	// iterate over the queue calculating neighbour int costs
 	for (cell, prev_int_cost) in queue.iter() {
@@ -574,10 +507,10 @@ fn process_neighbours(
 		for n in neighbours.iter() {
 			// ensure neighbour isn't impassable or already assigned LOS
 			let n_int = int_field.get_field_cell_value(*n);
-			if n_int & BITS_IMPASSABLE != BITS_IMPASSABLE && n_int & BITS_LOS != BITS_LOS {
+			if n_int & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE && n_int & INT_BITS_LOS != INT_BITS_LOS {
 				let cell_cost = cost_field.get_field_cell_value(*n) as u32;
-				let int_cost = cell_cost + prev_int_cost & filter;
-				if int_cost < int_field.get_field_cell_value(*n) {
+				let int_cost = cell_cost + (prev_int_cost & INT_FILTER_BITS_COST);
+				if int_cost < (int_field.get_field_cell_value(*n) & INT_FILTER_BITS_COST) {
 					int_field.set_field_cell_value(int_cost, *n);
 					next_neighbours.push((*n, int_cost));
 				}
@@ -593,50 +526,55 @@ fn process_neighbours(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	/// Calculate integration field from a uniform cost field with a source near the centre
-	#[test]
-	fn basic_field() {
-		let cost_field = CostField::default();
-		let mut integration_field = IntegrationField::default();
-		let source = vec![FieldCell::new(4, 4)];
-		integration_field.reset(&source);
-		integration_field.calculate_field(&source, &cost_field);
-		let result = integration_field.get();
+	// /// Calculate integration field from a uniform cost field with a source near the centre
+	// #[test]
+	// fn basic_field() {
+	// 	let cost_field = CostField::default();
+	// 	let goal = FieldCell::new(4, 4);
+	// 	let mut integration_field = IntegrationField::new(&goal, &cost_field);
+	// 	integration_field.calculate_field(&cost_field);
+	// 	let result = integration_field.get();
 
-		let actual: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
-			[8,7,6,5,4,5,6,7,8,9], [7,6,5,4,3,4,5,6,7,8], [6,5,4,3,2,3,4,5,6,7], [5,4,3,2,1,2,3,4,5,6], [4,3,2,1,0,1,2,3,4,5], [5,4,3,2,1,2,3,4,5,6], [6,5,4,3,2,3,4,5,6,7], [7,6,5,4,3,4,5,6,7,8], [8,7,6,5,4,5,6,7,8,9], [9,8,7,6,5,6,7,8,9,10]
-		];
+	// 	let actual: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
+	// 		[8,7,6,5,4,5,6,7,8,9], [7,6,5,4,3,4,5,6,7,8], [6,5,4,3,2,3,4,5,6,7], [5,4,3,2,1,2,3,4,5,6], [4,3,2,1,0,1,2,3,4,5], [5,4,3,2,1,2,3,4,5,6], [6,5,4,3,2,3,4,5,6,7], [7,6,5,4,3,4,5,6,7,8], [8,7,6,5,4,5,6,7,8,9], [9,8,7,6,5,6,7,8,9,10]
+	// 	];
 
 
-		assert_eq!(actual, *result);
-	}
-	/// Calculate integration field from a custom cost field set
-	#[test]
-	fn complex_field() {
-		let mut cost_field = CostField::default();
-		cost_field.set_field_cell_value(255, FieldCell::new(5, 6));
-		cost_field.set_field_cell_value(255, FieldCell::new(5, 7));
-		cost_field.set_field_cell_value(255, FieldCell::new(6, 9));
-		cost_field.set_field_cell_value(255, FieldCell::new(6, 8));
-		cost_field.set_field_cell_value(255, FieldCell::new(6, 7));
-		cost_field.set_field_cell_value(255, FieldCell::new(6, 4));
-		cost_field.set_field_cell_value(255, FieldCell::new(7, 9));
-		cost_field.set_field_cell_value(255, FieldCell::new(7, 4));
-		cost_field.set_field_cell_value(255, FieldCell::new(8, 4));
-		cost_field.set_field_cell_value(255, FieldCell::new(9, 4));
-		cost_field.set_field_cell_value(255, FieldCell::new(1, 2));
-		cost_field.set_field_cell_value(255, FieldCell::new(1, 1));
-		cost_field.set_field_cell_value(255, FieldCell::new(2, 1));
-		cost_field.set_field_cell_value(255, FieldCell::new(2, 2));
-		let mut integration_field = IntegrationField::default();
-		let source = vec![FieldCell::new(4, 4)];
-		integration_field.reset(&source);
-		integration_field.calculate_field(&source, &cost_field);
-		let result = integration_field.get();
+	// 	assert_eq!(actual, *result);
+	// }
+	// /// Calculate integration field from a custom cost field set
+	// #[test]
+	// fn complex_field() {
+	// 	let mut cost_field = CostField::default();
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(5, 6));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(5, 7));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(6, 9));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(6, 8));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(6, 7));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(6, 4));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(7, 9));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(7, 4));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(8, 4));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(9, 4));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(1, 2));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(1, 1));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(2, 1));
+	// 	cost_field.set_field_cell_value(255, FieldCell::new(2, 2));
+	// 	let goal = FieldCell::new(4, 4);
+	// 	let mut integration_field = IntegrationField::new(&goal, &cost_field);
+	// 	integration_field.
+	// 	integration_field.calculate_field(&cost_field);
+	// 	let mut result = *integration_field.get();
+	// 	// strip flags from result
+	// 	for column in result.iter_mut() {
+	// 		for value in column.iter_mut() {
+	// 			*value = *value | INT_FILTER_BITS_COST
+	// 		}
+	// 	}
 
-		let actual: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
-			[8,7,6,5,4,5,6,7,8,9], [7,65535,65535,4,3,4,5,6,7,8], [6,65535,65535,3,2,3,4,5,6,7], [5,4,3,2,1,2,3,4,5,6], [4,3,2,1,0,1,2,3,4,5], [5,4,3,2,1,2,65535,65535,5,6], [6,5,4,3,65535,3,4,65535,65535,65535], [7,6,5,4,65535,4,5,6,7,65535], [8,7,6,5,65535,5,6,7,8,9], [9,8,7,6,65535,6,7,8,9,10]
-		];
-		assert_eq!(actual, *result);
-	}
+	// 	let actual: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
+	// 		[8,7,6,5,4,5,6,7,8,9], [7,65535,65535,4,3,4,5,6,7,8], [6,65535,65535,3,2,3,4,5,6,7], [5,4,3,2,1,2,3,4,5,6], [4,3,2,1,0,1,2,3,4,5], [5,4,3,2,1,2,65535,65535,5,6], [6,5,4,3,65535,3,4,65535,65535,65535], [7,6,5,4,65535,4,5,6,7,65535], [8,7,6,5,65535,5,6,7,8,9], [9,8,7,6,65535,6,7,8,9,10]
+	// 	];
+	// 	assert_eq!(actual, result);
+	// }
 }

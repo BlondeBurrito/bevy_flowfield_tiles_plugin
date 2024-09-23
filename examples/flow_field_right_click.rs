@@ -143,7 +143,7 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 			pathing.target_sector.unwrap(),
 			pathing.target_goal.unwrap(),
 		) {
-			pathing.portal_route = Some(route.clone());
+			pathing.portal_route = Some(route.get().clone());
 		}
 	}
 }

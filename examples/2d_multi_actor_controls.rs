@@ -253,7 +253,7 @@ fn get_or_request_route(
 							goal_id,
 						) {
 							pathing.metadata = Some(*metadata);
-							pathing.portal_route = Some(route.clone());
+							pathing.portal_route = Some(route.get().clone());
 						} else {
 							// request a route
 							event.send(EventPathRequest::new(

@@ -83,7 +83,7 @@ impl FieldCell {
 				for row in target_row..=source_row {
 					fields.push(FieldCell::new(source_col as usize, row as usize));
 				}
-				fields.reverse();
+				fields.reverse();//TODO would vecdeq be good for adding at index 0, no need to reverse
 				fields
 			}
 		} else if source_row == target_row {
