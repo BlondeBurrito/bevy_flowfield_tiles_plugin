@@ -89,7 +89,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		});
 	});
 }
-
+/// Using the integration flags derive a character symbol to represent the value
 fn convert_integration_flags(value: u32) -> String {
 	let flags = value & INT_FILTER_BITS_FLAGS;
 	if flags & INT_BITS_GOAL == INT_BITS_GOAL {

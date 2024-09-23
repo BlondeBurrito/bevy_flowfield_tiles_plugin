@@ -62,8 +62,11 @@ pub struct IntegrationBuilder {
 	/// List of [IntegrationField] aligned with Sector and Goals whereby the
 	/// `integration_fields` is initially blank and gets built over passes
 	integration_fields: Vec<(SectorID, Vec<FieldCell>, IntegrationField)>,
+	/// Have the Portals been expanded to produce additional goals along sector boundaries
 	has_expanded_portals: bool,
+	/// Has a Line Of Sight pass been performed over the fields
 	has_los_pass: bool,
+	/// Has the integration cost of the fields been calculated
 	has_cost_pass: bool,
 }
 
@@ -138,7 +141,7 @@ impl IntegrationBuilder {
 		// just store the single end goal in the list
 		if i == 0 {
 			goals.push(self.path.get()[i].1);
-			field.set_field_cell_value(0 + INT_BITS_GOAL, self.path.get()[i].1);
+			field.set_field_cell_value(INT_BITS_GOAL, self.path.get()[i].1);
 		} else {
 		// portals represent the boundary to another sector, a portal can be spread over
 		// multple field cells, expand the portal to provide multiple goal
@@ -158,7 +161,7 @@ impl IntegrationBuilder {
 			for g in expanded_goals.iter() {
 				// set the goals of the expanded portal, value and the bit flag
 				goals.push(*g);
-				field.set_field_cell_value(0 + INT_BITS_PORTAL, *g)
+				field.set_field_cell_value(INT_BITS_PORTAL, *g)
 			}
 		}
 	}
@@ -182,7 +185,7 @@ impl IntegrationBuilder {
 	}
 	// fn propagate_los() {}
 	pub fn build_integrated_cost(&mut self, cost_fields: &SectorCostFields) {
-		for (sector_id, goals, int_field) in self.get_mut_integration_fields() {
+		for (sector_id, _goals, int_field) in self.get_mut_integration_fields() {
 			let cost_field = cost_fields.get_scaled()
 			.get(sector_id)
 			.unwrap();
@@ -204,7 +207,10 @@ pub const INT_FILTER_BITS_FLAGS: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone)]
 pub struct IntegrationField {
+	/// Integration array
 	field: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION],
+	/// A list of [FieldCell] which are used for the integrated cost
+	/// calculation of the field
 	los_corners: Vec<FieldCell>,
 }
 
@@ -232,8 +238,9 @@ impl Field<u32> for IntegrationField {
 	}
 }
 impl IntegrationField {
-	/// Creates a new [IntegrationField] where all impassable cells are set to
-	/// `u16::MAX` (with impasable bit flag) and the rest `0`
+	/// Creates a new [IntegrationField] where all cells are set to `u16::MAX`
+	/// and impassable cells are set to include a bit flag  and while the goal
+	/// is set to `0`
 	pub fn new(goal: &FieldCell, cost: &CostField) -> Self {
 		let mut field = IntegrationField::default();
 		for (column, rows) in cost.get().iter().enumerate() {
@@ -243,7 +250,7 @@ impl IntegrationField {
 				}
 			}
 		}
-		field.set_field_cell_value(0 + INT_BITS_GOAL, *goal);
+		field.set_field_cell_value(INT_BITS_GOAL, *goal);
 		field
 	}
 	//TODO remove this
@@ -263,14 +270,15 @@ impl IntegrationField {
 	pub fn set_initial_los(&mut self, cell_id: FieldCell) {
 		self.set_field_cell_value(INT_BITS_LOS, cell_id);
 	}
-	fn get_los_coners(&self) -> &Vec<FieldCell>{
-		&self.los_corners
-	}
+	// fn get_los_coners(&self) -> &Vec<FieldCell>{
+	// 	&self.los_corners
+	// }
+	/// Append a new Line Of Sight corner to the integration field
 	fn add_los_corner(&mut self, corner: FieldCell) {
 		self.los_corners.push(corner);
 	}
 	/// From the goal of the target sector calcualte LOS
-	pub fn calculate_sector_goal_los(&mut self, active_wavefront: &Vec<FieldCell>, goal: &FieldCell) {
+	pub fn calculate_sector_goal_los(&mut self, active_wavefront: &[FieldCell], goal: &FieldCell) {
 		let wavefront_cost = 1;
 		propagate_los(self, active_wavefront, wavefront_cost, goal);
 	}
@@ -296,9 +304,12 @@ impl IntegrationField {
 	}
 }
 //TODO how woudl portals work with a goal
+/// From an `active_wavefront` peek at neighbouring cells to determine which
+/// [FieldCell] have Line Of Sight to the `goal`. This method is recursive
+/// until LOS ends due to sector boundaries or impassable areas
 fn propagate_los(
 	field: &mut IntegrationField,
-	active_wavefront: &Vec<FieldCell>,
+	active_wavefront: &[FieldCell],
 	mut wavefront_cost: u32,
 	goal: &FieldCell,
 ) {
@@ -344,7 +355,11 @@ fn propagate_los(
 		propagate_los(field, &moved_wavefront, wavefront_cost, goal);
 	}
 }
-
+/// From a Line Of Sight corner extrapolate a line from the goal to the corner
+/// and through to the sector boundary. For any FieldCell between the corner
+/// and the boundary that lie on the line mark them with the WavefrontBlocked
+/// flag, this prevents further LOS passes from reaching areas that are out of
+/// LOS
 fn extend_los_corner(
 	field: &mut IntegrationField,
 	neighbour: &FieldCell,
@@ -525,7 +540,7 @@ fn process_neighbours(
 #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-	use super::*;
+	// use super::*;
 	// /// Calculate integration field from a uniform cost field with a source near the centre
 	// #[test]
 	// fn basic_field() {
