@@ -1,0 +1,21 @@
+@startuml int_field_cost_prop0
+
+label 1 [
+{{
+title
+IntegrationField Corner Cost Integration
+|\n  ?  \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n  ?  \n|\n LOS \n|
+|\n  ?  \n|\n  ?  \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n  ?  \n|\n  ?  \n|\n LOS \n|
+|\n LOS \n|\n  ?  \n|\n  ?  \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n  ?  \n|\n  ?  \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|<#b6d7a8>\n   4   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#b6d7a8>\n   4   \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n   0   \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+end title
+}}
+
+]
+@enduml

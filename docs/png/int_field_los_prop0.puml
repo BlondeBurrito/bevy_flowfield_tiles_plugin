@@ -1,0 +1,51 @@
+@startuml int_field_los_prop0
+
+label 1 [
+{{
+title
+IntegrationField LOS 1
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n   0   \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+end title
+}}
+{{
+title
+IntegrationField LOS 2
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|\n   0   \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+end title
+}}
+{{
+title
+IntegrationField LOS 3
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|\n LOS \n|\n   0   \n|\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+end title
+}}
+
+]
+@enduml

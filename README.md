@@ -55,9 +55,6 @@ For larger and larger environemnts with an increasing number of pathing actors i
 
 # Design/Process
 
-<details>
-<summary>Click to expand!</summary>
-
 To generate a set of navigation `FlowFields` the game world is divided into Sectors indexed by `(column, row)` and each Sector has 3 layers of data: `[CostField, IntegrationField, Flowfield]`. Each layer aids the next in building out a path. A concept of `Portals` is used to connect Sectors together.
 
 ## Sector
@@ -122,37 +119,82 @@ This allows the graph to be queried with a `source` sector and a `target` sector
 <details>
 <summary>Click to expand!</summary>
 
-An `IntegrationField` is an `MxN` 2D array of 16-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target. It's an ephemeral field, as in it gets built for a required sector and then consumed by the `FlowField` calculation.
+An `IntegrationField` is an `MxN` 2D array of 32-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target. It's an ephemeral field, as in it gets built for a required sector and then consumed by the `FlowField` calculation. The first 16-bits of each field cell value are used for a cost measurement while the second 16-bits are used as flags to indicate certain properties of a cell. The flags are classified as:
 
-When a new route needs to be processed the field values are set to `u16::MAX` and the field cell containing the goal is set to `0`.
+* INT_BITS_LOS - indicates Line Of Sight from the cell to the goal cell
+* INT_BITS_GOAL - indicates the cell is the goal
+* INT_BITS_CORNER - indicates a point where Line Of Sight may be broken and is used to discover which cells should be marked as `INT_BITS_WAVE_BLOCKED`
+* INT_BITS_WAVE_BLOCKED - marks cells to prevent Line Of Sight from being propagated around corners
+* INT_BITS_PORTAL - marks cells that are portals between sectors
+* INT_BITS_IMPASSABLE - marks a cell that cannot be pathed through
 
-A series of passes are performed from the goal as an expanding wavefront calculating the field values:
+When a new route needs to be processed the first 16-bits of the field values are set to `u16::MAX` and the field cell containing the goal is set to `0`. Any cells which are impassable in the `CostField` are marked in the `IntegrationField` with their second 16-bits as `INT_BITS_IMPASSABLE`.
 
-1. The valid ordinal neighbours of the goal are determined (North, East, South, West - when not against a sector/world boundary)
+The `IntegrationField` is built from a number of passes:
+
+### 1. Portal Expansion
+
+A Portal represents the midpoint of a traversable sector boundary, when generating the field we expand the portals to cover their entire segment - this increases efficiency so that an actor can more directly approach its goal rather than zig-zagging to portal boundary points.
+
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_portal_expand0before.png" alt="ifpe0b"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_portal_expand1before.png" alt="ifpe1b"/>
+
+Note that portals are only expanded to field cells if they are pathable from both neighbouring sectors, a neighbour that has impassable cells will shorten the pathable segemnt.
+
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_portal_expand0after.png" alt="ifpe0a"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_portal_expand1after.png" alt="ifpe1a"/>
+
+### 2. Line Of Sight Pass
+
+In order to reduce needless pathfinding near the goal a Line Of Sight (LOS) pass is performed from the goal Sector. The idea being that if an actor moves into a field cell that has LOS then it no longer needs to follow the FlowFields and can instead directly path to the goal.
+
+The LOS phase begins as a wavefront from the goal that interrogates the adjacent neighbouring field cells. If an adjacent cell is not marked as impasssable then it must have LOS to the goal and the value of the cell receives a wavefront cost plus the LOS bit flag. The wavefront then expands (whereby the wavefront cost increments by 1) to interrogate the adjacent cells of the neighbours and repeats until the wavefront cannot propagate any further.
+
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_los_prop0.png" alt="iflp0"/>
+
+As the wavefront expands it may encounter an impassable field cell (a block box in the diagrams). This causes two things to happen:
+
+First, wavefront expansion cannot continue in the direction of the impassable field cell so it is removed from being a candidate in the next round of wavefront propagation.
+
+Second, if there is a vacant field cell next to the impassable field cell then this indicates a Corner. A Corner means that LOS will be blocked in a given direction and the Corner is recorded for stage 3, the integrated cost calculation.
+
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_los_prop1.png" alt="iflp1"/>
+
+By taking a vector from the starting goal to the corner we can then extend this vector to calculate what field cells lie along a line. The field cells on this line are updated with the flag for WavefrontBlocked. Meaning that as LOS expands and propagates if a WavefrontBlocked cell is encountered then the cell is removed as a candidate in further LOS porpagation. This ensures that LOS cannot flow around impassable areas.
+
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_los_prop2.png" alt="iflp2"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_los_prop3.png" alt="iflp3"/>
+
+Any available LOS propagation continues until all possible cells are exhausted:
+
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_los_prop4.png" alt="iflp4"/>
+
+Once the wavefront has exhausted expansion from either hitting the sector boundaries or from impassable cells/corners we can then calculate the actual integrated cost of the field.
+
+### 3. Integrated Cost Calculation
+
+From the Corners of an `IntegrationField` recorded previously we start a new series of wavefronts that radiate from the corners considering any adjacent field cells that have not been marked as LOS or impassable.
+
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_cost_prop0.png" alt="ifcp0"/>
+
+To calculate the cost of the cells in the field:
+
+1. The valid ordinal neighbours of the corners are determined (one, none or many of North, East, South, West)
 2. For each ordinal field cell lookup their `CostField` value
-3. Add the `CostField` cost to the `IntegrationFields` cost of the current cell (at the beginning this is the goal int cost `0`)
-4. Propagate to the next neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their cumulative integration cost, and repeat until the entire field is done
+3. Add the `CostField` cost to the `IntegrationFields` cost of the current cell (at the corner the wavefront cost assigned was 4, assuming the `CostField` value of the adjacent cell is `1` then the integrated cost becomes `5`)
 
-This produces a nice diamond-like pattern as the wave expands (the underlying `CostField` is set to `1` here):
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_cost_prop1.png" alt="ifcp1"/>
 
-<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop0.png" alt="ifp0" width="300" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop1.png" alt="ifp1" width="300" height="310"/>
-<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop2.png" alt="ifp2" width="300" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop3.png" alt="ifp3" width="300" height="310"/>
+4. Wavefront propagates to the next neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their cumulative integration cost, and repeat until the entire field is done
 
-Now a dimaond-like wave isn't exactly realistic in a world of dynamic movement so at some point it should be replaced, based on various articles out there it seems people adopt the [Eikonal equation](https://en.wikipedia.org/wiki/Eikonal_equation) to create a more spherical wave expanding over the field space.
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_cost_prop2.png" alt="ifcp2"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_cost_prop3.png" alt="ifcp3"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_cost_prop4.png" alt="ifcp4"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_cost_prop5.png" alt="ifcp5"/>
 
-When it comes to `CostField` containing impassable markers, `255` as black boxes, they are ignored so the wave flows around those areas:
+The end result effectively produces a gradient of high numbers to low numbers, a <i>flow</i> of sorts.
 
-<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop_impassable.png" alt="ifpi" width="300" height="310"/>
+<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_cost_prop6.png" alt="ifcp6"/>
 
-And when your `CostField` is using a range of values to indicate different areas to traverse, such as a steep hill:
+For Sectors other than the goal the process is effectively the same where boundary portals are treated as corners and wave propagation exapaned.
 
-<img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/cost_field_hill.png" alt="cfh" width="300" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop_hill.png" alt="ifph" width="300" height="310"/>
+NB: the following diagrams use smaller sector sizes and exclude LOS but demonstrate how integrated cost is accumulated and creates a gradient from portal to portal
 
-So this encourages the pathing algorithm around obstacles and expensive areas in your world!
-
-This covers calculating the `IntegrationField` for a single sector containing the goal but of course the actor could be in a sector far away, this is where `Portals` come back into play.
-
-From the `PortalGraph` we can get a path of `Portals` to guide the actor over several sectors to the desired sector, extending the above the `IntegrationField` of the goal sector has been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade) to produce a series of `IntegrationFields` for the chaining Sectors describing the flow movement.
+From the `PortalGraph` we can get a path of `Portals` to guide the actor over several sectors to the desired sector, the `IntegrationField` of the goal sector has been calculated so next we "hop" through the boundary `Portals` working backwards from the goal sector to the actor sector (Portals are denoted as a purple shade) to produce a series of `IntegrationFields` for the chaining Sectors describing the flow movement.
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_0.png" alt="ifsts0" width="260" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_1.png" alt="ifsts1" width="260" height="310"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_sector_to_sector_2.png" alt="ifsts2" width="260" height="310"/>
 
@@ -160,7 +202,7 @@ In terms of pathfinding the actor will favour flowing "downhill". From the posit
 
 This informs the basis of a `FlowField`.
 
-As an example for a `30x30` world, goal at `0` with an actor at `A`, an `IntegrationField` set interrogating all sector `Portals` may produce a set of fields looking similar to:
+As an example for a `30x30` world (manually calculated), goal at `0` with an actor at `A`, an `IntegrationField` set interrogating all sector `Portals` may produce a set of fields looking similar to:
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_prop_big_example.png" alt="ifpbe" width="75%"/>
 
@@ -169,8 +211,6 @@ Notice the cool waves that propagate out from the goal!
 Generating the fields for this path programmatically leads to:
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/generated_int_fields.png" alt="gif" width="75%"/>
-
-Notice that we don't bother generating the fields for sectors the actor doesn't need to path through. Also a Portal represents the midpoint of a traversable sector boundary, when generating the field we expand the portal to cover its entire segment - this increases efficiency so that an actor can more directly approach its goal rather than zig-zagging to portal boundary points.
 
 From the `IntegrationFields` we can now build the final set of fields - `FlowFields`
 
@@ -285,8 +325,6 @@ fn system_navigation_large_actors(
     field_q: Query<&FlowCache, With<ActorLarge>>
 ) {/* handling movement etc */}
 ```
-
-</details>
 
 </details>
 </br>

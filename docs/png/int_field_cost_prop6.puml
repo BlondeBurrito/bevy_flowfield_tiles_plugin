@@ -1,0 +1,17 @@
+@startuml int_field_cost_prop6
+
+title
+IntegrationField Corner Cost Integration
+|<#bf9000>\n  9  \n|<#e69138>\n   8   \n|<#d5a6bd>\n   7   \n|<#e69138>\n   8   \n|<#bf9000>\n   9   \n|<#e69138>\n   8   \n|<#d5a6bd>\n   7   \n|<#e69138>\n   8   \n|<#bf9000>\n  9  \n|\n LOS \n|
+|<#e69138>\n  8  \n|<#d5a6bd>\n  7  \n|<#a2c4c9>\n   6   \n|<#d5a6bd>\n   7   \n|<#e69138>\n   8   \n|<#d5a6bd>\n   7   \n|<#a2c4c9>\n   6   \n|<#d5a6bd>\n  7  \n|<#e69138>\n  8  \n|\n LOS \n|
+|\n LOS \n|<#a2c4c9>\n  6  \n|<#b6d7a8>\n   5   \n|<#a2c4c9>\n   6   \n|<#d5a6bd>\n   7   \n|<#a2c4c9>\n   6   \n|<#b6d7a8>\n   5   \n|<#a2c4c9>\n  6  \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|<#ffe599>\n   4   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#ffe599>\n   4   \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n   0   \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|
+end title
+
+@enduml
