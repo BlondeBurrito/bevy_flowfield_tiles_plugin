@@ -83,7 +83,7 @@ impl FieldCell {
 				for row in target_row..=source_row {
 					fields.push(FieldCell::new(source_col as usize, row as usize));
 				}
-				fields.reverse();//TODO would vecdeq be good for adding at index 0, no need to reverse
+				fields.reverse(); //TODO would vecdeq be good for adding at index 0, no need to reverse
 				fields
 			}
 		} else if source_row == target_row {
@@ -398,11 +398,7 @@ impl RouteCache {
 		route
 	}
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`
-	pub fn add_to_queue(
-		&mut self,
-		route_data: RouteMetadata,
-		route: Route,
-	) {
+	pub fn add_to_queue(&mut self, route_data: RouteMetadata, route: Route) {
 		self.route_queue.insert(route_data, route);
 	}
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`
@@ -425,11 +421,7 @@ impl RouteCache {
 		self.routes.insert(route_data, route);
 	}
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache` with an already created [RouteMetadata] structure
-	pub fn insert_route_with_metadata(
-		&mut self,
-		route_metadata: RouteMetadata,
-		route: Route,
-	) {
+	pub fn insert_route_with_metadata(&mut self, route_metadata: RouteMetadata, route: Route) {
 		self.routes.insert(route_metadata, route);
 	}
 	/// Remove a high-level  route of sector-portal paths (or just the end goal if local sector pathing) from the `route_cache`
@@ -518,7 +510,12 @@ impl FlowFieldCache {
 		&mut self.queue
 	}
 	/// Insert a route into the queue to be built
-	pub fn add_to_queue(&mut self, metadata: RouteMetadata, path: Route, cost_fields: &SectorCostFields) {
+	pub fn add_to_queue(
+		&mut self,
+		metadata: RouteMetadata,
+		path: Route,
+		cost_fields: &SectorCostFields,
+	) {
 		let int_builder = IntegrationBuilder::new(path, cost_fields);
 		self.queue.insert(metadata, int_builder);
 	}

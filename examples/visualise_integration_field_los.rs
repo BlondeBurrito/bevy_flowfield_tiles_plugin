@@ -96,8 +96,7 @@ fn convert_integration_flags(value: u32) -> String {
 		String::from("G")
 	} else if flags & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
 		String::from("X")
-	}
-	else if flags & INT_BITS_CORNER == INT_BITS_CORNER {
+	} else if flags & INT_BITS_CORNER == INT_BITS_CORNER {
 		String::from("C")
 	} else if flags & INT_BITS_LOS == INT_BITS_LOS {
 		String::from("LOS")

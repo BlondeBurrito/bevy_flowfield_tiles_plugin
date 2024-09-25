@@ -1,9 +1,9 @@
 //! Generates a 30x30 world where multiple Actors can be told to move somewhere with right click and left click
 //!
 
+use avian2d::prelude::*;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
-use avian2d::prelude::*;
 
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
@@ -121,11 +121,7 @@ fn setup_navigation(mut cmds: Commands) {
 	// create an actor controlled with right click
 	cmds.spawn(SpriteBundle {
 		sprite: Sprite {
-			color: Color::srgb(
-				230.0,
-				0.0,
-				255.0,
-			),
+			color: Color::srgb(230.0, 0.0, 255.0),
 			..default()
 		},
 		transform: Transform {
@@ -143,11 +139,7 @@ fn setup_navigation(mut cmds: Commands) {
 	// create an actor controlled with left click
 	cmds.spawn(SpriteBundle {
 		sprite: Sprite {
-			color: Color::srgb(
-				0.0,
-				230.0,
-				255.0,
-			),
+			color: Color::srgb(0.0, 230.0, 255.0),
 			..default()
 		},
 		transform: Transform {

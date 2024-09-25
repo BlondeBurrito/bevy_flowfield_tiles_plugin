@@ -100,7 +100,9 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					})
 					.with_children(|p| {
 						// the array area of the sector
-						for (sector, _goals, int_field) in int_builder.get_integration_fields().iter() {
+						for (sector, _goals, int_field) in
+							int_builder.get_integration_fields().iter()
+						{
 							if sector.get() == (i, j) {
 								for column in int_field.get().iter() {
 									p.spawn(NodeBundle {
@@ -111,7 +113,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 											..Default::default()
 										},
 										..Default::default()
-									}).with_children(|p| {
+									})
+									.with_children(|p| {
 										for row_cost in column.iter() {
 											p.spawn(NodeBundle {
 												style: Style {
@@ -121,7 +124,9 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 													align_items: AlignItems::Center,
 													..Default::default()
 												},
-												background_color: BackgroundColor(get_colour(*row_cost)),
+												background_color: BackgroundColor(get_colour(
+													*row_cost,
+												)),
 												..Default::default()
 											})
 											.with_children(|p| {
@@ -149,7 +154,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 /// Get the colour of a UI node
 fn get_colour(value: u32) -> Color {
 	if value & INT_BITS_LOS == INT_BITS_LOS {
-		return Color::WHITE
+		return Color::WHITE;
 	}
 	let cost = value & INT_FILTER_BITS_COST;
 	match cost {

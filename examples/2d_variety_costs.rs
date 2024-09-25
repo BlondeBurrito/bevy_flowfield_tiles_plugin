@@ -1,8 +1,8 @@
 //! Creates a 30x30 world based on a heightmap that contains a variety of costs - pixels with differing shades of grey. A white pixel is the most efficient, a black pixel is impassable and the greys between represent good and bad costs in the CostFields. The purpose of this is to show actors prefering routes around the bad costs
 
+use avian2d::prelude::*;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
-use avian2d::prelude::*;
 
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
@@ -102,11 +102,7 @@ fn setup_visualisation(mut cmds: Commands) {
 					let grey_scale = (255.0 - *value as f32) / 255.0;
 					cmds.spawn(SpriteBundle {
 						sprite: Sprite {
-							color: Color::srgb(
-								grey_scale,
-								grey_scale,
-								grey_scale,
-							),
+							color: Color::srgb(grey_scale, grey_scale, grey_scale),
 							..default()
 						},
 						transform: Transform {
@@ -127,11 +123,7 @@ fn setup_navigation(mut cmds: Commands) {
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
 		sprite: Sprite {
-			color: Color::srgb(
-				230.0,
-				0.0,
-				255.0,
-			),
+			color: Color::srgb(230.0, 0.0, 255.0),
 			..default()
 		},
 		transform: Transform {

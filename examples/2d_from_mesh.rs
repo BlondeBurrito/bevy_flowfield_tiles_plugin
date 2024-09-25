@@ -14,8 +14,8 @@ use bevy::{
 	sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 
-use bevy_flowfield_tiles_plugin::prelude::*;
 use avian2d::prelude::*;
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 /// Corresponds to a unit size of the map dimenions
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
@@ -267,11 +267,7 @@ fn mark_pathable_field_cells(
 							{
 								cmds.spawn(SpriteBundle {
 									sprite: Sprite {
-										color: Color::srgb(
-											230.0,
-											0.0,
-											255.0,
-										),
+										color: Color::srgb(230.0, 0.0, 255.0),
 										..default()
 									},
 									transform: Transform {

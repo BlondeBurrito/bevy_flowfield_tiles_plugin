@@ -9,8 +9,8 @@ use bevy::{
 	window::PrimaryWindow,
 };
 
-use bevy_flowfield_tiles_plugin::prelude::*;
 use avian2d::prelude::*;
+use bevy_flowfield_tiles_plugin::prelude::*;
 use rand::seq::SliceRandom;
 
 /// Dimension of square sprites making up the world
@@ -275,11 +275,7 @@ fn spawn_actors(
 		// spawn the actor which can read the path later
 		cmds.spawn(SpriteBundle {
 			sprite: Sprite {
-				color: Color::srgb(
-					230.0,
-					0.0,
-					255.0,
-				),
+				color: Color::srgb(230.0, 0.0, 255.0),
 				..default()
 			},
 			transform: Transform {

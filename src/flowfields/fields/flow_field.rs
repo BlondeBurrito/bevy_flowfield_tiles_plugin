@@ -130,10 +130,11 @@ impl FlowField {
 					// mark impassable //TODO maybe skip? waste of time perhaps
 					if current_flags & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
 						self.set_field_cell_value(BITS_ZERO, field_cell);
-					}else if current_flags & INT_BITS_LOS == INT_BITS_LOS {
+					} else if current_flags & INT_BITS_LOS == INT_BITS_LOS {
 						// mark LOS
 						self.set_field_cell_value(BITS_HAS_LOS + BITS_PATHABLE, field_cell);
-					} else if current_flags != INT_BITS_GOAL {//TODO need to chekc for portal flag?
+					} else if current_flags != INT_BITS_GOAL {
+						//TODO need to chekc for portal flag?
 						// skip goals of zero
 						// store the cheapest node
 						let mut cheapest_value = u16::MAX as u32;
@@ -152,7 +153,8 @@ impl FlowField {
 						}
 
 						for n in neighbours.iter() {
-							let neighbour_cost = integration_field.get_field_cell_value(*n) & INT_FILTER_BITS_COST;
+							let neighbour_cost =
+								integration_field.get_field_cell_value(*n) & INT_FILTER_BITS_COST;
 							if neighbour_cost < cheapest_value {
 								cheapest_value = neighbour_cost;
 								cheapest_neighbour = Some(n);
@@ -166,14 +168,16 @@ impl FlowField {
 							value |= BITS_PATHABLE;
 							self.set_field_cell_value(value, field_cell);
 						} else {
-							warn!("No cheapest neighbour in flow calc! Origin cell {:?}", field_cell);
-						}//TODO this should never ever be none... (except maybe as of 0.11, an impassable cell compeltely enclosed will never be reached by the int layer)
+							warn!(
+								"No cheapest neighbour in flow calc! Origin cell {:?}",
+								field_cell
+							);
+						} //TODO this should never ever be none... (except maybe as of 0.11, an impassable cell compeltely enclosed will never be reached by the int layer)
 					}
 				}
 			}
 		}
 	}
-
 }
 /// Used by a [FlowField] calculation that needs to peek into the previous sectors [IntegrationField] to align portal goal directional bits to the most optimal integration costs
 fn lookup_portal_goal_neighbour_costs_in_previous_sector(
@@ -268,8 +272,10 @@ fn find_blocked_diagonals(
 	let mut diagonals = Vec::new();
 	if let Some(north) = Ordinal::get_cell_neighbour(field_cell, Ordinal::North) {
 		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
-			if integration_field.get_field_cell_value(north) & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-				&& integration_field.get_field_cell_value(east)  & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+			if integration_field.get_field_cell_value(north) & INT_BITS_IMPASSABLE
+				== INT_BITS_IMPASSABLE
+				&& integration_field.get_field_cell_value(east) & INT_BITS_IMPASSABLE
+					== INT_BITS_IMPASSABLE
 			{
 				if let Some(north_east) =
 					Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthEast)
@@ -279,8 +285,10 @@ fn find_blocked_diagonals(
 			}
 		}
 		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
-			if integration_field.get_field_cell_value(north)  & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-				&& integration_field.get_field_cell_value(west)  & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+			if integration_field.get_field_cell_value(north) & INT_BITS_IMPASSABLE
+				== INT_BITS_IMPASSABLE
+				&& integration_field.get_field_cell_value(west) & INT_BITS_IMPASSABLE
+					== INT_BITS_IMPASSABLE
 			{
 				if let Some(north_west) =
 					Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthWest)
@@ -292,8 +300,10 @@ fn find_blocked_diagonals(
 	}
 	if let Some(south) = Ordinal::get_cell_neighbour(field_cell, Ordinal::South) {
 		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
-			if integration_field.get_field_cell_value(south)  & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-				&& integration_field.get_field_cell_value(east)  & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+			if integration_field.get_field_cell_value(south) & INT_BITS_IMPASSABLE
+				== INT_BITS_IMPASSABLE
+				&& integration_field.get_field_cell_value(east) & INT_BITS_IMPASSABLE
+					== INT_BITS_IMPASSABLE
 			{
 				if let Some(south_east) =
 					Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthEast)
@@ -303,8 +313,10 @@ fn find_blocked_diagonals(
 			}
 		}
 		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
-			if integration_field.get_field_cell_value(south)  & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-				&& integration_field.get_field_cell_value(west)  & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+			if integration_field.get_field_cell_value(south) & INT_BITS_IMPASSABLE
+				== INT_BITS_IMPASSABLE
+				&& integration_field.get_field_cell_value(west) & INT_BITS_IMPASSABLE
+					== INT_BITS_IMPASSABLE
 			{
 				if let Some(south_west) =
 					Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthWest)
@@ -316,65 +328,6 @@ fn find_blocked_diagonals(
 	}
 	diagonals
 }
-
-// /// Looks at the orthogonal neighbours of a [FieldCell], determines whether any pairs are impassable and returns true if a diagonal field cell is blocked
-// fn has_blocked_diagonals(field_cell: FieldCell, integration_field: &IntegrationField) -> bool {
-// 	if let Some(north) = Ordinal::get_cell_neighbour(field_cell, Ordinal::North) {
-// 		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
-// 			if integration_field.get_field_cell_value(north) == u16::MAX as u32
-// 				&& integration_field.get_field_cell_value(east) == u16::MAX as u32
-// 				&& Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthEast).is_some()
-// 			{
-// 				return true;
-// 			}
-// 		}
-// 		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
-// 			if integration_field.get_field_cell_value(north) == u16::MAX as u32
-// 				&& integration_field.get_field_cell_value(west) == u16::MAX as u32
-// 				&& Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthWest).is_some()
-// 			{
-// 				return true;
-// 			}
-// 		}
-// 	}
-// 	if let Some(south) = Ordinal::get_cell_neighbour(field_cell, Ordinal::South) {
-// 		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
-// 			if integration_field.get_field_cell_value(south) == u16::MAX as u32
-// 				&& integration_field.get_field_cell_value(east) == u16::MAX as u32
-// 				&& Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthEast).is_some()
-// 			{
-// 				return true;
-// 			}
-// 		}
-// 		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
-// 			if integration_field.get_field_cell_value(south) == u16::MAX as u32
-// 				&& integration_field.get_field_cell_value(west) == u16::MAX as u32
-// 				&& Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthWest).is_some()
-// 			{
-// 				return true;
-// 			}
-// 		}
-// 	}
-// 	false
-// }
-
-//TODO? high level steering within this plugin??
-// pub fn abc(cell_value: u8) {
-// 	let flag_filter = 0b1111_0000;
-// 	let dir_filter = 0b0000_1111;
-// 	todo!();
-
-// 	let flags = cell_value & flag_filter;
-// 	match flags {
-// 		BITS_GOAL => {
-// 			// arrived at goal,
-// 		}
-// 		BITS_PORTAL_GOAL => {}
-// 		BITS_HAS_LOS => {}
-// 		BITS_PATHABLE => {}
-// 		_ => panic!("Last 4 bits of cell are not recognised flags"),
-// 	}
-// }
 
 /// Indicates that a cell is pathable
 pub fn is_pathable(cell_value: u8) -> bool {
@@ -411,8 +364,7 @@ pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
 		BITS_SOUTH_WEST => Ordinal::SouthWest,
 		BITS_NORTH_WEST => Ordinal::NorthWest,
 		BITS_ZERO => Ordinal::Zero,
-		_ => Ordinal::Zero
-		// _ => panic!("First 4 bits of cell are not recognised directions"),
+		_ => Ordinal::Zero, // _ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
 /// Reading the directional bits of a [FlowField] field cell obtain a unit
@@ -547,5 +499,5 @@ mod tests {
 	// 	}
 	// }
 	//TODO test blocked diag
-	//TODO 
+	//TODO
 }

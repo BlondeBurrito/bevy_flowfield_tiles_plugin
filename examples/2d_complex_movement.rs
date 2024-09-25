@@ -2,9 +2,9 @@
 //!
 //TODO visualisation creates impassable blocks when route goes back on self
 
+use avian2d::prelude::*;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_flowfield_tiles_plugin::prelude::*;
-use avian2d::prelude::*;
 
 /// Dimension of square sprites making up the world
 const FIELD_SPRITE_DIMENSION: f32 = 64.0;
@@ -121,11 +121,7 @@ fn setup_navigation(mut cmds: Commands) {
 	// create the controllable actor in the top right corner
 	cmds.spawn(SpriteBundle {
 		sprite: Sprite {
-			color: Color::srgb(
-				230.0,
-				0.0,
-				255.0,
-			),
+			color: Color::srgb(230.0, 0.0, 255.0),
 			..default()
 		},
 		transform: Transform {

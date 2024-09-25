@@ -73,10 +73,7 @@ pub fn event_insert_route_queue(
 						if !path.is_empty() {
 							filter_path(&mut path, event.target_goal);
 						}
-						cache.add_to_queue(
-							rm,
-							Route::new(path),
-						);
+						cache.add_to_queue(rm, Route::new(path));
 					} else {
 						// a portal based route could not be found or the actor
 						// is within the same sector as the goal
@@ -134,7 +131,9 @@ pub fn filter_path(path: &mut Vec<(SectorID, FieldCell)>, target_goal: FieldCell
 /// which an actor can use as a high-level pathfinding route while publishing a
 /// new item into the [FlowFieldCache] queue
 #[cfg(not(tarpaulin_include))]
-pub fn process_route_queue(mut cache_q: Query<(&mut RouteCache, &mut FlowFieldCache, &SectorCostFields)>) {
+pub fn process_route_queue(
+	mut cache_q: Query<(&mut RouteCache, &mut FlowFieldCache, &SectorCostFields)>,
+) {
 	for (mut r_cache, mut f_cache, cost_fields) in &mut cache_q {
 		while let Some((metadata, route_to_goal)) = r_cache.get_queue_mut().pop_first() {
 			let mut route_from_goal = route_to_goal.clone();
@@ -163,7 +162,11 @@ pub fn create_queued_integration_fields(
 			let mut_builder = entry.get_mut();
 			// expand portal goals if not done so
 			if !mut_builder.has_expanded_portals() {
-				mut_builder.expand_field_portals(sector_portals, sector_cost_fields, map_dimensions);
+				mut_builder.expand_field_portals(
+					sector_portals,
+					sector_cost_fields,
+					map_dimensions,
+				);
 				mut_builder.set_expanded_portals();
 			}
 			// compute line of sight if not done so

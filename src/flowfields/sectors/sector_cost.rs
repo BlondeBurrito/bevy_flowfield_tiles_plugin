@@ -954,7 +954,7 @@ impl EdgeLine {
 			if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&t) {
 				// special case where an edge only touches the start/end of another edge
 				let point = self.start + t * self_segment; //, other.start + u * other_segment);
-										   //TODO? floating precision can throw off touch check
+											   //TODO? floating precision can throw off touch check
 				if (point - other.start).length_squared() < f32::EPSILON
 					|| (point - other.end).length_squared() < f32::EPSILON
 				{
