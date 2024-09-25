@@ -175,13 +175,21 @@ impl IntegrationBuilder {
 	}
 }
 
+/// Flags a 'FieldCell' as having Line Of Sight
 pub const INT_BITS_LOS: u32 = 0b0000_0000_0000_0001_0000_0000_0000_0000;
+/// Flags a 'FieldCell' as being the goal
 pub const INT_BITS_GOAL: u32 = 0b0000_0000_0000_0010_0000_0000_0000_0000;
+/// Flags a 'FieldCell' to prevent wavefront propagation
 pub const INT_BITS_WAVE_BLOCKED: u32 = 0b0000_0000_0000_0100_0000_0000_0000_0000;
+/// Flags a 'FieldCell' as a portal
 pub const INT_BITS_PORTAL: u32 = 0b0000_0000_0000_1000_0000_0000_0000_0000;
+/// Flags a 'FieldCell' as being impassable
 pub const INT_BITS_IMPASSABLE: u32 = 0b0000_0010_0000_0000_0000_0000_0000_0000;
+/// Flags a 'FieldCell' as being a corner which is used for integrated cost propagation
 pub const INT_BITS_CORNER: u32 = 0b0000_0100_0000_0000_0000_0000_0000_0000;
+/// Helper for analysing the integrated cost of a 'FieldCell'
 pub const INT_FILTER_BITS_COST: u32 = 0b0000_0000_0000_0000_1111_1111_1111_1111;
+/// Helper for analysing which flags have been set on a 'FieldCell'
 pub const INT_FILTER_BITS_FLAGS: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -358,8 +366,9 @@ fn extend_los_corner(
 				}
 				if value & INT_BITS_WAVE_BLOCKED != INT_BITS_WAVE_BLOCKED {
 					if value & INT_BITS_LOS == INT_BITS_LOS {
-						bevy::prelude::error!("Cell has LOS when should be WB {:?}", blocked);
-						// field.set_field_cell_value(0 + INT_BITS_WAVE_BLOCKED, *blocked);
+						// bevy::prelude::error!("Cell has LOS when should be WB {:?}", blocked);
+						let n_v = (value & INT_FILTER_BITS_COST) + INT_BITS_WAVE_BLOCKED;
+						field.set_field_cell_value(n_v, *blocked);
 					} else {
 						field.set_field_cell_value(value + INT_BITS_WAVE_BLOCKED, *blocked);
 					}
@@ -594,22 +603,37 @@ mod tests {
 		let actual = FieldCell::new(0, 2);
 		assert_eq!(actual, result)
 	}
-	// /// Calculate integration field from a uniform cost field with a source near the centre
-	// #[test]
-	// fn basic_field() {
-	// 	let cost_field = CostField::default();
-	// 	let goal = FieldCell::new(4, 4);
-	// 	let mut integration_field = IntegrationField::new(&goal, &cost_field);
-	// 	integration_field.calculate_field(&cost_field);
-	// 	let result = integration_field.get();
+	/// Calculate integration field without a LOS pass to check propagation of a uniform cost field with a source near the centre
+	#[test]
+	fn basic_field() {
+		let cost_field = CostField::default();
+		let goal = FieldCell::new(4, 4);
+		let mut integration_field = IntegrationField::new(&goal, &cost_field);
+		// set the corner as the goal as we're skipping a LOS pass
+		integration_field.add_los_corner(goal);
+		integration_field.calculate_field(&cost_field);
+		let mut result = integration_field.get().clone();
+		// strip flags from result
+		for col in result.iter_mut() {
+			for value in col.iter_mut() {
+				*value = *value & INT_FILTER_BITS_COST
+			}
+		}
 
-	// 	let actual: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
-	// 		[8,7,6,5,4,5,6,7,8,9], [7,6,5,4,3,4,5,6,7,8], [6,5,4,3,2,3,4,5,6,7], [5,4,3,2,1,2,3,4,5,6], [4,3,2,1,0,1,2,3,4,5], [5,4,3,2,1,2,3,4,5,6], [6,5,4,3,2,3,4,5,6,7], [7,6,5,4,3,4,5,6,7,8], [8,7,6,5,4,5,6,7,8,9], [9,8,7,6,5,6,7,8,9,10]
-	// 	];
-
-
-	// 	assert_eq!(actual, *result);
-	// }
+		let actual: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
+			[8,7,6,5,4,5,6,7,8,9], 
+			[7,6,5,4,3,4,5,6,7,8], 
+			[6,5,4,3,2,3,4,5,6,7], 
+			[5,4,3,2,1,2,3,4,5,6], 
+			[4,3,2,1,0,1,2,3,4,5], 
+			[5,4,3,2,1,2,3,4,5,6], 
+			[6,5,4,3,2,3,4,5,6,7], 
+			[7,6,5,4,3,4,5,6,7,8], 
+			[8,7,6,5,4,5,6,7,8,9], 
+			[9,8,7,6,5,6,7,8,9,10]
+		];
+		assert_eq!(actual, result);
+	}
 	// /// Calculate integration field from a custom cost field set
 	// #[test]
 	// fn complex_field() {
