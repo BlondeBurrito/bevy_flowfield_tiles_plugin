@@ -612,11 +612,11 @@ mod tests {
 		// set the corner as the goal as we're skipping a LOS pass
 		integration_field.add_los_corner(goal);
 		integration_field.calculate_field(&cost_field);
-		let mut result = integration_field.get().clone();
+		let mut result = *integration_field.get();
 		// strip flags from result
 		for col in result.iter_mut() {
 			for value in col.iter_mut() {
-				*value = *value & INT_FILTER_BITS_COST
+				*value &= INT_FILTER_BITS_COST
 			}
 		}
 
