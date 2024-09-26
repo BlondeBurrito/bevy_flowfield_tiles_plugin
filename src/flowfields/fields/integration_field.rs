@@ -619,11 +619,11 @@ mod tests {
 				*value &= INT_FILTER_BITS_COST
 			}
 		}
-
+		// visually this is weird, columns look like rows, see comments on array lines
 		let actual: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION] = [
-			[8,7,6,5,4,5,6,7,8,9], 
-			[7,6,5,4,3,4,5,6,7,8], 
-			[6,5,4,3,2,3,4,5,6,7], 
+			[8,7,6,5,4,5,6,7,8,9], // column 0
+			[7,6,5,4,3,4,5,6,7,8], // column 1, etc
+			[6,5,4,3,2,3,4,5,6,7], // row 0 is 8 from first array, then 7 from next, etc
 			[5,4,3,2,1,2,3,4,5,6], 
 			[4,3,2,1,0,1,2,3,4,5], 
 			[5,4,3,2,1,2,3,4,5,6], 
