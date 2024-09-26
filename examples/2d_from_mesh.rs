@@ -5,6 +5,8 @@
 //! marked as impassable.
 //!
 
+//TODO figure out way to "bridge" adhacent meshes to create a contiguous pathable area
+
 use bevy::{
 	prelude::*,
 	render::{

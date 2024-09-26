@@ -648,8 +648,6 @@ impl SectorCostFields {
 		external_cost: u8,
 	) -> Self {
 		// init the fields so we already have the required sectors inserted
-
-		use bevy::render::mesh::PrimitiveTopology;
 		let mut sector_cost_fields = SectorCostFields::new_with_cost(map_dimensions, external_cost);
 
 		let columns = map_dimensions.get_total_field_cell_columns();
@@ -675,73 +673,32 @@ impl SectorCostFields {
 		let mut outer_edges = vec![];
 		for (mesh, translation) in meshes {
 			if let Some(mesh_vertices) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
-				let points = mesh_vertices.as_float3().unwrap();
-				let indices = mesh.indices().unwrap();
-				let indices_slice: Vec<usize> = indices.iter().collect();
+				let vertex_points = mesh_vertices.as_float3().unwrap();
 				// build each edge of each triangle in the mesh represented by index points
-				let mut edge_indices = vec![];
-				match mesh.primitive_topology() {
-					PrimitiveTopology::TriangleList => {
-						for i in indices_slice.chunks(3) {
-							edge_indices.push(MeshTriEdge(i[0], i[1]));
-							edge_indices.push(MeshTriEdge(i[1], i[2]));
-							edge_indices.push(MeshTriEdge(i[2], i[0]));
-						}
-					}
-					PrimitiveTopology::TriangleStrip => {
-						if let Some(triangle_count) = points.len().checked_sub(2) {
-							for n in 0..triangle_count {
-								if n % 2 == 0 {
-									edge_indices
-										.push(MeshTriEdge(indices_slice[n], indices_slice[n + 1]));
-									edge_indices.push(MeshTriEdge(
-										indices_slice[n + 1],
-										indices_slice[n + 2],
-									));
-									edge_indices
-										.push(MeshTriEdge(indices_slice[n + 2], indices_slice[n]));
-								} else {
-									edge_indices
-										.push(MeshTriEdge(indices_slice[n + 1], indices_slice[n]));
-									edge_indices
-										.push(MeshTriEdge(indices_slice[n], indices_slice[n + 2]));
-									edge_indices.push(MeshTriEdge(
-										indices_slice[n + 2],
-										indices_slice[n + 1],
-									));
-								}
+				let edge_indices = retrieve_mesh_edges(mesh, vertex_points);
+				if !edge_indices.is_empty() {
+					// collect edges that only belong to a single triangle (this means ignore internal edges, we only want the edges outlining the mesh), if any MeshEdge appears more than once we remove all occurances of it
+					let copy = edge_indices.clone();
+					for edge in edge_indices {
+						let mut occurances = 0;
+						for c in &copy {
+							if edge == *c {
+								occurances += 1;
 							}
-						} else {
-							warn!("A TriangleStrip mesh has insufficient vertices");
-							continue;
 						}
-					}
-					_ => {
-						warn!("Mesh topology must be of TriangleList or TriangleStrip for use with Flowfields");
-						continue;
-					}
-				}
-				// collect edges that only belong to a single triangle (this means ignore internal edges, we only want the edges outlining the mesh), if any MeshEdge appears more than once we remove all occurances of it
-				let copy = edge_indices.clone();
-				for edge in edge_indices {
-					let mut occurances = 0;
-					for c in &copy {
-						if edge == *c {
-							occurances += 1;
+						if occurances == 1 {
+							// found outer edge
+							// store edge line
+							let start = vertex_points[edge.0];
+							let end = vertex_points[edge.1];
+							//NB: vertex points are relative to mesh so include
+							// translation of the mesh to find global position
+							let line = EdgeLine::build(
+								Vec2::new(start[0] + translation.x, start[1] + translation.y),
+								Vec2::new(end[0] + translation.x, end[1] + translation.y),
+							);
+							outer_edges.push(line);
 						}
-					}
-					if occurances == 1 {
-						// found outer edge
-						// store edge line
-						let start = points[edge.0];
-						let end = points[edge.1];
-						//NB: vertex points are relative to mesh so include
-						// translation of the mesh to find global position
-						let line = EdgeLine::build(
-							Vec2::new(start[0] + translation.x, start[1] + translation.y),
-							Vec2::new(end[0] + translation.x, end[1] + translation.y),
-						);
-						outer_edges.push(line);
 					}
 				}
 			}
@@ -875,6 +832,43 @@ impl SectorCostFields {
 		sector_cost_fields
 	}
 }
+/// From a triple floating point representation of a mesh retreive a list of the edges as index pairs
+fn retrieve_mesh_edges(mesh: &&Mesh, vertex_points: &[[f32; 3]]) -> Vec<MeshTriEdge<usize>> {
+	use bevy::render::mesh::PrimitiveTopology;
+	let indices = mesh.indices().unwrap();
+	let indices_slice: Vec<usize> = indices.iter().collect();
+	let mut edge_indices = vec![];
+	match mesh.primitive_topology() {
+		PrimitiveTopology::TriangleList => {
+			for i in indices_slice.chunks(3) {
+				edge_indices.push(MeshTriEdge(i[0], i[1]));
+				edge_indices.push(MeshTriEdge(i[1], i[2]));
+				edge_indices.push(MeshTriEdge(i[2], i[0]));
+			}
+		}
+		PrimitiveTopology::TriangleStrip => {
+			if let Some(triangle_count) = vertex_points.len().checked_sub(2) {
+				for n in 0..triangle_count {
+					if n % 2 == 0 {
+						edge_indices.push(MeshTriEdge(indices_slice[n], indices_slice[n + 1]));
+						edge_indices.push(MeshTriEdge(indices_slice[n + 1], indices_slice[n + 2]));
+						edge_indices.push(MeshTriEdge(indices_slice[n + 2], indices_slice[n]));
+					} else {
+						edge_indices.push(MeshTriEdge(indices_slice[n + 1], indices_slice[n]));
+						edge_indices.push(MeshTriEdge(indices_slice[n], indices_slice[n + 2]));
+						edge_indices.push(MeshTriEdge(indices_slice[n + 2], indices_slice[n + 1]));
+					}
+				}
+			} else {
+				warn!("A TriangleStrip mesh has insufficient vertices");
+			}
+		}
+		_ => {
+			warn!("Mesh topology must be of TriangleList or TriangleStrip for use with Flowfields");
+		}
+	}
+	edge_indices
+}
 
 /// Represents two points that form the edge between mech vertices
 #[derive(Clone, Debug)]
@@ -972,6 +966,11 @@ impl EdgeLine {
 // #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
+	use bevy::render::{
+		mesh::{Indices, PrimitiveTopology},
+		render_asset::RenderAssetUsages,
+	};
+
 	use super::*;
 	#[test]
 	#[cfg(feature = "ron")]
@@ -1334,5 +1333,97 @@ mod tests {
 	// 	let edge1 = EdgeLine::build(Vec2::new(0.0, 0.0), Vec2::new(3.0, 3.0));
 	// 	let edge2 = EdgeLine::build(Vec2::new(-1.0, 0.0), Vec2::new(2.0, 3.0));
 	// 	assert!(!edge1.does_intersect(&edge2))
+	// }
+	#[test]
+	fn mesh_edges_triangle_list() {
+		let mesh = Mesh::new(
+			PrimitiveTopology::TriangleList,
+			RenderAssetUsages::default(),
+		)
+		.with_inserted_attribute(
+			Mesh::ATTRIBUTE_POSITION,
+			vec![
+				[-960.0, 640.0, 0.0],
+				[-960.0, 960.0, 0.0],
+				[700.0, 960.0, 0.0],
+				[900.0, 800.0, 0.0],
+				[700.0, 640.0, 0.0],
+			],
+		)
+		.with_inserted_indices(Indices::U32(vec![0, 1, 2, 2, 3, 4, 4, 2, 0]));
+		let mesh_vertices = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
+		let vertex_points = mesh_vertices.as_float3().unwrap();
+		let result = retrieve_mesh_edges(&&mesh, vertex_points);
+		let actual = vec![
+			MeshTriEdge(0, 1),
+			MeshTriEdge(1, 2),
+			MeshTriEdge(2, 0),
+			MeshTriEdge(2, 3),
+			MeshTriEdge(3, 4),
+			MeshTriEdge(4, 2),
+			MeshTriEdge(4, 2),
+			MeshTriEdge(2, 0),
+			MeshTriEdge(0, 4),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn mesh_edges_triangle_strip() {
+		let mesh = Mesh::new(
+			PrimitiveTopology::TriangleStrip,
+			RenderAssetUsages::default(),
+		)
+		.with_inserted_attribute(
+			Mesh::ATTRIBUTE_POSITION,
+			vec![
+				[-192.0, 640.0, 0.0],
+				[-192.0, -640.0, 0.0],
+				[192.0, 640.0, 0.0],
+				[192.0, -640.0, 0.0],
+			],
+		)
+		.with_inserted_indices(Indices::U32(vec![0, 1, 2, 3]));
+		let mesh_vertices = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
+		let vertex_points = mesh_vertices.as_float3().unwrap();
+		let result = retrieve_mesh_edges(&&mesh, vertex_points);
+		let actual = vec![
+			MeshTriEdge(0, 1),
+			MeshTriEdge(1, 2),
+			MeshTriEdge(2, 0),
+			MeshTriEdge(2, 1),
+			MeshTriEdge(1, 3),
+			MeshTriEdge(3, 2),
+		];
+		assert_eq!(actual, result);
+	}
+	// #[test]
+	// fn mesh_init_2d() {
+	// 	let length = 1920;
+	// 	let depth = 1920;
+	// 	let sector_resolution = 320;
+	// 	let actor_size = 16.0;
+	// 	let map_dimensions = MapDimensions::new(length, depth, sector_resolution, actor_size);
+	// 	let mesh = Mesh::new(
+	// 		PrimitiveTopology::TriangleList,
+	// 		RenderAssetUsages::default(),
+	// 	)
+	// 	.with_inserted_attribute(
+	// 		Mesh::ATTRIBUTE_POSITION,
+	// 		vec![
+	// 			[-960.0, 640.0, 0.0],
+	// 			[-960.0, 960.0, 0.0],
+	// 			[700.0, 960.0, 0.0],
+	// 			[900.0, 800.0, 0.0],
+	// 			[700.0, 640.0, 0.0],
+	// 		],
+	// 	)
+	// 	.with_inserted_indices(Indices::U32(vec![0, 1, 2, 2, 3, 4, 4, 2, 0]));
+	// 	let meshes = vec![(&mesh, Vec2::new(0.0, 0.0))];
+	// 	let internal_cost = 1;
+	// 	let external_cost =  255;
+	// 	let s_cost_field = SectorCostFields::from_bevy_2d_meshes(&map_dimensions, &meshes, internal_cost, external_cost);
+	// 	let result = s_cost_field.get_scaled();
+	// 	let actual = [];
+	// 	assert_eq!(actual, result);
 	// }
 }
