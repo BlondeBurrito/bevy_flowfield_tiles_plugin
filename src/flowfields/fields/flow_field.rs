@@ -420,84 +420,108 @@ mod tests {
 		let v = flow_field.get_field_cell_value(FieldCell::new(0, 0));
 		assert_eq!(BITS_DEFAULT, v);
 	}
-	// /// Flowfield of a single sector, all far southern cells are goals, verify direct paths from top to bottom
-	// #[test]
-	// fn calculate_flow_target_south() {
-	// 	let cost_field = CostField::default();
-	// 	// int field pair pointing towards goal in orthognal south direction
-	// 	let ordinal_to_previous_sector = Ordinal::South;
-	// 	let goals = vec![
-	// 		FieldCell::new(0, 9),
-	// 		FieldCell::new(1, 9),
-	// 		FieldCell::new(2, 9),
-	// 		FieldCell::new(3, 9),
-	// 		FieldCell::new(4, 9),
-	// 		FieldCell::new(5, 9),
-	// 		FieldCell::new(6, 9),
-	// 		FieldCell::new(7, 9),
-	// 		FieldCell::new(8, 9),
-	// 		FieldCell::new(9, 9),
-	// 	];
-	// 	let mut previous_int_field = IntegrationField::new(&goals, &cost_field);
-	// 	previous_int_field.calculate_field(&goals, &cost_field);
-	// 	let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
+	/// Flowfield of a single sector, all far southern cells are goals, verify direct paths from top to bottom
+	#[test]
+	fn calculate_flow_target_south() {
+		let cost_field = CostField::default();
+		// int field pair pointing towards goal in orthognal south direction
+		let ordinal_to_previous_sector = Ordinal::South;
+		let goals = vec![
+			FieldCell::new(0, 9),
+			FieldCell::new(1, 9),
+			FieldCell::new(2, 9),
+			FieldCell::new(3, 9),
+			FieldCell::new(4, 9),
+			FieldCell::new(5, 9),
+			FieldCell::new(6, 9),
+			FieldCell::new(7, 9),
+			FieldCell::new(8, 9),
+			FieldCell::new(9, 9),
+		];
+		let mut previous_int_field = IntegrationField::default();
+		// assume these sectors have no LOS therefore the portal goals are corners
+		for g in goals.iter() {
+			previous_int_field.add_los_corner(*g);
+			// assign a bogus cost to the portals
+			previous_int_field.set_field_cell_value(9, *g);
+		}
+		previous_int_field.calculate_field(&cost_field);
+		let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
 
-	// 	let mut integration_field = IntegrationField::new(&goals, &cost_field);
-	// 	integration_field.calculate_field(&goals, &cost_field);
+		let mut integration_field = IntegrationField::default();
+		// assume these sectors have no LOS therefore the portal goals are corners
+		for g in goals.iter() {
+			integration_field.add_los_corner(*g);
+			// assign a bogus cost to the portals
+			integration_field.set_field_cell_value(9, *g);
+		}
+		integration_field.calculate_field(&cost_field);
 
-	// 	let mut flow_field = FlowField::default();
-	// 	flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
+		let mut flow_field = FlowField::default();
+		flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
 
-	// 	for column in flow_field.get().iter() {
-	// 		for row_value in column.iter() {
-	// 			if *row_value != BITS_PATHABLE + BITS_SOUTH
-	// 				&& *row_value != BITS_PORTAL_GOAL + BITS_SOUTH
-	// 			{
-	// 				println!("Flow field: {:?}", flow_field.get());
-	// 				panic!("Some FlowField default bits have not been replaced");
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// /// Flowfield of a single sector, all far western cells are goals, verify direct paths from right to left
-	// #[test]
-	// fn calculate_flow_target_west() {
-	// 	let cost_field = CostField::default();
-	// 	// int field pair pointing towards goal in orthognal west direction
-	// 	let ordinal_to_previous_sector = Ordinal::West;
-	// 	let goals = vec![
-	// 		FieldCell::new(0, 0),
-	// 		FieldCell::new(0, 1),
-	// 		FieldCell::new(0, 2),
-	// 		FieldCell::new(0, 3),
-	// 		FieldCell::new(0, 4),
-	// 		FieldCell::new(0, 5),
-	// 		FieldCell::new(0, 6),
-	// 		FieldCell::new(0, 7),
-	// 		FieldCell::new(0, 8),
-	// 		FieldCell::new(0, 9),
-	// 	];
-	// 	let mut previous_int_field = IntegrationField::new(&goals, &cost_field);
-	// 	previous_int_field.calculate_field(&goals, &cost_field);
-	// 	let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
+		for column in flow_field.get().iter() {
+			for row_value in column.iter() {
+				if *row_value != BITS_PATHABLE + BITS_SOUTH
+					&& *row_value != BITS_PORTAL_GOAL + BITS_SOUTH
+				{
+					println!("Flow field: {:?}", flow_field.get());
+					panic!("Some FlowField default bits have not been replaced");
+				}
+			}
+		}
+	}
+	/// Flowfield of a single sector, all far western cells are goals, verify direct paths from right to left
+	#[test]
+	fn calculate_flow_target_west() {
+		let cost_field = CostField::default();
+		// int field pair pointing towards goal in orthognal west direction
+		let ordinal_to_previous_sector = Ordinal::West;
+		let goals = vec![
+			FieldCell::new(0, 0),
+			FieldCell::new(0, 1),
+			FieldCell::new(0, 2),
+			FieldCell::new(0, 3),
+			FieldCell::new(0, 4),
+			FieldCell::new(0, 5),
+			FieldCell::new(0, 6),
+			FieldCell::new(0, 7),
+			FieldCell::new(0, 8),
+			FieldCell::new(0, 9),
+		];
+		let mut previous_int_field = IntegrationField::default();
+		// assume these sectors have no LOS therefore the portal goals are corners
+		for g in goals.iter() {
+			previous_int_field.add_los_corner(*g);
+			// assign a bogus cost to the portals
+			previous_int_field.set_field_cell_value(9, *g);
+		}
+		previous_int_field.calculate_field(&cost_field);
+		let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
 
-	// 	let mut integration_field = IntegrationField::new(&goals, &cost_field);
-	// 	integration_field.calculate_field(&goals, &cost_field);
+		let mut integration_field = IntegrationField::default();
+		// assume these sectors have no LOS therefore the portal goals are corners
+		for g in goals.iter() {
+			integration_field.add_los_corner(*g);
+			// assign a bogus cost to the portals
+			integration_field.set_field_cell_value(9, *g);
+		}
+		integration_field.calculate_field(&cost_field);
 
-	// 	let mut flow_field = FlowField::default();
-	// 	flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
+		let mut flow_field = FlowField::default();
+		flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
 
-	// 	for column in flow_field.get().iter() {
-	// 		for row_value in column.iter() {
-	// 			if *row_value != BITS_PATHABLE + BITS_WEST
-	// 				&& *row_value != BITS_PORTAL_GOAL + BITS_WEST
-	// 			{
-	// 				println!("Flow field: {:?}", flow_field.get());
-	// 				panic!("Some FlowField default bits have not been replaced");
-	// 			}
-	// 		}
-	// 	}
-	// }
+		for column in flow_field.get().iter() {
+			for row_value in column.iter() {
+				if *row_value != BITS_PATHABLE + BITS_WEST
+					&& *row_value != BITS_PORTAL_GOAL + BITS_WEST
+				{
+					println!("Flow field: {:?}", flow_field.get());
+					panic!("Some FlowField default bits have not been replaced");
+				}
+			}
+		}
+	}
 	//TODO test blocked diag
 	//TODO
 }

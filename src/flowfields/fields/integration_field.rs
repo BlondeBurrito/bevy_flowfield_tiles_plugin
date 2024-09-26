@@ -249,7 +249,7 @@ impl IntegrationField {
 		self.set_field_cell_value(INT_BITS_LOS, cell_id);
 	}
 	/// Append a new Line Of Sight corner to the integration field
-	fn add_los_corner(&mut self, corner: FieldCell) {
+	pub fn add_los_corner(&mut self, corner: FieldCell) {
 		self.los_corners.push(corner);
 	}
 	/// From the goal of the target sector calcualte LOS
@@ -261,9 +261,8 @@ impl IntegrationField {
 	pub fn propagate_boundary_los(&mut self) {} //TODO
 
 	//TODO: diamond like propagation and wasted extra lookups looking at previously calcualted neighbours, try fast marching method of solving Eikonal PDE for a spherical approx that visits each cell once
-	/// From a list of `goals` (the actual end target goal or portal field cells
-	/// to the next sector towards the goal sector) field cells iterate over
-	/// successive neighbouring cells and calculate the field values from the
+	/// From a list of Corners field cells iterate over successive neighbouring
+	/// cells and calculate the integrated-cost field values from the
 	/// `cost_field`
 	pub fn calculate_field(&mut self, cost_field: &CostField) {
 		// further positions to process, tuple element 0 is the position, element 1 is the integration cost from the previous cell needed to help calculate element 0s cost
