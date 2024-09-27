@@ -650,10 +650,6 @@ impl SectorCostFields {
 		// init the fields so we already have the required sectors inserted
 		let mut sector_cost_fields = SectorCostFields::new_with_cost(map_dimensions, external_cost);
 
-		let columns = map_dimensions.get_total_field_cell_columns();
-		let rows = map_dimensions.get_total_field_cell_rows();
-		let field_cell_unit_size = map_dimensions.get_field_cell_unit_size();
-
 		// Treat each FieldCell as its own polygon
 		// to find if one polygon (A) is within another (B):
 		// 1) Take a vertex of A (a corner of a FieldCell) and project a line
@@ -715,102 +711,18 @@ impl SectorCostFields {
 
 		// create a list of candiate row-col which are likely to be within the
 		// mesh therefore pathable
-		let mut candidates: Vec<(usize, usize)> = vec![];
-		for row in 0..rows {
-			for col in 0..columns {
-				// find coord of top left field cell corner
-				let x1 =
-					col as f32 * field_cell_unit_size - (map_dimensions.get_length() as f32 / 2.0);
-				let y1 =
-					row as f32 * -field_cell_unit_size + (map_dimensions.get_depth() as f32 / 2.0);
-
-				//TODO what happens when two meshes are next to each other but a field cell overlaps their boundary -> treated as impassable currently
-
-				// create a horizontal edge with constant y
-				let hori = EdgeLine::build(
-					Vec2::new(x1, y1),
-					Vec2::new(map_dimensions.get_length() as f32 / 2.0, y1),
-				);
-				let mut count_intersections = 0;
-				let mut count_touch = 0;
-				for edge in &outer_edges {
-					match hori.does_intersect(edge) {
-						Intersection::Intersect => {
-							count_intersections += 1;
-						}
-						Intersection::Touch => {
-							count_touch += 1;
-						}
-						Intersection::None => {}
-					}
-				}
-				// if intersections is odd then the vertex is within the mesh
-				// if it touches an even and non-zero number of times then it might be within mesh
-				if count_intersections % 2 == 1 || count_touch > 0 && count_touch % 2 == 0 {
-					candidates.push((row, col));
-				}
-			}
-		}
-		let mut failed_candidates: Vec<(usize, usize)> = vec![];
-		for (row, col) in candidates.iter() {
-			// to test whether the entire field cell is within the mesh we need to take each edge of the field cell and test that none of them intersect with any mesh edges.
-			// Construct each edge of the square field cell:
-			let offset_x = map_dimensions.get_length() as f32 / 2.0;
-			let offset_y = map_dimensions.get_depth() as f32 / 2.0;
-			// vertex: top-left
-			let tl = Vec2::new(
-				*col as f32 * field_cell_unit_size - offset_x,
-				*row as f32 * -field_cell_unit_size + offset_y,
-			);
-			// vertex: top-right
-			let tr = Vec2::new(
-				*col as f32 * field_cell_unit_size - offset_x + field_cell_unit_size,
-				*row as f32 * -field_cell_unit_size + offset_y,
-			);
-			// vertex: bottom-left
-			let bl = Vec2::new(
-				*col as f32 * field_cell_unit_size - offset_x,
-				*row as f32 * -field_cell_unit_size + offset_y - field_cell_unit_size,
-			);
-			// vertex: bottom-right
-			let br = Vec2::new(
-				*col as f32 * field_cell_unit_size - offset_x + field_cell_unit_size,
-				*row as f32 * -field_cell_unit_size + offset_y - field_cell_unit_size,
-			);
-			// edge: left up-down
-			let edge_lud = EdgeLine::build(tl, bl);
-			// edge: right up-down
-			let edge_rud = EdgeLine::build(tr, br);
-			// edge: bottom left-right
-			let edge_blr = EdgeLine::build(bl, br);
-			// edge: top left-right
-			let edge_tlr = EdgeLine::build(tl, tr);
-			// look for intersections
-			let field_edges = [edge_lud, edge_rud, edge_blr, edge_tlr];
-			for edge in &outer_edges {
-				// if an edge intersects any of the field edges then the field
-				// cell is outside of the meshes. If an edge is parallel then
-				// it's marked as failed
-				for field_edge in field_edges.iter() {
-					match edge.does_intersect(field_edge) {
-						Intersection::Intersect => {
-							failed_candidates.push((*row, *col));
-							break;
-						}
-						Intersection::Touch => {
-							failed_candidates.push((*row, *col));
-						}
-						_ => {}
-					}
-				}
-			}
-		}
+		let mut candidates: Vec<(usize, usize)> =
+			calc_field_cell_mesh_candidates(map_dimensions, &outer_edges);
+		// to test whether an entire field cell is within the mesh we need to take each edge of the candidate field cells and test that none of them intersect with any mesh edges
+		let failed_candidates: Vec<(usize, usize)> =
+			identify_field_cells_that_intersect_mesh(map_dimensions, &candidates, &outer_edges);
 		// from candidates and failed candidates identify the cells which are pathable
 		for cell in failed_candidates.iter() {
 			candidates.retain(|&c| c != *cell);
 		}
 		// candidates are now the pathable ones, determine how they are represented
 		// in Sector and FieldCell notation to update the CostFields
+		let field_cell_unit_size = map_dimensions.get_field_cell_unit_size();
 		let offset_x = map_dimensions.get_length() as f32 / 2.0;
 		let offset_y = map_dimensions.get_depth() as f32 / 2.0;
 		for (row, col) in candidates {
@@ -868,6 +780,113 @@ fn retrieve_mesh_edges(mesh: &&Mesh, vertex_points: &[[f32; 3]]) -> Vec<MeshTriE
 		}
 	}
 	edge_indices
+}
+/// Using a list of outer mesh edges iterate over every [FieldCell] and draw a horiontal line from the top-left position of a [FieldCell] box/square and count the number of times the line intersects an outer mesh edge. If the line intersects an edge an odd number of times then it means that the [FieldCell] is probably within the mesh. An even number of intersections means it passes into and out of the mesh and therefore must be a [FieldCell] that sits outside of the mesh edges
+fn calc_field_cell_mesh_candidates(
+	map_dimensions: &MapDimensions,
+	outer_edges: &Vec<EdgeLine>,
+) -> Vec<(usize, usize)> {
+	let columns = map_dimensions.get_total_field_cell_columns();
+	let rows = map_dimensions.get_total_field_cell_rows();
+	let field_cell_unit_size = map_dimensions.get_field_cell_unit_size();
+	let mut candidates: Vec<(usize, usize)> = vec![];
+	for row in 0..rows {
+		for col in 0..columns {
+			// find coord of top left field cell corner
+			let x1 = col as f32 * field_cell_unit_size - (map_dimensions.get_length() as f32 / 2.0);
+			let y1 = row as f32 * -field_cell_unit_size + (map_dimensions.get_depth() as f32 / 2.0);
+
+			//TODO what happens when two meshes are next to each other but a field cell overlaps their boundary -> treated as impassable currently
+
+			// create a horizontal edge with constant y
+			let hori = EdgeLine::build(
+				Vec2::new(x1, y1),
+				Vec2::new(map_dimensions.get_length() as f32 / 2.0, y1),
+			);
+			let mut count_intersections = 0;
+			let mut count_touch = 0;
+			for edge in outer_edges {
+				match hori.does_intersect(edge) {
+					Intersection::Intersect => {
+						count_intersections += 1;
+					}
+					Intersection::Touch => {
+						count_touch += 1;
+					}
+					Intersection::None => {}
+				}
+			}
+			// if intersections is odd then the vertex is within the mesh
+			// if it touches an even and non-zero number of times then it might be within mesh
+			if count_intersections % 2 == 1 || count_touch > 0 && count_touch % 2 == 0 {
+				candidates.push((row, col));
+			}
+		}
+	}
+	candidates
+}
+/// Using a list of [FieldCell] create an edge for each side of the cell/box and check to see if any edge intersects the outer edges of a mesh. If one of the four sides of a [FieldCell] intersects a mesh then that [FieldCell] is not wholly inside of the mesh. Return the list of [FieldCell] that intersect (thereby overlap) the outer edge of a mesh
+fn identify_field_cells_that_intersect_mesh(
+	map_dimensions: &MapDimensions,
+	candidates: &[(usize, usize)],
+	outer_edges: &Vec<EdgeLine>,
+) -> Vec<(usize, usize)> {
+	let field_cell_unit_size = map_dimensions.get_field_cell_unit_size();
+	let mut failed_candidates: Vec<(usize, usize)> = vec![];
+	for (row, col) in candidates.iter() {
+		// to test whether the entire field cell is within the mesh we need to take each edge of the field cell and test that none of them intersect with any mesh edges.
+		// Construct each edge of the square field cell:
+		let offset_x = map_dimensions.get_length() as f32 / 2.0;
+		let offset_y = map_dimensions.get_depth() as f32 / 2.0;
+		// vertex: top-left
+		let tl = Vec2::new(
+			*col as f32 * field_cell_unit_size - offset_x,
+			*row as f32 * -field_cell_unit_size + offset_y,
+		);
+		// vertex: top-right
+		let tr = Vec2::new(
+			*col as f32 * field_cell_unit_size - offset_x + field_cell_unit_size,
+			*row as f32 * -field_cell_unit_size + offset_y,
+		);
+		// vertex: bottom-left
+		let bl = Vec2::new(
+			*col as f32 * field_cell_unit_size - offset_x,
+			*row as f32 * -field_cell_unit_size + offset_y - field_cell_unit_size,
+		);
+		// vertex: bottom-right
+		let br = Vec2::new(
+			*col as f32 * field_cell_unit_size - offset_x + field_cell_unit_size,
+			*row as f32 * -field_cell_unit_size + offset_y - field_cell_unit_size,
+		);
+		// edge: left up-down
+		let edge_lud = EdgeLine::build(tl, bl);
+		// edge: right up-down
+		let edge_rud = EdgeLine::build(tr, br);
+		// edge: bottom left-right
+		let edge_blr = EdgeLine::build(bl, br);
+		// edge: top left-right
+		let edge_tlr = EdgeLine::build(tl, tr);
+		// look for intersections
+		let field_edges = [edge_lud, edge_rud, edge_blr, edge_tlr];
+		for edge in outer_edges {
+			// if an edge intersects any of the field edges then the field
+			// cell is outside of the meshes. If an edge is parallel then
+			// it's marked as failed
+			for field_edge in field_edges.iter() {
+				match edge.does_intersect(field_edge) {
+					Intersection::Intersect => {
+						failed_candidates.push((*row, *col));
+						break;
+					}
+					Intersection::Touch => {
+						failed_candidates.push((*row, *col));
+					}
+					_ => {}
+				}
+			}
+		}
+	}
+	failed_candidates
 }
 
 /// Represents two points that form the edge between mech vertices
