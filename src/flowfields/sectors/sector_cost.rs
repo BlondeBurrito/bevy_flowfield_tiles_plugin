@@ -825,6 +825,7 @@ fn calc_field_cell_mesh_candidates(
 	}
 	candidates
 }
+//TODO THIS IS MAKING DUPLICATES
 /// Using a list of [FieldCell] create an edge for each side of the cell/box and check to see if any edge intersects the outer edges of a mesh. If one of the four sides of a [FieldCell] intersects a mesh then that [FieldCell] is not wholly inside of the mesh. Return the list of [FieldCell] that intersect (thereby overlap) the outer edge of a mesh
 fn identify_field_cells_that_intersect_mesh(
 	map_dimensions: &MapDimensions,
@@ -1415,7 +1416,7 @@ mod tests {
 		];
 		assert_eq!(actual, result);
 	}
-	/// Using a simple edgeline verify which field cell candidates intersect it once
+	/// Using simple edgelines verify which field cell candidates intersect it once
 	#[test]
 	fn mesh_candidates() {
 		let length = 1920;
@@ -1423,23 +1424,35 @@ mod tests {
 		let sector_resolution = 320;
 		let actor_size = 16.0;
 		let map_dimensions = MapDimensions::new(length, depth, sector_resolution, actor_size);
-		let outer_edges = vec![EdgeLine::build(
-			Vec2::new(-960.0, 640.0),
-			Vec2::new(-960.0, 960.0),
-		)];
-		let candidates = calc_field_cell_mesh_candidates(&map_dimensions, &outer_edges);
-		let actual = vec![
-			(1, 0),
-			(2, 0),
-			(3, 0),
-			(4, 0),
-			(5, 0),
-			(6, 0),
-			(7, 0),
-			(8, 0),
-			(9, 0),
+		// simple square in top left of map dim
+		let outer_edges = vec![
+			EdgeLine::build(Vec2::new(-960.0, 864.0), Vec2::new(-960.0, 960.0)),
+			EdgeLine::build(Vec2::new(-864.0, 864.0), Vec2::new(-896.0, 960.0)),
+			EdgeLine::build(Vec2::new(-960.0, 864.0), Vec2::new(-864.0, 864.0)),
+			EdgeLine::build(Vec2::new(-960.0, 960.0), Vec2::new(-864.0, 960.0)),
 		];
+		let candidates = calc_field_cell_mesh_candidates(&map_dimensions, &outer_edges);
+		let actual = vec![(1, 1), (1, 2), (2, 1), (2, 2)];
 		assert_eq!(actual, candidates);
+	}
+	#[test]
+	fn mesh_failed_candidates() {
+		let length = 1920;
+		let depth = 1920;
+		let sector_resolution = 320;
+		let actor_size = 16.0;
+		let map_dimensions = MapDimensions::new(length, depth, sector_resolution, actor_size);
+		// simple square in top left of map dim
+		let outer_edges = vec![
+			EdgeLine::build(Vec2::new(-960.0, 864.0), Vec2::new(-960.0, 960.0)),
+			EdgeLine::build(Vec2::new(-864.0, 864.0), Vec2::new(-896.0, 960.0)),
+			EdgeLine::build(Vec2::new(-960.0, 864.0), Vec2::new(-864.0, 864.0)),
+			EdgeLine::build(Vec2::new(-960.0, 960.0), Vec2::new(-864.0, 960.0)),
+		];
+		let candidates = vec![(1, 1), (1, 2), (2, 1), (2, 2)];
+		let failed =
+			identify_field_cells_that_intersect_mesh(&map_dimensions, &candidates, &outer_edges);
+		assert!(!failed.contains(&(1, 1)))
 	}
 	// #[test]
 	// fn mesh_init_2d() {
