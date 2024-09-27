@@ -638,7 +638,7 @@ impl SectorCostFields {
 		sector_cost_fields
 	}
 	/// From a list of meshes extract the outer edges of each mesh and project an (MxN) FieldCell representation of edges over the dimensions. The projections undergo two tests to see if a FieldCell sits inside a mesh (thereby being marked as pathable):
-	/// - The top-right vertex of each field cell is tested for mesh edge intersections, a horizontal line is taken from the vertex point to max-x and if the line intersects mesh edges an odd number of times, or touches an edge an even number of times, then it is marked as potentially being within the mesh
+	/// - The top-left vertex of each field cell is tested for mesh edge intersections, a horizontal line is taken from the vertex point to max-x and if the line intersects mesh edges an odd number of times, or touches an edge an even number of times, then it is marked as potentially being within the mesh
 	/// - From the marked FieldCells the four edges of each is then tested to see if it intersects any mesh edges, if so then it is overlapping a mesh boundary and so not fully inside the mesh, otherwise it is in the mesh and considered a pathable cell and given the cost `internal_cost` - all cells outside of the meshes are initialised with a cost of `external_cost`
 	#[cfg(feature = "2d")]
 	pub fn from_bevy_2d_meshes(
@@ -781,7 +781,7 @@ fn retrieve_mesh_edges(mesh: &&Mesh, vertex_points: &[[f32; 3]]) -> Vec<MeshTriE
 	}
 	edge_indices
 }
-/// Using a list of outer mesh edges iterate over every [FieldCell] and draw a horiontal line from the top-left position of a [FieldCell] box/square and count the number of times the line intersects an outer mesh edge. If the line intersects an edge an odd number of times then it means that the [FieldCell] is probably within the mesh. An even number of intersections means it passes into and out of the mesh and therefore must be a [FieldCell] that sits outside of the mesh edges
+/// Using a list of outer mesh edges iterate over every [FieldCell] and draw a horiontal line from the top-left vertex position of a [FieldCell] box/square and count the number of times the line intersects an outer mesh edge. If the line intersects an edge an odd number of times then it means that the [FieldCell] is probably within the mesh. An even number of intersections means it passes into and out of the mesh and therefore must be a [FieldCell] that sits outside of the mesh edges
 fn calc_field_cell_mesh_candidates(
 	map_dimensions: &MapDimensions,
 	outer_edges: &Vec<EdgeLine>,
@@ -911,7 +911,7 @@ enum Intersection {
 }
 
 /// Represents the start and end coordinates of a line in space
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct EdgeLine {
 	/// Where the line starts
 	start: Vec2,
@@ -1414,6 +1414,31 @@ mod tests {
 			MeshTriEdge(3, 2),
 		];
 		assert_eq!(actual, result);
+	}
+	/// Using a simple edgeline verify which field cell candidates intersect it once
+	#[test]
+	fn mesh_candidates() {
+		let length = 1920;
+		let depth = 1920;
+		let sector_resolution = 320;
+		let actor_size = 16.0;
+		let map_dimensions = MapDimensions::new(length, depth, sector_resolution, actor_size);
+		let outer_edges = vec![
+			EdgeLine::build(Vec2::new(-960.0, 640.0), Vec2::new(-960.0, 960.0)),
+		];
+		let candidates = calc_field_cell_mesh_candidates(&map_dimensions, &outer_edges);
+		let actual = vec![
+			(1, 0),
+			(2, 0),
+			(3, 0),
+			(4, 0),
+			(5, 0),
+			(6, 0),
+			(7, 0),
+			(8, 0),
+			(9, 0)
+		];
+		assert_eq!(actual, candidates);
 	}
 	// #[test]
 	// fn mesh_init_2d() {
