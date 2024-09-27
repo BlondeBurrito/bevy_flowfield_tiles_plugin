@@ -1423,9 +1423,10 @@ mod tests {
 		let sector_resolution = 320;
 		let actor_size = 16.0;
 		let map_dimensions = MapDimensions::new(length, depth, sector_resolution, actor_size);
-		let outer_edges = vec![
-			EdgeLine::build(Vec2::new(-960.0, 640.0), Vec2::new(-960.0, 960.0)),
-		];
+		let outer_edges = vec![EdgeLine::build(
+			Vec2::new(-960.0, 640.0),
+			Vec2::new(-960.0, 960.0),
+		)];
 		let candidates = calc_field_cell_mesh_candidates(&map_dimensions, &outer_edges);
 		let actual = vec![
 			(1, 0),
@@ -1436,7 +1437,7 @@ mod tests {
 			(6, 0),
 			(7, 0),
 			(8, 0),
-			(9, 0)
+			(9, 0),
 		];
 		assert_eq!(actual, candidates);
 	}
