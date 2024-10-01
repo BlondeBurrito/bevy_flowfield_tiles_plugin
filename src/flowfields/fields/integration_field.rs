@@ -363,12 +363,6 @@ fn extend_los_corner(
 					break;
 				}
 				if value & INT_BITS_WAVE_BLOCKED != INT_BITS_WAVE_BLOCKED {
-					// if value & INT_BITS_LOS == INT_BITS_LOS {
-					// bevy::prelude::error!("Cell has LOS when should be WB {:?}", blocked);
-					// let n_v = (value & INT_FILTER_BITS_COST) + INT_BITS_WAVE_BLOCKED;
-					// field.set_field_cell_value(n_v, *blocked);
-					// field.set_field_cell_value(value + INT_BITS_WAVE_BLOCKED, *blocked);
-					// } else {
 					// mark the line as corners for the int calc layer
 					field.add_los_corner(*blocked);
 					// NB: add 1 because adj is effectively one wavefront propagation ahead
@@ -377,8 +371,6 @@ fn extend_los_corner(
 						wavefront_cost + 1 + i as u32 + INT_BITS_WAVE_BLOCKED + INT_BITS_CORNER,
 						*blocked,
 					);
-					// field.set_field_cell_value(value + INT_BITS_WAVE_BLOCKED, *blocked);
-					// }
 				}
 			}
 		}
