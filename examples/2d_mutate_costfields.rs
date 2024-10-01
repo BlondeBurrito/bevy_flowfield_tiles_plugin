@@ -29,12 +29,12 @@ fn main() {
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(Startup, (setup, create_wall_colliders, create_counters))
 		.add_systems(PreUpdate, click_update_cost)
-		.insert_resource(Time::<Fixed>::from_seconds(0.01))
-		.add_systems(FixedUpdate, spawn_actors)
+		.insert_resource(Time::<Fixed>::from_seconds(0.1))
+		.add_systems(FixedUpdate, (spawn_actors, get_or_request_route))
 		.add_systems(
 			Update,
 			(
-				get_or_request_route,
+				// get_or_request_route,
 				check_if_route_is_old,
 				check_if_route_exhausted,
 				// spawn_actors,
@@ -287,7 +287,7 @@ fn spawn_actors(
 		})
 		.insert(Actor)
 		.insert(RigidBody::Dynamic)
-		.insert(Collider::rectangle(1.0, 1.0))
+		.insert(Collider::circle(1.0))
 		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]))
 		.insert(AngularDamping(1.6))
 		.insert(pathing);
@@ -375,7 +375,7 @@ fn check_if_route_exhausted(mut actor_q: Query<(&mut Pathing, &mut LinearVelocit
 }
 
 /// Actor speed
-const SPEED: f32 = 40000.0;
+const SPEED: f32 = 30000.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
