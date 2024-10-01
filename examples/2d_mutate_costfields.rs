@@ -289,7 +289,7 @@ fn spawn_actors(
 		.insert(RigidBody::Dynamic)
 		.insert(Collider::circle(1.0))
 		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]))
-		.insert(AngularDamping(1.6))
+		.insert(AngularDamping(1.0))
 		.insert(pathing);
 	}
 }

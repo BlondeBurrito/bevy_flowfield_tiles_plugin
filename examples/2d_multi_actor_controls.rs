@@ -135,6 +135,7 @@ fn setup_navigation(mut cmds: Commands) {
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
 	.insert(Collider::rectangle(1.0, 1.0))
+	.insert(AngularDamping(1.0))
 	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 	// create an actor controlled with left click
 	cmds.spawn(SpriteBundle {
@@ -153,6 +154,7 @@ fn setup_navigation(mut cmds: Commands) {
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
 	.insert(Collider::rectangle(1.0, 1.0))
+	.insert(AngularDamping(1.0))
 	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 }
 
