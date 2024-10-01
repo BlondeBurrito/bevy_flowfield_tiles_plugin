@@ -168,10 +168,10 @@ impl FlowField {
 							value |= BITS_PATHABLE;
 							self.set_field_cell_value(value, field_cell);
 						} else {
-							warn!(
-								"No cheapest neighbour in flow calc! Origin cell {:?}",
-								field_cell
-							);
+							// warn!(
+							// 	"No cheapest neighbour in flow calc! Origin cell {:?}",
+							// 	field_cell
+							// );
 						} //TODO this should never ever be none... (except maybe as of 0.11, an impassable cell compeltely enclosed will never be reached by the int layer)
 					}
 				}
@@ -385,10 +385,13 @@ pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
 			warn!("Got direction of impassable cell, an actor may be stuck");
 			Vec2::new(0.0, 0.0)
 		}
-		_ => panic!(
-			"First 4 bits of cell are not recognised directions: {}",
-			dir
-		),
+		_ => {
+			debug!(
+				"First 4 bits of cell are not recognised directions: {}",
+				dir
+			);
+			Vec2::new(0.0, 0.0)
+		}
 	}
 }
 /// Reading the directional bits of a [FlowField] field cell obtain a unit

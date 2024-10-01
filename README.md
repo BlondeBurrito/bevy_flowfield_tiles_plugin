@@ -158,7 +158,7 @@ Second, if there is a vacant field cell next to the impassable field cell then t
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_los_prop1.png" alt="iflp1"/>
 
-By taking a vector from the starting goal to the corner we can then extend this vector to calculate what field cells lie along a line. The field cells on this line are updated with the flag for WavefrontBlocked. Meaning that as LOS expands and propagates if a WavefrontBlocked cell is encountered then the cell is removed as a candidate in further LOS porpagation. This ensures that LOS cannot flow around impassable areas.
+By taking a vector from the starting goal to the corner we can then extend this vector to calculate what field cells lie along a line. The field cells on this line are stored as corners and are updated with the flag for WavefrontBlocked. Meaning that as LOS expands and propagates if a WavefrontBlocked cell is encountered then the cell is removed as a candidate in further LOS porpagation. This ensures that LOS cannot flow around impassable areas.
 
 <img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_los_prop2.png" alt="iflp2"/><img src="https://raw.githubusercontent.com/BlondeBurrito/bevy_flowfield_tiles_plugin/main/docs/png/int_field_los_prop3.png" alt="iflp3"/>
 

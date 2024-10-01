@@ -71,7 +71,9 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
-	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
+	// let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
+	let path =
+		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
 	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
 	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
@@ -120,7 +122,9 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands) {
 	// create the entity handling the algorithm
-	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
+	// let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
+	let path =
+		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
@@ -291,7 +295,7 @@ fn check_if_route_exhausted(mut actor_q: Query<(&mut Pathing, &mut LinearVelocit
 		if let Some(route) = &pathing.portal_route {
 			if route.is_empty() {
 				// actor has exhuasted it's route, it's lost, clear route so a new one can be requested
-				warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
+				// warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
 				vel.0 *= 0.0;
 				pathing.portal_route = None;
 			}

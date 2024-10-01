@@ -26,6 +26,12 @@ pub trait Field<T> {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash, Reflect)]
 pub struct FieldCell((usize, usize));
 
+impl std::fmt::Display for FieldCell {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "Column: {}, Row: {}", self.0 .0, self.0 .1)
+	}
+}
+
 impl FieldCell {
 	/// Create a new instance of [FieldCell]
 	pub fn new(column: usize, row: usize) -> Self {

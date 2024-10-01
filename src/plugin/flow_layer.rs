@@ -53,6 +53,16 @@ pub fn event_insert_route_queue(
 		if let Some(event) = events.read().next() {
 			for (mut cache, graph, sector_portals, sector_cost_fields_scaled) in cache_q.iter_mut()
 			{
+				// ignore requests to an impassable goal
+				if let Some(goal_sector) = sector_cost_fields_scaled
+					.get_scaled()
+					.get(&event.target_sector)
+				{
+					let target_cost = goal_sector.get_field_cell_value(event.target_goal);
+					if target_cost == 255 {
+						continue;
+					}
+				}
 				// only run if the cache doesn't contain the route already
 				let rm = RouteMetadata::new(
 					event.source_sector,

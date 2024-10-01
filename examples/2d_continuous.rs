@@ -21,7 +21,7 @@ fn main() {
 			PhysicsPlugins::default(),
 			// PhysicsDebugPlugin::default(),
 		))
-		.insert_resource(SubstepCount(30))
+		.insert_resource(SubstepCount(6))
 		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(Startup, (setup, create_wall_colliders, create_counters))
@@ -212,7 +212,7 @@ fn spawn_actors(
 		})
 		.insert(Actor)
 		.insert(RigidBody::Dynamic)
-		.insert(Collider::rectangle(1.0, 1.0))
+		.insert(Collider::circle(1.0))
 		.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]))
 		.insert(pathing);
 	}
@@ -261,7 +261,7 @@ fn get_or_request_route(
 }
 
 /// Actor speed
-const SPEED: f32 = 40000.0;
+const SPEED: f32 = 30000.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor

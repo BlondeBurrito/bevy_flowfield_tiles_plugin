@@ -156,7 +156,8 @@ impl IntegrationBuilder {
 			field.calculate_sector_goal_los(goals, &goals[0]);
 		}
 		//TODO propagate LOS across sectors
-		//until then set LOS corners in other sectors as the goals for int calc layer
+		//until then set LOS corners in other sectors as the goals (this is
+		// portal goals) for int calc layer
 		for (_sector, goals, field) in fields.iter_mut() {
 			if field.los_corners.is_empty() {
 				for g in goals {
@@ -257,8 +258,6 @@ impl IntegrationField {
 		let wavefront_cost = 1;
 		propagate_los(self, active_wavefront, wavefront_cost, goal);
 	}
-	/// From active wavefronts and blocked wavefront directions propagate LOS into other sectors
-	pub fn propagate_boundary_los(&mut self) {} //TODO
 
 	//TODO: diamond like propagation and wasted extra lookups looking at previously calcualted neighbours, try fast marching method of solving Eikonal PDE for a spherical approx that visits each cell once
 	/// From a list of Corners field cells iterate over successive neighbouring
@@ -347,30 +346,39 @@ fn extend_los_corner(
 			// LOS corner found, store it for use in the cost integration calc later
 			field.add_los_corner(adj);
 			field.set_field_cell_value(
-				wavefront_cost + INT_BITS_WAVE_BLOCKED + INT_BITS_CORNER,
+				wavefront_cost + 1 + INT_BITS_WAVE_BLOCKED + INT_BITS_CORNER,
 				adj,
 			);
 			// find the sector edge where line fo sight should be blocked based on the corner
 			let end = check_los_corner_propagation(&adj, goal);
 			// from the corner to the boundary cell of LOS being blocked use the bresenham line algorithm to find all cells between the two cell points and mark them as being wavefront blocked so that further LOS propagation won't flow behind impassable cells
-			// bevy::prelude::info!("Goal {:?}", goal);
-			// bevy::prelude::info!("Adj {:?}", adj);
-			// bevy::prelude::info!("Cell {:?}", end);
+			bevy::prelude::trace!("Goal {:?}", goal);
+			bevy::prelude::trace!("Adj {:?}", adj);
+			bevy::prelude::trace!("Cell {:?}", end);
 			let blocked_cells = adj.get_cells_between_points(&end);
-			for blocked in blocked_cells.iter() {
+			for (i, blocked) in blocked_cells.iter().enumerate() {
 				let value = field.get_field_cell_value(*blocked);
 				// only mark flags for cells that aren't impassable and which aren't already marked as wavefront blocked
 				if value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
 					break;
 				}
 				if value & INT_BITS_WAVE_BLOCKED != INT_BITS_WAVE_BLOCKED {
-					if value & INT_BITS_LOS == INT_BITS_LOS {
-						// bevy::prelude::error!("Cell has LOS when should be WB {:?}", blocked);
-						let n_v = (value & INT_FILTER_BITS_COST) + INT_BITS_WAVE_BLOCKED;
-						field.set_field_cell_value(n_v, *blocked);
-					} else {
-						field.set_field_cell_value(value + INT_BITS_WAVE_BLOCKED, *blocked);
-					}
+					// if value & INT_BITS_LOS == INT_BITS_LOS {
+					// bevy::prelude::error!("Cell has LOS when should be WB {:?}", blocked);
+					// let n_v = (value & INT_FILTER_BITS_COST) + INT_BITS_WAVE_BLOCKED;
+					// field.set_field_cell_value(n_v, *blocked);
+					// field.set_field_cell_value(value + INT_BITS_WAVE_BLOCKED, *blocked);
+					// } else {
+					// mark the line as corners for the int calc layer
+					field.add_los_corner(*blocked);
+					// NB: add 1 because adj is effectively one wavefront propagation ahead
+					// then add `i` as each successive line cells is another wavefront ahead
+					field.set_field_cell_value(
+						wavefront_cost + 1 + i as u32 + INT_BITS_WAVE_BLOCKED + INT_BITS_CORNER,
+						*blocked,
+					);
+					// field.set_field_cell_value(value + INT_BITS_WAVE_BLOCKED, *blocked);
+					// }
 				}
 			}
 		}
@@ -505,14 +513,14 @@ fn process_neighbours(
 		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
 		// iterate over the neighbours calculating int costs
 		for n in neighbours.iter() {
-			// ensure neighbour isn't impassable or already assigned LOS
+			// ensure neighbour isn't impassable
 			let n_int = int_field.get_field_cell_value(*n);
 			if n_int & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE
 				&& n_int & INT_BITS_LOS != INT_BITS_LOS
 			{
 				let cell_cost = cost_field.get_field_cell_value(*n) as u32;
 				let int_cost = cell_cost + (prev_int_cost & INT_FILTER_BITS_COST);
-				if int_cost < (int_field.get_field_cell_value(*n) & INT_FILTER_BITS_COST) {
+				if int_cost < (n_int & INT_FILTER_BITS_COST) {
 					int_field.set_field_cell_value(int_cost, *n);
 					next_neighbours.push((*n, int_cost));
 				}

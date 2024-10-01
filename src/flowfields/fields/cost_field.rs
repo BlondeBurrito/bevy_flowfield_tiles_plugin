@@ -41,10 +41,8 @@
 //! ```
 //!
 
-use bevy::reflect::Reflect;
-use std::collections::HashSet;
-
 use crate::prelude::*;
+use bevy::reflect::Reflect;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Reflect)]
@@ -86,10 +84,12 @@ impl CostField {
 			return true;
 		}
 		let queue = vec![source];
-		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
-		let visited = HashSet::new();
-		process_neighbours(&target, queue, visited, self)
+		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop, once a cell is visited it gets marked as true
+		let mut propagation = [[false; FIELD_RESOLUTION]; FIELD_RESOLUTION];
+		propagation[source.get_column()][source.get_row()] = true;
+		process_neighbours_visibility(self, &target, queue, &mut propagation)
 	}
+	/// Counts the shorterst number of steps to another cell in the same sector if it's reachable
 	pub fn get_distance_between_cells(
 		&self,
 		source: &FieldCell,
@@ -99,10 +99,11 @@ impl CostField {
 		if source == target {
 			return Some(1);
 		}
-		let queue = vec![*source];
-		// as nodes are visted we add them here to prevent the exploration from getting stuck in an infinite loop
-		let visited = HashSet::new();
-		process_neighbours_distance(target, queue, visited, self, vec![0])
+		let queue = vec![(*source, 0)];
+		// as nodes are visted we add their cumulative cost here to prevent the exploration from getting stuck in an infinite loop, valid cells should be les than 65535
+		let mut propagation = [[65535; FIELD_RESOLUTION]; FIELD_RESOLUTION];
+		propagation[source.get_column()][source.get_row()] = 0;
+		process_neighbours_distance(self, target, queue, &mut propagation)
 	}
 	/// From a `ron` file generate the [CostField]
 	#[cfg(feature = "ron")]
@@ -117,16 +118,15 @@ impl CostField {
 }
 
 /// Recursively process the cells to see if there's a path
-fn process_neighbours(
+fn process_neighbours_visibility(
+	cost_field: &CostField,
 	target: &FieldCell,
 	queue: Vec<FieldCell>,
-	mut visited: HashSet<FieldCell>,
-	cost_field: &CostField,
+	propagation: &mut [[bool; FIELD_RESOLUTION]; FIELD_RESOLUTION],
 ) -> bool {
-	let mut next_neighbours = Vec::new();
-	// iterate over the queue calculating neighbour costs
+	let mut next_queue = vec![];
+	// iterate over the queue to explore neighbours
 	for cell in queue.iter() {
-		visited.insert(*cell);
 		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
 		// iterate over the neighbours to try and find the target
 		for n in neighbours.iter() {
@@ -135,52 +135,57 @@ fn process_neighbours(
 			}
 			let cell_cost = cost_field.get_field_cell_value(*n);
 			// ignore impassable cells
-			if cell_cost != 255 && !visited.contains(n) {
-				// keep exploring
-				next_neighbours.push(*n);
+			if cell_cost != 255 {
+				let (column, row) = n.get_column_row();
+				let has_existing_propagation = propagation[column][row];
+				if !has_existing_propagation {
+					propagation[column][row] = true;
+					// keep exploring
+					next_queue.push(*n);
+				}
 			}
 		}
 	}
-	if !next_neighbours.is_empty() {
-		process_neighbours(target, next_neighbours, visited, cost_field)
+	if !next_queue.is_empty() {
+		process_neighbours_visibility(cost_field, target, next_queue, propagation)
 	} else {
 		false
 	}
 }
 /// Recursively process the cells to see if there's a path and a weighting for the distance between the cell pair
 fn process_neighbours_distance(
-	target: &FieldCell,
-	queue: Vec<FieldCell>,
-	mut visited: HashSet<FieldCell>,
 	cost_field: &CostField,
-	mut steps_taken: Vec<i32>,
+	target: &FieldCell,
+	queue: Vec<(FieldCell, i32)>,
+	propagation: &mut [[i32; FIELD_RESOLUTION]; FIELD_RESOLUTION],
 ) -> Option<i32> {
-	let mut next_neighbours = Vec::new();
-	// iterate over the queue calculating neighbour int costs
-	for cell in queue.iter() {
-		visited.insert(*cell);
+	let mut next_queue = vec![];
+	for (cell, prev_cost) in queue.iter() {
 		let neighbours = Ordinal::get_orthogonal_cell_neighbours(*cell);
-		// iterate over the neighbours to try and find the target
-		for n in neighbours.iter() {
-			if *n == *target {
-				let len = steps_taken.len() as i32;
-				let avg_cost = steps_taken.iter().sum::<i32>() / len;
-				return Some(avg_cost);
-			}
-			let cell_cost = cost_field.get_field_cell_value(*n);
-			// ignore impassable cells
-			if cell_cost != 255 && !visited.contains(n) {
-				// record the cost of each step, it cna be averaged later to given a weighting to the distance between the cell pair
-				steps_taken.push(cell_cost as i32);
-				// keep exploring
-				next_neighbours.push(*n);
+		for n in neighbours {
+			let n_cost = cost_field.get_field_cell_value(n);
+			// ignore impassable
+			if n_cost != 255 {
+				// let cumulative_cost = n_cost as i32 + prev_cost;
+				let cumulative_cost = 1_i32 + prev_cost;
+				let (column, row) = n.get_column_row();
+				let existing_propagation_cost = propagation[column][row];
+				if cumulative_cost < existing_propagation_cost {
+					propagation[column][row] = cumulative_cost;
+					next_queue.push((n, cumulative_cost));
+				}
 			}
 		}
 	}
-	if !next_neighbours.is_empty() {
-		process_neighbours_distance(target, next_neighbours, visited, cost_field, steps_taken)
+	if !next_queue.is_empty() {
+		process_neighbours_distance(cost_field, target, next_queue, propagation)
 	} else {
-		None
+		let target_cumulative = propagation[target.get_column()][target.get_row()];
+		if target_cumulative != 65535 {
+			Some(target_cumulative)
+		} else {
+			None
+		}
 	}
 }
 
@@ -278,7 +283,7 @@ mod tests {
 		let target = FieldCell::new(6, 9);
 
 		let result = cost_field.get_distance_between_cells(&source, &target);
-		assert!(result.is_some())
+		assert_eq!(Some(13), result)
 	}
 	#[test]
 	fn internal_cell_distance_none() {
