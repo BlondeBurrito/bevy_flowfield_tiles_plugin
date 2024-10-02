@@ -79,7 +79,6 @@ pub fn event_insert_route_queue(
 						sector_portals,
 						sector_cost_fields_scaled,
 					) {
-						debug!("Portal path found");
 						if !path.is_empty() {
 							filter_path(&mut path, event.target_goal);
 						}

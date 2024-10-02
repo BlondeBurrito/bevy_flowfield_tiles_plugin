@@ -300,13 +300,39 @@ fn propagate_los(
 				// depending on direction get the cells next to `n`
 				match dir {
 					Ordinal::North | Ordinal::South => {
-						for ord in [Ordinal::West, Ordinal::East] {
-							extend_los_corner(field, n, ord, goal, wavefront_cost);
+						// check if the corner is actually reachable from the neighbiouring wavefront cell
+						// this prevents stepping between two diagonal impassable cells
+						// and assinging an incorrect wavefront cost to a corner that shouldn't exist
+						if let Some(west) = Ordinal::get_cell_neighbour(*wavefront, Ordinal::West) {
+							let west_cost = field.get_field_cell_value(west);
+							if west_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
+								extend_los_corner(field, n, Ordinal::West, goal, wavefront_cost);
+							}
+						}
+						if let Some(east) = Ordinal::get_cell_neighbour(*wavefront, Ordinal::East) {
+							let east_cost = field.get_field_cell_value(east);
+							if east_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
+								extend_los_corner(field, n, Ordinal::East, goal, wavefront_cost);
+							}
 						}
 					}
 					Ordinal::East | Ordinal::West => {
-						for ord in [Ordinal::North, Ordinal::South] {
-							extend_los_corner(field, n, ord, goal, wavefront_cost);
+						// check if the corner is actually reachable from the neighbiouring wavefront cell
+						// this prevents stepping between two diagonal impassable cells
+						// and assinging an incorrect wavefront cost to a corner that shouldn't exist
+						if let Some(north) = Ordinal::get_cell_neighbour(*wavefront, Ordinal::North)
+						{
+							let north_cost = field.get_field_cell_value(north);
+							if north_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
+								extend_los_corner(field, n, Ordinal::North, goal, wavefront_cost);
+							}
+						}
+						if let Some(south) = Ordinal::get_cell_neighbour(*wavefront, Ordinal::South)
+						{
+							let south_cost = field.get_field_cell_value(south);
+							if south_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
+								extend_los_corner(field, n, Ordinal::South, goal, wavefront_cost);
+							}
 						}
 					}
 					_ => {
@@ -343,24 +369,91 @@ fn extend_los_corner(
 	if let Some(adj) = Ordinal::get_cell_neighbour(*neighbour, ord) {
 		let value = field.get_field_cell_value(adj);
 		if value & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
-			// LOS corner found, store it for use in the cost integration calc later
-			field.add_los_corner(adj);
-			field.set_field_cell_value(
-				wavefront_cost + 1 + INT_BITS_WAVE_BLOCKED + INT_BITS_CORNER,
-				adj,
-			);
 			// find the sector edge where line fo sight should be blocked based on the corner
 			let end = check_los_corner_propagation(&adj, goal);
 			// from the corner to the boundary cell of LOS being blocked use the bresenham line algorithm to find all cells between the two cell points and mark them as being wavefront blocked so that further LOS propagation won't flow behind impassable cells
-			bevy::prelude::trace!("Goal {:?}", goal);
-			bevy::prelude::trace!("Adj {:?}", adj);
-			bevy::prelude::trace!("Cell {:?}", end);
 			let blocked_cells = adj.get_cells_between_points(&end);
 			for (i, blocked) in blocked_cells.iter().enumerate() {
 				let value = field.get_field_cell_value(*blocked);
 				// only mark flags for cells that aren't impassable and which aren't already marked as wavefront blocked
 				if value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
 					break;
+				}
+				// if the line passes through the diagonal of two impassable cells propagation should stop otherwise a line of corners would be assigned that's not reachable from the corner being extrapolated
+				if i > 0 {
+					let previous = &blocked_cells[i - 1];
+					match Ordinal::cell_to_cell_direction(*blocked, *previous) {
+						Ordinal::NorthEast => {
+							if let Some(south) =
+								Ordinal::get_cell_neighbour(*blocked, Ordinal::South)
+							{
+								if let Some(west) =
+									Ordinal::get_cell_neighbour(*blocked, Ordinal::West)
+								{
+									let s_v =
+										field.get_field_cell_value(south) & INT_BITS_IMPASSABLE;
+									let w_v =
+										field.get_field_cell_value(west) & INT_BITS_IMPASSABLE;
+									if s_v == INT_BITS_IMPASSABLE && w_v == INT_BITS_IMPASSABLE {
+										break;
+									}
+								}
+							}
+						}
+						Ordinal::SouthEast => {
+							if let Some(north) =
+								Ordinal::get_cell_neighbour(*blocked, Ordinal::North)
+							{
+								if let Some(west) =
+									Ordinal::get_cell_neighbour(*blocked, Ordinal::West)
+								{
+									let n_v =
+										field.get_field_cell_value(north) & INT_BITS_IMPASSABLE;
+									let w_v =
+										field.get_field_cell_value(west) & INT_BITS_IMPASSABLE;
+									if n_v == INT_BITS_IMPASSABLE && w_v == INT_BITS_IMPASSABLE {
+										break;
+									}
+								}
+							}
+						}
+						Ordinal::SouthWest => {
+							if let Some(north) =
+								Ordinal::get_cell_neighbour(*blocked, Ordinal::North)
+							{
+								if let Some(east) =
+									Ordinal::get_cell_neighbour(*blocked, Ordinal::East)
+								{
+									let n_v =
+										field.get_field_cell_value(north) & INT_BITS_IMPASSABLE;
+									let e_v =
+										field.get_field_cell_value(east) & INT_BITS_IMPASSABLE;
+									if n_v == INT_BITS_IMPASSABLE && e_v == INT_BITS_IMPASSABLE {
+										break;
+									}
+								}
+							}
+						}
+						Ordinal::NorthWest => {
+							if let Some(south) =
+								Ordinal::get_cell_neighbour(*blocked, Ordinal::South)
+							{
+								if let Some(east) =
+									Ordinal::get_cell_neighbour(*blocked, Ordinal::East)
+								{
+									let s_v =
+										field.get_field_cell_value(south) & INT_BITS_IMPASSABLE;
+									let e_v =
+										field.get_field_cell_value(east) & INT_BITS_IMPASSABLE;
+									if s_v == INT_BITS_IMPASSABLE && e_v == INT_BITS_IMPASSABLE {
+										break;
+									}
+								}
+							}
+						}
+						Ordinal::Zero => panic!("Neighbour not found"),
+						_ => {}
+					}
 				}
 				if value & INT_BITS_WAVE_BLOCKED != INT_BITS_WAVE_BLOCKED {
 					// mark the line as corners for the int calc layer

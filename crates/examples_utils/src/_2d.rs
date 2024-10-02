@@ -139,7 +139,7 @@ pub fn get_or_request_route<T: Component>(
 }
 
 /// Actor speed
-const SPEED: f32 = 40000.0;
+const SPEED: f32 = 30000.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
@@ -228,7 +228,7 @@ pub fn check_if_route_exhausted<T: Component>(
 		if let Some(route) = &pathing.portal_route {
 			if route.is_empty() {
 				// actor has exhuasted it's route, it's lost, clear route so a new one can be requested
-				// warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
+				warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
 				vel.0 *= 0.0;
 				pathing.portal_route = None;
 			}

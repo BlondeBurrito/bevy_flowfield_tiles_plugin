@@ -327,7 +327,6 @@ impl RouteCache {
 			time_generated: Duration::default(),
 		};
 		let route = self.routes.get(&route_data);
-		trace!("Route: {:?}", route);
 		route
 	}
 	/// Get a high-level sector to sector route. Returns [None] if it doesn't exist
@@ -346,7 +345,6 @@ impl RouteCache {
 			time_generated: Duration::default(),
 		};
 		let route = self.routes.get_key_value(&route_data);
-		trace!("Route: {:?}", route);
 		route
 	}
 	/// Insert a high-level route of sector-portal paths (or just the end goal if local sector pathing) into the `route_cache`

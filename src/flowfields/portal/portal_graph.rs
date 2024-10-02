@@ -548,11 +548,6 @@ impl PortalGraph {
 			}
 		}
 		// iterate over the source and target portals to find a series of paths
-		bevy::prelude::trace!(
-			"Source portals {:?}\n Target portals {:?}",
-			source_portals,
-			target_portals
-		);
 		let mut best_path: Option<(i32, Vec<(SectorID, FieldCell)>)> = None;
 		// if local sector add a cheaper direct route, prevents pathing out of a sector and back in when there are extreme local costs
 		//TODO maybe skip searching for other paths if this is true? improve perf but would a really bad local route be given (maybe only under extreme circumstances tho)
@@ -619,10 +614,10 @@ impl PortalGraph {
 			for node in path.1 {
 				p.push((*node.get_sector(), *node.get_portal_cell()));
 			}
-			if let Some((score, path)) = best_path {
+			if let Some((score, curr_path)) = best_path {
 				if *score > total_weight {
 					*score = total_weight;
-					*path = p;
+					*curr_path = p;
 				}
 			} else {
 				*best_path = Some((total_weight, p));

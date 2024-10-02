@@ -1,5 +1,7 @@
 //! Generates a 30x30 world where an actor can be told to navigate to a point with a right click
 //!
+//! Using left-click cells can be flipped between passable and impassable to mutate the costfields
+//! 
 
 use avian2d::prelude::*;
 use bevy::{prelude::*, window::PrimaryWindow};
@@ -32,6 +34,7 @@ fn main() {
 				actor_steering::<Actor>,
 				check_if_route_exhausted::<Actor>,
 				stop_at_destination::<Actor>,
+				click_update_cost,
 			),
 		)
 		.run();
@@ -261,6 +264,70 @@ fn get_ord_icon(value: u8) -> String {
 			Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
 			Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
 			Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
+		}
+	}
+}
+
+/// Left clicking on a tile/field will flip the value of it in the [CostField]
+///
+/// If the current cost is `1` then it is updated to `255` and a [Collider] is inserted denoting an impassable field.
+///
+/// If the current cost is `255` then
+fn click_update_cost(
+	mut cmds: Commands,
+	mut tile_q: Query<(Entity, &SectorLabel, &FieldCellLabel, &mut Sprite)>,
+	input: Res<ButtonInput<MouseButton>>,
+	camera_q: Query<(&Camera, &GlobalTransform)>,
+	windows: Query<&Window, With<PrimaryWindow>>,
+	dimensions_q: Query<(&MapDimensions, &SectorCostFields)>,
+	mut event: EventWriter<EventUpdateCostfieldsCell>,
+) {
+	if input.just_released(MouseButton::Left) {
+		let (camera, camera_transform) = camera_q.single();
+		let window = windows.single();
+		if let Some(world_position) = window
+			.cursor_position()
+			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+			.map(|ray| ray.origin.truncate())
+		{
+			let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
+			if let Some((sector_id, field_cell)) =
+				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
+			{
+				let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
+				let value = cost_field.get_field_cell_value(field_cell);
+				if value == 255 {
+					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
+					event.send(e);
+					// remove collider from tile
+					for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
+						if (sector_label.0, sector_label.1) == sector_id.get()
+							&& (field_label.0, field_label.1) == field_cell.get_column_row()
+						{
+							sprite.color = Color::WHITE;
+							cmds.entity(entity).remove::<Collider>();
+							cmds.entity(entity).remove::<RigidBody>();
+							cmds.entity(entity).remove::<CollisionLayers>();
+						}
+					}
+				} else {
+					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
+					event.send(e);
+					// add collider to tile
+					for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
+						if (sector_label.0, sector_label.1) == sector_id.get()
+							&& (field_label.0, field_label.1) == field_cell.get_column_row()
+						{
+							sprite.color = Color::BLACK;
+							cmds.entity(entity).insert((
+								Collider::rectangle(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION),
+								RigidBody::Static,
+								CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+							));
+						}
+					}
+				}
+			}
 		}
 	}
 }
