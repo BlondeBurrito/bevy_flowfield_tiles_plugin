@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use crate::prelude::*;
 use bevy::{
 	prelude::*,
-	utils::{hashbrown::HashMap, HashSet},
+	utils::{HashMap, HashSet},
 };
 
 /// Used to provide a heuristic for portals that sit next to each other across
@@ -590,9 +590,9 @@ impl PortalGraph {
 				}
 			}
 		}
-		bevy::prelude::trace!("Best of paths {:?}", paths);
 		// first entry in the order map has the best score so it's the best path
 		if let Some((_score, path)) = paths.pop_first() {
+			bevy::prelude::trace!("Best path {:?}", path);
 			Some(path)
 		} else {
 			None

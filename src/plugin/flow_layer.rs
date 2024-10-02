@@ -212,7 +212,13 @@ pub fn create_flow_fields(mut cache_q: Query<&mut FlowFieldCache>, time: Res<Tim
 					// direction optimisations
 					if i == 0 {
 						flow_field.calculate(goals, None, int_field);
-						field_cache.insert_field(*sector_id, path[i].1, time.elapsed(), flow_field);
+						field_cache.insert_field(
+							*sector_id,
+							Some(path[i].1),
+							None,
+							time.elapsed(),
+							flow_field,
+						);
 					} else if let Some(dir_prev_sector) =
 						Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
 					{
@@ -222,8 +228,13 @@ pub fn create_flow_fields(mut cache_q: Query<&mut FlowFieldCache>, time: Res<Tim
 							Some((dir_prev_sector, prev_int_field)),
 							int_field,
 						);
-						//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own?
-						field_cache.insert_field(*sector_id, path[i].1, time.elapsed(), flow_field);
+						field_cache.insert_field(
+							*sector_id,
+							None,
+							Some(path[i].1),
+							time.elapsed(),
+							flow_field,
+						);
 					} else {
 						error!("Route from goal to actor {:?}", path);
 					};

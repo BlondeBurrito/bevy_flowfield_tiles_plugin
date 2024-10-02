@@ -391,8 +391,10 @@ impl RouteCache {
 pub struct FlowFieldMetadata {
 	/// The sector of the corresponding [FlowField]
 	sector_id: SectorID,
-	/// Portal goal or true target goal of the sector
-	goal_id: FieldCell,
+	/// Goal ID if this is the field of the terminus sector
+	goal_id: Option<FieldCell>,
+	/// Portal ID if this field is used in trnasit to another sector
+	portal_id: Option<FieldCell>,
 	//? If a game is running for 136 years bad things will start happening here
 	/// Marks the field based on time elapsed since app start, used to enable automatic cleardown of long lived fields that are probably not needed anymore
 	time_generated: Duration,
@@ -400,11 +402,26 @@ pub struct FlowFieldMetadata {
 // we don't want to compare `time_generated` so manually impl PartialEq
 impl PartialEq for FlowFieldMetadata {
 	fn eq(&self, other: &Self) -> bool {
-		self.sector_id == other.sector_id && self.goal_id == other.goal_id
+		self.sector_id == other.sector_id
+			&& self.goal_id == other.goal_id
+			&& self.portal_id == other.portal_id
 	}
 }
-
 impl Eq for FlowFieldMetadata {}
+impl Ord for FlowFieldMetadata {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		(self.sector_id, self.goal_id, self.portal_id).cmp(&(
+			other.sector_id,
+			other.goal_id,
+			other.portal_id,
+		))
+	}
+}
+impl PartialOrd for FlowFieldMetadata {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		Some(self.cmp(other))
+	}
+}
 
 impl FlowFieldMetadata {
 	/// Get the sector
@@ -412,24 +429,16 @@ impl FlowFieldMetadata {
 		self.sector_id
 	}
 	/// Get the goal
-	pub fn get_goal_id(&self) -> FieldCell {
+	pub fn get_goal_id(&self) -> Option<FieldCell> {
 		self.goal_id
+	}
+	/// Get the portal
+	pub fn get_portal_id(&self) -> Option<FieldCell> {
+		self.portal_id
 	}
 	/// Get when the field was generated
 	pub fn get_time_generated(&self) -> Duration {
 		self.time_generated
-	}
-}
-
-impl Ord for FlowFieldMetadata {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-		(self.sector_id, self.goal_id).cmp(&(other.sector_id, other.goal_id))
-	}
-}
-
-impl PartialOrd for FlowFieldMetadata {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-		Some(self.cmp(other))
 	}
 }
 
@@ -473,25 +482,43 @@ impl FlowFieldCache {
 	}
 	/// Get a [FlowField] based on the `sector_id` and `goal_id`. Returns
 	/// [None] if the cache doesn't contain a record
-	pub fn get_field(&self, sector_id: SectorID, goal_id: FieldCell) -> Option<&FlowField> {
-		let flow_meta = FlowFieldMetadata {
-			sector_id,
-			goal_id,
-			time_generated: Duration::default(),
-		};
-		self.flows.get(&flow_meta)
+	pub fn get_field(
+		&self,
+		current_sector_id: SectorID,
+		goal_sector_id: SectorID,
+		goal_id: FieldCell,
+	) -> Option<&FlowField> {
+		if current_sector_id == goal_sector_id {
+			let flow_meta = FlowFieldMetadata {
+				sector_id: current_sector_id,
+				goal_id: Some(goal_id),
+				portal_id: None,
+				time_generated: Duration::default(),
+			};
+			self.flows.get(&flow_meta)
+		} else {
+			let flow_meta = FlowFieldMetadata {
+				sector_id: current_sector_id,
+				goal_id: None,
+				portal_id: Some(goal_id),
+				time_generated: Duration::default(),
+			};
+			self.flows.get(&flow_meta)
+		}
 	}
 	/// Insert a [FlowField] into the cache with a sector-goal ID
 	pub fn insert_field(
 		&mut self,
 		sector_id: SectorID,
-		goal_id: FieldCell,
+		goal_id: Option<FieldCell>,
+		portal_id: Option<FieldCell>,
 		elapsed_duration: Duration,
 		field: FlowField,
 	) {
 		let flow_meta = FlowFieldMetadata {
 			sector_id,
 			goal_id,
+			portal_id,
 			time_generated: elapsed_duration,
 		};
 		self.flows.insert(flow_meta, field);

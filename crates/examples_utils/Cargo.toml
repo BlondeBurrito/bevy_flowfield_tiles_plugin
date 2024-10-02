@@ -1,12 +1,15 @@
 [package]
 name = "examples_utils"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 description = "Helpers for avoiding duplicating code across exmaples"
 publish = false
 
 [dependencies]
-bevy = { version = "0.11", default-features = false }
+bevy = { workspace = true, default-features = true, features=["wayland"]}
+avian2d = { version = "0.1", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+# examples_utils = { path = "crates/examples_utils" }
+bevy_flowfield_tiles_plugin = { path = "../../" }
 
 [lints]
 workspace = true

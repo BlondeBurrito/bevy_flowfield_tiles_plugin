@@ -191,6 +191,7 @@ fn actor_steering(
 	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
 
 	if pathing.target_goal.is_some() {
+		let op_target_sector = pathing.target_sector;
 		// lookup the overarching route
 		if let Some(route) = pathing.portal_route.as_mut() {
 			// info!("Route: {:?}", route);
@@ -209,7 +210,9 @@ fn actor_steering(
 			'routes: for (sector, goal) in route.iter() {
 				if *sector == curr_actor_sector {
 					// get the flow field
-					if let Some(field) = flow_cache.get_field(*sector, *goal) {
+					if let Some(field) =
+						flow_cache.get_field(*sector, op_target_sector.unwrap(), *goal)
+					{
 						// based on actor field cell find the directional vector it should move in
 						let cell_value = field.get_field_cell_value(curr_actor_field_cell);
 						if has_line_of_sight(cell_value) {

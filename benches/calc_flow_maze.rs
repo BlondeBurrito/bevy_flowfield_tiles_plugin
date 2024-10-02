@@ -102,7 +102,8 @@ fn flow_maze(
 				flow_field.calculate(goals, None, int_field);
 				flow_cache.insert_field(
 					*sector_id,
-					route.get()[i].1,
+					Some(route.get()[i].1),
+					None,
 					Duration::default(),
 					flow_field,
 				);
@@ -111,10 +112,10 @@ fn flow_maze(
 			{
 				let prev_int_field = &sector_int_fields[i - 1].2;
 				flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
-				//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own
 				flow_cache.insert_field(
 					*sector_id,
-					route.get()[i].1,
+					None,
+					Some(route.get()[i].1),
 					Duration::default(),
 					flow_field,
 				);
