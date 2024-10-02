@@ -6,8 +6,6 @@
 //! the agent immediately starts pathing. In the background the other components of the Flowfields can
 //! calcualte a perfect path which can then supersede using portals to path when it's ready
 
-use std::collections::BTreeMap;
-
 use crate::prelude::*;
 use bevy::{
 	prelude::*,
@@ -555,7 +553,7 @@ impl PortalGraph {
 			source_portals,
 			target_portals
 		);
-		let mut paths: BTreeMap<i32, Vec<(SectorID, FieldCell)>> = BTreeMap::default();
+		let mut best_path: Option<(i32, Vec<(SectorID, FieldCell)>)> = None;
 		// if local sector add a cheaper direct route, prevents pathing out of a sector and back in when there are extreme local costs
 		//TODO maybe skip searching for other paths if this is true? improve perf but would a really bad local route be given (maybe only under extreme circumstances tho)
 		if source_sector_id == target_sector_id {
@@ -564,7 +562,7 @@ impl PortalGraph {
 				.unwrap()
 				.get_distance_between_cells(&source_field_cell, &target_field_cell)
 			{
-				paths.insert(cost, vec![(target_sector_id, target_field_cell)]);
+				best_path = Some((cost, vec![(target_sector_id, target_field_cell)]));
 			}
 		}
 		for (source_portal, source_ordinal, source_distance) in source_portals.iter() {
@@ -581,19 +579,16 @@ impl PortalGraph {
 					target_weight,
 					*target_ordinal,
 				);
-				if let Some(path) = self.find_path_between_sector_portals(
+				self.find_path_between_sector_portals(
+					&mut best_path,
 					source_portal_node,
 					target_portal_node,
 					*source_distance,
-				) {
-					paths.insert(path.0, path.1);
-				}
+				);
 			}
 		}
-		// first entry in the order map has the best score so it's the best path
-		if let Some((_score, path)) = paths.pop_first() {
-			bevy::prelude::trace!("Best path {:?}", path);
-			Some(path)
+		if let Some((_score, p)) = best_path {
+			Some(p)
 		} else {
 			None
 		}
@@ -602,20 +597,36 @@ impl PortalGraph {
 	/// exists and return the path with a weighting of how expensive it is
 	fn find_path_between_sector_portals(
 		&self,
+		best_path: &mut Option<(i32, Vec<(SectorID, FieldCell)>)>,
 		source_node: Node,
 		target_node: Node,
 		source_distance: i32,
-	) -> Option<(i32, Vec<(SectorID, FieldCell)>)> {
-		if let Some(path) = self.astar(source_node, target_node, source_distance) {
+	) {
+		let current_best_score = if let Some((score, _)) = best_path {
+			Some(*score)
+		} else {
+			None
+		};
+		if let Some(path) = self.astar(
+			current_best_score,
+			source_node,
+			target_node,
+			source_distance,
+		) {
 			let total_weight = path.0;
 			let mut p = Vec::new();
 			// extract portal node into a <sector, field_cell> representation
 			for node in path.1 {
 				p.push((*node.get_sector(), *node.get_portal_cell()));
 			}
-			Some((total_weight, p))
-		} else {
-			None
+			if let Some((score, path)) = best_path {
+				if *score > total_weight {
+					*score = total_weight;
+					*path = p;
+				}
+			} else {
+				*best_path = Some((total_weight, p));
+			}
 		}
 	}
 	/// From a given [Node] find any edges within the same sector
@@ -644,6 +655,7 @@ impl PortalGraph {
 	/// Based on https://github.com/BlondeBurrito/pathfinding_astar
 	fn astar(
 		&self,
+		current_best_score: Option<i32>,
 		source_node: Node,
 		target_node: Node,
 		source_distance: i32,
@@ -694,6 +706,12 @@ impl PortalGraph {
 			// info!("Curr queue {:?}", queue);
 			// Remove the first element ready for processing
 			let current_path = queue.swap_remove(0);
+			// short circuit, if the path being explored is already more expensive than what has been discovered already then return early instead of wasting time exploring other paths
+			if let Some(curr_score) = current_best_score {
+				if curr_score < current_path.score {
+					return None;
+				}
+			}
 			// what edge direction to explore
 			let edge_direction = current_path.edge_direction;
 			// Grab the neighbours with their distances from the current path so we can explore each
@@ -1099,9 +1117,10 @@ use super::*;
 		let target_weight = sector_cost_fields.get_scaled().get(&target_sector).unwrap().get_field_cell_value(target_field);
 		let target_portal_node = Node::new(target_sector, target_field, target_weight, Ordinal::North);
 
-		let path = graph.find_path_between_sector_portals(source_portal_node, target_portal_node, 0).unwrap();
+		let mut best_path: Option<(i32, Vec<(SectorID, FieldCell)>)> = None;
+		graph.find_path_between_sector_portals(&mut best_path, source_portal_node, target_portal_node, 0);
 		let actual = vec![(SectorID::new(0, 0), FieldCell::new(4, 9)), (SectorID::new(0, 1), FieldCell::new(4, 0)), (SectorID::new(0, 1), FieldCell::new(4, 9)), (SectorID::new(0, 2), FieldCell::new(4, 0))];
 		
-		assert_eq!(actual, path.1);
+		assert_eq!(actual, best_path.unwrap().1);
 	}
 }
