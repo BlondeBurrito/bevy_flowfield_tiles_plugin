@@ -2,57 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
-
-### Bug Fixes
-
-- Update examples, benches and some tests with new int layer
-
-
-
-
-### Documentation
-
-- Tidy up typos and formatting
-
-
-
-
-### Performance
-
-- Avoid allocating routemeta, dropping it and re-allocating the same
-
-
-
+## [0.11.0] - 2024-10-02
 
 ### Refactor
 
-- [**breaking**] Moved LOS into integration layer calculations
+- [**breaking**] Moved LOS from flow layer to integration layer (#67)
 
+The Line Of Sight (LOS) calculation has been rewritten and moved to the Integration layer. Previously the calculation would touch every single cell in the target sector but now it only touches viable cells by performing impassable cell corner checks. Additionally the previous integration cost calculation would touch every field cell but now it only touches cells which failed the LOS pass.
 
+The Integration layer is refactored into three phases:
 
+1. Portal expansion - a Portal represents the midpoint of a traversable sector boundary, when generating the field we expand the portals to cover their entire segment - this increases efficiency so that an actor can more directly approach its goal rather than zig-zagging to portal boundary points
+2. LOS propagation - expands a wavefront from the goal identifying cells that have a clear line to the goal, this means that near the goal an actor can abandon reading from the FlowFields and follow a simple vector - this promotes the best quality pathing near the goal
+3. Integrated cost calculation - from cells blocked off from LOS a series of wavefronts propagate across blocked off cells producing a cumulative cost (flow) which forms a gradient towards the goal
 
-## [unreleased]
+The Flow layer now simply reads off values from the Integration layer to produce the navigational FlowField.
 
-### Documentation
+The public interface to retrieve FlowFields `get_field()`, has a breaking change whereby the end goal sector ID is now an additional param - this change promotes more precise fields to actors as this extra ID forms part of the unique ID of a particular field so an actor chooses a field precisely rather than getting a similar one that was "kinda good enough" near the goal.
 
-- Tidy up typos and formatting
-
-
-
-
-### Performance
-
-- Avoid allocating routemeta, dropping it and re-allocating the same
-
-
-
-
-### Refactor
-
-- [**breaking**] Moved LOS into integration layer calculations
-
-
+Some extras within this big refactor include: a new example showing LOS, improved examples to prevent actor tunnelling given that a physics simulation is used to help demonstrate the algorithm and perf improvements to the Portal Graph for edge weight calculation.
 
 
 ## [0.10.2] - 2024-09-02
