@@ -108,7 +108,7 @@ pub fn clean_cache(
 			let map = flow_cache.get_queue_mut();
 			for id in sectors.iter() {
 				'next: for (metadata, builder) in map.iter() {
-					let path = builder.get_path();
+					let path = builder.get_route().get();
 					for (route_sector, _) in path.iter() {
 						if *id == *route_sector {
 							to_purge.push(*metadata);
@@ -148,7 +148,7 @@ pub fn clean_cache(
 						to_purge.push(*metadata);
 						continue 'next;
 					}
-					for (route_sector, _) in route.iter() {
+					for (route_sector, _) in route.get().iter() {
 						if *id == *route_sector {
 							to_purge.push(*metadata);
 							continue 'next;
@@ -172,7 +172,7 @@ pub fn clean_cache(
 						to_purge.push(*metadata);
 						continue 'next;
 					}
-					for (route_sector, _) in route.iter() {
+					for (route_sector, _) in route.get().iter() {
 						if *id == *route_sector {
 							to_purge.push(*metadata);
 							continue 'next;

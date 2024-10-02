@@ -1,0 +1,21 @@
+@startuml int_field_los_prop3
+
+label 1 [
+{{
+title
+IntegrationField LOS Corner
+|<#e69138>\n  WB  \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#e69138>\n  WB  \n|\n   ?   \n|
+|<#e69138>\n  WB  \n|<#e69138>\n  WB  \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#e69138>\n  WB  \n|<#e69138>\n  WB  \n|\n   ?   \n|
+|\n   ?   \n|<#e69138>\n  WB  \n|<#e69138>\n  WB  \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#e69138>\n  WB  \n|<#e69138>\n  WB  \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|<#ffe599>\n   C   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|<#ffe599>\n   C   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|
+|<#b6d7a8>\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n   0   \n|\n LOS \n|\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|
+|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+|\n   ?   \n|\n   ?   \n|\n   ?   \n|<#b6d7a8>\n LOS \n|\n LOS \n|<#b6d7a8>\n LOS \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|\n   ?   \n|
+end title
+}}
+
+]
+@enduml

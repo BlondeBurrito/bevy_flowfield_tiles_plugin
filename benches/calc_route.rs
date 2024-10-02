@@ -56,7 +56,7 @@ fn calc(portals: SectorPortals, cost_fields: SectorCostFields, graph: PortalGrap
 		target_sector,
 		target_goal,
 		Duration::default(),
-		path,
+		Route::new(path),
 	);
 }
 

@@ -143,7 +143,7 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 			pathing.target_sector.unwrap(),
 			pathing.target_goal.unwrap(),
 		) {
-			pathing.portal_route = Some(route.clone());
+			pathing.portal_route = Some(route.get().clone());
 		}
 	}
 }
@@ -158,7 +158,8 @@ fn update_sprite_visuals_based_on_actor(
 	for pathing in &actor_q {
 		let cache = flowfield_q.get_single().unwrap();
 		if let Some(route) = &pathing.portal_route {
-			let op_flowfield = cache.get_field(route[0].0, route[0].1);
+			let op_flowfield =
+				cache.get_field(route[0].0, pathing.target_sector.unwrap(), route[0].1);
 			if let Some(flowfield) = op_flowfield {
 				for (mut handle, field_cell_label) in field_cell_q.iter_mut() {
 					let flow_value = flowfield.get_field_cell_value(FieldCell::new(

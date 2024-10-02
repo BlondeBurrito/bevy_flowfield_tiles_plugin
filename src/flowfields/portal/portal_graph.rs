@@ -328,14 +328,18 @@ impl PortalGraph {
 			// create edges between the portals
 			for (i, cell) in boundary_portals.iter().enumerate() {
 				// source of the edge
-				let weight = cost_field_source.get_field_cell_value(*cell);
-				let source_node = Node::new(*sector_id, *cell, weight, *ordinal);
+				let source_weight = cost_field_source.get_field_cell_value(*cell);
+				let source_node = Node::new(*sector_id, *cell, source_weight, *ordinal);
 				// target of the edge
 				// TODO this will panic if the adjoining boundary doesn't have the same number of portals, either constrain system ordering so rebuilding the portals has to finish before creating these edges or have a soft warning/come back later
 				let neighbour_portal = neighbour_boundary_portals[i];
-				let weight = cost_field_target.get_field_cell_value(neighbour_portal);
-				let target_node =
-					Node::new(*neighbour_id, neighbour_portal, weight, ordinal.inverse());
+				let target_weight = cost_field_target.get_field_cell_value(neighbour_portal);
+				let target_node = Node::new(
+					*neighbour_id,
+					neighbour_portal,
+					target_weight,
+					ordinal.inverse(),
+				);
 				// add the dge
 				let edge = Edge::new(
 					source_node,
@@ -456,6 +460,40 @@ impl Direction {
 	}
 }
 
+/// A candidate in A-Star pathing
+#[derive(Debug)]
+struct AStarQueueItem {
+	/// Current node being explored
+	current_node: Node,
+	/// A-Star score of this node
+	score: i32,
+	/// List of previous nodes traversed
+	node_history: Vec<Node>,
+	/// Overall weight of eaching this node
+	cumulative_distance: i32,
+	/// Indicates whether the node is linked internally or externally
+	edge_direction: Direction,
+}
+
+impl AStarQueueItem {
+	/// Create a new [AStarQueueItem] for portal path exploration
+	fn new(
+		node: Node,
+		score: i32,
+		node_history: Vec<Node>,
+		cumulative_distance: i32,
+		edge_direction: Direction,
+	) -> Self {
+		AStarQueueItem {
+			current_node: node,
+			score,
+			node_history,
+			cumulative_distance,
+			edge_direction,
+		}
+	}
+}
+
 // graph querying
 impl PortalGraph {
 	/// From any field cell at a `source` sector find any pathable portals witihn that sector and generate a path from each portal to the target. Compare the results and return the path with the best cost associated with it
@@ -466,6 +504,7 @@ impl PortalGraph {
 		sector_portals: &SectorPortals,
 		sector_cost_fields: &SectorCostFields,
 	) -> Option<Vec<(SectorID, FieldCell)>> {
+		let cost_fields_scaled = sector_cost_fields.get_scaled();
 		// find portals reachable by the source actor position
 		let source_sector_id = source.0;
 		let source_field_cell = source.1;
@@ -479,20 +518,21 @@ impl PortalGraph {
 		let ords = [Ordinal::North, Ordinal::South, Ordinal::West, Ordinal::East];
 		for ord in ords.iter() {
 			for cell in portals.get(ord) {
-				let cost_field = sector_cost_fields
-					.get_scaled()
-					.get(&source_sector_id)
-					.unwrap();
-				if cost_field.is_cell_pair_reachable(source_field_cell, *cell) {
-					source_portals.push((*cell, *ord));
+				let cost_field = cost_fields_scaled.get(&source_sector_id).unwrap();
+				if let Some(source_distance) =
+					cost_field.get_distance_between_cells(&source_field_cell, cell)
+				{
+					source_portals.push((*cell, *ord, source_distance));
 				}
+				// if cost_field.is_cell_pair_reachable(source_field_cell, *cell) {
+				// 	source_portals.push((*cell, *ord));
+				// }
 			}
 		}
 		// find portals that can reach the target/goal
 		let target_sector_id = target.0;
 		let target_field_cell = target.1;
-		let target_weight = sector_cost_fields
-			.get_scaled()
+		let target_weight = cost_fields_scaled
 			.get(&target_sector_id)
 			.unwrap()
 			.get_field_cell_value(target_field_cell);
@@ -501,18 +541,26 @@ impl PortalGraph {
 		let ords = [Ordinal::North, Ordinal::South, Ordinal::West, Ordinal::East];
 		for ord in ords.iter() {
 			for cell in portals.get(ord) {
-				let cost_field = sector_cost_fields
-					.get_scaled()
-					.get(&target_sector_id)
-					.unwrap();
+				let cost_field = cost_fields_scaled.get(&target_sector_id).unwrap();
 				if cost_field.is_cell_pair_reachable(target_field_cell, *cell) {
 					target_portals.push((*cell, *ord));
 				}
 			}
 		}
 		// iterate over the source and target portals to find a series of paths
-		let mut paths = Vec::new();
-		for (source_portal, source_ordinal) in source_portals.iter() {
+		let mut best_path: Option<(i32, Vec<(SectorID, FieldCell)>)> = None;
+		// if local sector add a cheaper direct route, prevents pathing out of a sector and back in when there are extreme local costs
+		//TODO maybe skip searching for other paths if this is true? improve perf but would a really bad local route be given (maybe only under extreme circumstances tho)
+		if source_sector_id == target_sector_id {
+			if let Some(cost) = cost_fields_scaled
+				.get(&source_sector_id)
+				.unwrap()
+				.get_distance_between_cells(&source_field_cell, &target_field_cell)
+			{
+				best_path = Some((cost, vec![(target_sector_id, target_field_cell)]));
+			}
+		}
+		for (source_portal, source_ordinal, source_distance) in source_portals.iter() {
 			for (target_portal, target_ordinal) in target_portals.iter() {
 				let source_portal_node = Node::new(
 					source_sector_id,
@@ -526,44 +574,57 @@ impl PortalGraph {
 					target_weight,
 					*target_ordinal,
 				);
-				if let Some(path) =
-					self.find_path_between_sector_portals(source_portal_node, target_portal_node)
-				{
-					paths.push(path);
-				}
+				self.find_path_between_sector_portals(
+					&mut best_path,
+					source_portal_node,
+					target_portal_node,
+					*source_distance,
+				);
 			}
 		}
-		// find and return the best
-		let mut best_cost = i32::MAX;
-		let mut best_path: Option<Vec<(SectorID, FieldCell)>> = None;
-		for path in paths.iter() {
-			if path.0 < best_cost {
-				best_cost = path.0;
-				best_path = Some(path.1.clone());
-			}
+		if let Some((_score, p)) = best_path {
+			Some(p)
+		} else {
+			None
 		}
-		best_path
 	}
 	/// Find a path from a source [Node] to a target [Node] if it
 	/// exists and return the path with a weighting of how expensive it is
 	fn find_path_between_sector_portals(
 		&self,
+		best_path: &mut Option<(i32, Vec<(SectorID, FieldCell)>)>,
 		source_node: Node,
 		target_node: Node,
-	) -> Option<(i32, Vec<(SectorID, FieldCell)>)> {
-		if let Some(path) = self.astar(source_node, target_node) {
+		source_distance: i32,
+	) {
+		let current_best_score = if let Some((score, _)) = best_path {
+			Some(*score)
+		} else {
+			None
+		};
+		if let Some(path) = self.astar(
+			current_best_score,
+			source_node,
+			target_node,
+			source_distance,
+		) {
 			let total_weight = path.0;
 			let mut p = Vec::new();
 			// extract portal node into a <sector, field_cell> representation
 			for node in path.1 {
 				p.push((*node.get_sector(), *node.get_portal_cell()));
 			}
-			Some((total_weight, p))
-		} else {
-			None
+			if let Some((score, curr_path)) = best_path {
+				if *score > total_weight {
+					*score = total_weight;
+					*curr_path = p;
+				}
+			} else {
+				*best_path = Some((total_weight, p));
+			}
 		}
 	}
-	/// From a given [Node] find an edges within the same sector
+	/// From a given [Node] find any edges within the same sector
 	fn find_edges_internal(&self, source: Node) -> Vec<&Edge> {
 		let mut edges = vec![];
 		for edge in self.get_edges_internal().iter() {
@@ -576,7 +637,7 @@ impl PortalGraph {
 		}
 		edges
 	}
-	/// From a given [Node] find an edges that lead to a neighbouring sector
+	/// From a given [Node] find any edges that lead to a neighbouring sector
 	fn find_edges_external(&self, source: Node) -> Vec<&Edge> {
 		let mut edges = vec![];
 		for edge in self.get_edges_external().iter() {
@@ -587,7 +648,13 @@ impl PortalGraph {
 		edges
 	}
 	/// Based on https://github.com/BlondeBurrito/pathfinding_astar
-	fn astar(&self, source_node: Node, target_node: Node) -> Option<(i32, Vec<Node>)> {
+	fn astar(
+		&self,
+		current_best_score: Option<i32>,
+		source_node: Node,
+		target_node: Node,
+		source_distance: i32,
+	) -> Option<(i32, Vec<Node>)> {
 		let nodes = self.get_nodes();
 		// ensure nodes data contains start and end points
 		if !nodes.contains(&source_node) {
@@ -619,66 +686,72 @@ impl PortalGraph {
 		// create a queue of nodes to be processed based on discovery
 		// of form (current_node, a_star_score, vec_previous_nodes_traversed, total_distance_traversed, edge_direction_to_explore)
 		// start by add starting node to queue
-		let mut queue = vec![(
+		let mut queue = vec![AStarQueueItem::new(
 			source_node,
-			start_weight, // we haven't moved so starting node score is just its weight
+			start_weight,
 			Vec::<Node>::new(),
-			0,
+			source_distance,
 			initial_edge_direction,
 		)];
 
 		// If a path exists then the end node will shift to the beginning of the queue and we can return it.
 		// If a path does not exist the `queue` will shrink to length 0 and we return `None` through a check
 		// at the end of each loop iteration.
-		while queue[0].0 != target_node {
+		while queue[0].current_node != target_node {
 			// info!("Curr queue {:?}", queue);
 			// Remove the first element ready for processing
 			let current_path = queue.swap_remove(0);
+			// short circuit, if the path being explored is already more expensive than what has been discovered already then return early instead of wasting time exploring other paths
+			if let Some(curr_score) = current_best_score {
+				if curr_score < current_path.score {
+					return None;
+				}
+			}
 			// what edge direction to explore
-			let edge_direction = current_path.4;
+			let edge_direction = current_path.edge_direction;
 			// Grab the neighbours with their distances from the current path so we can explore each
 			let neighbours = match edge_direction {
-				Direction::Internal => self.find_edges_internal(current_path.0),
-				Direction::External => self.find_edges_external(current_path.0),
+				Direction::Internal => self.find_edges_internal(current_path.current_node),
+				Direction::External => self.find_edges_external(current_path.current_node),
 			};
 			// Process each new path
 			for n in neighbours.iter() {
-				let distance_traveled_so_far: i32 = current_path.3;
+				let distance_traveled_so_far: i32 = current_path.cumulative_distance;
 				let distance_to_this_neighbour: i32 = n.get_distance();
 				// Calculate the total distance from the start to this neighbour node
 				let distance_traveled = distance_traveled_so_far + distance_to_this_neighbour;
 				let node_weight: i32 = n.get_to().get_weight() as i32;
 				// Now we know the overall distance traveled and the weight of where we're going to we can score it
 				let astar_score = distance_traveled + node_weight;
-				// Create a vector of the nodes traversed to get to this `n`
-				let mut previous_nodes_traversed = current_path.2.clone();
-				previous_nodes_traversed.push(current_path.0);
+				// Create a vec of the nodes traversed to get to this `n`
+				let mut previous_nodes_traversed = current_path.node_history.clone();
+				previous_nodes_traversed.push(current_path.current_node);
 				// Update the a-star data set.
 				// If it already has a record of this node we choose to either update it or ignore this new path as it is worse than what we have calculated in a previous iteration
 				if node_astar_scores.contains_key(n.get_to()) {
-					if node_astar_scores.get(n.get_to()) >= Some(&astar_score) {
+					if node_astar_scores.get(n.get_to()) > Some(&astar_score) {
 						// `node_astar_scores` contains a worse score so update the map with the better score
 						node_astar_scores.insert(*n.get_to(), astar_score);
 						// Search the queue to see if we already have a route to this node.
 						// If we do but this new path is better then replace it, otherwise discard
 						let mut new_queue_item_required_for_node = true;
 						for q in queue.iter_mut() {
-							if q.0 == *n.get_to() {
+							if q.current_node == *n.get_to() {
 								// If existing score is worse (higher) then replace the queue item and
 								// don't allow a fresh queue item to be added
-								if q.1 >= astar_score {
+								if q.score >= astar_score {
 									new_queue_item_required_for_node = false;
-									q.1 = astar_score;
-									q.2.clone_from(&previous_nodes_traversed);
-									q.3 = distance_traveled;
-									q.4 = edge_direction.flip();
+									q.score = astar_score;
+									q.node_history.clone_from(&previous_nodes_traversed);
+									q.cumulative_distance = distance_traveled;
+									q.edge_direction = edge_direction.flip();
 								}
 							}
 						}
 						// Queue doesn't contain a route to this node, as we have now found a better route
 						// update the queue with it so it can be explored
 						if new_queue_item_required_for_node {
-							queue.push((
+							queue.push(AStarQueueItem::new(
 								*n.get_to(),
 								astar_score,
 								previous_nodes_traversed,
@@ -692,7 +765,7 @@ impl PortalGraph {
 					// Update the a-star score data
 					node_astar_scores.insert(*n.get_to(), astar_score);
 					// Update the queue with this new route to process later
-					queue.push((
+					queue.push(AStarQueueItem::new(
 						*n.get_to(),
 						astar_score,
 						previous_nodes_traversed,
@@ -703,17 +776,17 @@ impl PortalGraph {
 			}
 
 			// Sort the queue by a-star sores so each loop processes the current best path
-			queue.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-
+			queue.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
 			// As the `queue` is processed elements are removed, neighbours discovered and scores calculated.
 			//If the `queue` length becomes zero then it means there are no routes to the `end_node` and we return `None`
 			if queue.is_empty() {
 				return None;
 			}
 		}
+		// if a path has been discovered then return it otherwise None
 		// queue has arrived at the target node, we're done
-		let score = queue[0].1;
-		let mut best_path = queue[0].2.clone();
+		let score = queue[0].score;
+		let mut best_path = queue[0].node_history.clone();
 		// add end node to data
 		best_path.push(target_node);
 		Some((score, best_path))
@@ -1039,9 +1112,10 @@ use super::*;
 		let target_weight = sector_cost_fields.get_scaled().get(&target_sector).unwrap().get_field_cell_value(target_field);
 		let target_portal_node = Node::new(target_sector, target_field, target_weight, Ordinal::North);
 
-		let path = graph.find_path_between_sector_portals(source_portal_node, target_portal_node).unwrap();
+		let mut best_path: Option<(i32, Vec<(SectorID, FieldCell)>)> = None;
+		graph.find_path_between_sector_portals(&mut best_path, source_portal_node, target_portal_node, 0);
 		let actual = vec![(SectorID::new(0, 0), FieldCell::new(4, 9)), (SectorID::new(0, 1), FieldCell::new(4, 0)), (SectorID::new(0, 1), FieldCell::new(4, 9)), (SectorID::new(0, 2), FieldCell::new(4, 0))];
 		
-		assert_eq!(actual, path.1);
+		assert_eq!(actual, best_path.unwrap().1);
 	}
 }

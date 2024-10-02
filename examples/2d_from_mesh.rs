@@ -5,6 +5,8 @@
 //! marked as impassable.
 //!
 
+//TODO figure out way to "bridge" adhacent meshes to create a contiguous pathable area
+
 use bevy::{
 	prelude::*,
 	render::{
@@ -13,12 +15,10 @@ use bevy::{
 	},
 	sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
+use examples_utils::_2d::create_wall_colliders;
 
-use bevy_flowfield_tiles_plugin::prelude::*;
 use avian2d::prelude::*;
-
-/// Corresponds to a unit size of the map dimenions
-const FIELD_SPRITE_DIMENSION: f32 = 64.0;
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
 	App::new()
@@ -43,81 +43,6 @@ fn setup(mut cmds: Commands) {
 	let mut camera = Camera2dBundle::default();
 	camera.projection.scale = 2.0;
 	cmds.spawn(camera);
-}
-
-/// Used in CollisionLayers so that actors don't collide with one another, only the terrain
-#[allow(clippy::missing_docs_in_private_items)]
-enum Layer {
-	Actor,
-	Terrain,
-}
-// weird bug when using #derive where it thinks the crate bevy_xpbd_3d is being used >(
-impl PhysicsLayer for Layer {
-	fn to_bits(&self) -> u32 {
-		match self {
-			Layer::Actor => 1,
-			Layer::Terrain => 2,
-		}
-	}
-
-	fn all_bits() -> u32 {
-		0b11
-	}
-}
-
-/// Create collider entities around the world
-fn create_wall_colliders(mut cmds: Commands) {
-	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 0.0);
-	let top_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION * 30.0,
-		FIELD_SPRITE_DIMENSION / 2.0,
-		1.0,
-	);
-	let bottom_location = Vec3::new(0.0, -FIELD_SPRITE_DIMENSION * 15.0, 0.0);
-	let bottom_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION * 30.0,
-		FIELD_SPRITE_DIMENSION / 2.0,
-		1.0,
-	);
-	let left_location = Vec3::new(-FIELD_SPRITE_DIMENSION * 15.0, 0.0, 0.0);
-	let left_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION / 2.0,
-		FIELD_SPRITE_DIMENSION * 30.0,
-		1.0,
-	);
-	let right_location = Vec3::new(FIELD_SPRITE_DIMENSION * 15.0, 0.0, 0.0);
-	let right_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION / 2.0,
-		FIELD_SPRITE_DIMENSION * 30.0,
-		1.0,
-	);
-
-	let walls = [
-		(top_location, top_scale),
-		(bottom_location, bottom_scale),
-		(left_location, left_scale),
-		(right_location, right_scale),
-	];
-
-	for (loc, scale) in walls.iter() {
-		cmds.spawn((
-			SpriteBundle {
-				transform: Transform {
-					translation: *loc,
-					scale: *scale,
-					..default()
-				},
-				sprite: Sprite {
-					color: Color::BLACK,
-					..default()
-				},
-				..default()
-			},
-			RigidBody::Static,
-			Collider::rectangle(1.0, 1.0),
-			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
-		));
-	}
 }
 
 /// Labels meshes to be used to initialise a [FlowFieldTilesBundle]
@@ -267,11 +192,7 @@ fn mark_pathable_field_cells(
 							{
 								cmds.spawn(SpriteBundle {
 									sprite: Sprite {
-										color: Color::srgb(
-											230.0,
-											0.0,
-											255.0,
-										),
+										color: Color::srgb(230.0, 0.0, 255.0),
 										..default()
 									},
 									transform: Transform {

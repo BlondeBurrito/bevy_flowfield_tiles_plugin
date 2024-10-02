@@ -50,7 +50,7 @@ fn prepare_fields(
 		target_sector,
 		target_goal,
 		Duration::default(),
-		path,
+		Route::new(path),
 	);
 
 	(portals, cost_fields, map_dimensions, route_cache)
@@ -66,60 +66,42 @@ fn flow_open(
 ) {
 	let mut flow_cache = FlowFieldCache::default();
 	// generate flow
-	for (_key, portal_path) in route_cache.get().iter() {
+	for (_key, portal_path) in route_cache.get_routes().iter() {
 		// original order is from actor to goal, int fields need to be processed the other way around
-		let mut path = portal_path.clone();
-		path.reverse();
-		let mut sectors_expanded_goals = Vec::new();
-		for (i, (sector_id, goal)) in path.iter().enumerate() {
-			// // only run if a FlowField hasn't been generated
-			// if !field_cache.get().contains_key(&(*sector_id, *goal)) {
-			// first element is always the end target, don't bother with portal expansion
-			if i == 0 {
-				sectors_expanded_goals.push((*sector_id, vec![*goal]));
-			} else {
-				// portals represent the boundary to another sector, a portal can be spread over
-				// multple field cells, expand the portal to provide multiple goal
-				// targets for moving to another sector
-				let neighbour_sector_id = path[i - 1].0;
-				let g = portals
-					.get()
-					.get(sector_id)
-					.unwrap()
-					.expand_portal_into_goals(
-						&cost_fields,
-						sector_id,
-						goal,
-						&neighbour_sector_id,
-						&map_dimensions,
-					);
-				sectors_expanded_goals.push((*sector_id, g));
-			}
-			// }
-		}
-		// build the integration fields
-		let mut sector_int_fields = Vec::new();
-		for (sector_id, goals) in sectors_expanded_goals.iter() {
-			let mut int_field = IntegrationField::new(goals);
-			let cost_field = cost_fields.get_scaled().get(sector_id).unwrap();
-			int_field.calculate_field(goals, cost_field);
-			sector_int_fields.push((*sector_id, goals.clone(), int_field));
-		}
+		let mut route = portal_path.clone();
+		route.get_mut().reverse();
+		// create integration
+		let mut int_builder = IntegrationBuilder::new(route.clone(), &cost_fields);
+		int_builder.expand_field_portals(&portals, &cost_fields, &map_dimensions);
+		int_builder.calculate_los();
+		int_builder.build_integrated_cost(&cost_fields);
 		// build the flow fields
+		let sector_int_fields = int_builder.get_integration_fields();
 		for (i, (sector_id, goals, int_field)) in sector_int_fields.iter().enumerate() {
 			let mut flow_field = FlowField::default();
 			// first element is end target, therefore has no info about previous sector for
 			// direction optimisations
 			if i == 0 {
 				flow_field.calculate(goals, None, int_field);
-				flow_cache.insert_field(*sector_id, path[i].1, Duration::default(), flow_field);
+				flow_cache.insert_field(
+					*sector_id,
+					Some(route.get()[i].1),
+					None,
+					Duration::default(),
+					flow_field,
+				);
 			} else if let Some(dir_prev_sector) =
 				Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
 			{
 				let prev_int_field = &sector_int_fields[i - 1].2;
 				flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
-				//TODO by using the portal goal from path[i].1 actors criss-crossing from two seperate routes means one will use the others route in a sector which may be less efficient then using thier own
-				flow_cache.insert_field(*sector_id, path[i].1, Duration::default(), flow_field);
+				flow_cache.insert_field(
+					*sector_id,
+					None,
+					Some(route.get()[i].1),
+					Duration::default(),
+					flow_field,
+				);
 			} else {
 				error!("Route {:?}", portal_path);
 			};

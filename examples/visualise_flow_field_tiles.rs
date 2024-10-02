@@ -45,71 +45,31 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			&sector_cost_fields,
 		)
 		.unwrap();
-	let mut path_based_on_portal_exits = Vec::new();
-	// target sector and entry portal where we switch the entry portal cell to the goal
-	let mut end = path.pop().unwrap();
-	end.1 = target_field_cell;
-	// sector and field of leaving starting sector if source sector and target sector are different
-	// otherwise it was a single element path and we already removed it
-	if !path.is_empty() {
-		let start = path.remove(0);
-		path_based_on_portal_exits.push(start);
-	}
-	// all other elements in the path are in pairs for entering and leaving sectors on the way to the goal
-	for p in path.iter().skip(1).step_by(2) {
-		path_based_on_portal_exits.push(*p);
-	}
-	path_based_on_portal_exits.push(end);
-	path = path_based_on_portal_exits;
-	// original order is from actor to goal, int fields need to be processed the other way around
+	filter_path(&mut path, target_field_cell);
 	path.reverse();
-	let mut sectors_expanded_goals = Vec::new();
-	for (i, (sector_id, goal)) in path.iter().enumerate() {
-		// first element is always the end target, don't bother with portal expansion
-		if i == 0 {
-			sectors_expanded_goals.push((*sector_id, vec![*goal]));
-		} else {
-			// portals represent the boundary to another sector, a portal can be spread over
-			// multple field cells, expand the portal to provide multiple goal
-			// targets for moving to another sector
-			let neighbour_sector_id = path[i - 1].0;
-			let g = sector_portals
-				.get()
-				.get(sector_id)
-				.unwrap()
-				.expand_portal_into_goals(
-					&sector_cost_fields,
-					sector_id,
-					goal,
-					&neighbour_sector_id,
-					&map_dimensions,
-				);
-			sectors_expanded_goals.push((*sector_id, g));
-		}
-	}
-	// prep int fields
-	let mut sector_int_fields = Vec::new();
-	for (sector_id, goals) in sectors_expanded_goals.iter() {
-		let mut int_field = IntegrationField::new(goals);
-		let cost_field = sector_cost_fields.get_scaled().get(sector_id).unwrap();
-		int_field.calculate_field(goals, cost_field);
-		sector_int_fields.push((*sector_id, goals.clone(), int_field));
-	}
-	// create flow fields
+	// create integration
+	let route = Route::new(path);
+	let mut int_builder = IntegrationBuilder::new(route, &sector_cost_fields);
+	int_builder.expand_field_portals(&sector_portals, &sector_cost_fields, &map_dimensions);
+	int_builder.calculate_los();
+	int_builder.build_integrated_cost(&sector_cost_fields);
+	// create flow
+	let int_fields = int_builder.get_integration_fields();
 	let mut sector_flow_fields = BTreeMap::new();
-	for (i, (sector_id, goals, int_field)) in sector_int_fields.iter().enumerate() {
+	for (i, (sector_id, goals, int_field)) in int_fields.iter().enumerate() {
 		let mut flow_field = FlowField::default();
 		if *sector_id == target_sector {
 			flow_field.calculate(goals, None, int_field);
 			sector_flow_fields.insert(*sector_id, flow_field);
 		} else if let Some(dir_prev_sector) =
-			Ordinal::sector_to_sector_direction(sector_int_fields[i - 1].0, *sector_id)
+			Ordinal::sector_to_sector_direction(int_fields[i - 1].0, *sector_id)
 		{
-			let prev_int_field = &sector_int_fields[i - 1].2;
+			let prev_int_field = &int_fields[i - 1].2;
 			flow_field.calculate(goals, Some((dir_prev_sector, prev_int_field)), int_field);
 			sector_flow_fields.insert(*sector_id, flow_field);
 		};
 	}
+
 	// create a UI grid
 	cmds.spawn(Camera2dBundle::default());
 	cmds.spawn(NodeBundle {

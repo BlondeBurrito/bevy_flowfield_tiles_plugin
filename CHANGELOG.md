@@ -2,6 +2,59 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Bug Fixes
+
+- Update examples, benches and some tests with new int layer
+
+
+
+
+### Documentation
+
+- Tidy up typos and formatting
+
+
+
+
+### Performance
+
+- Avoid allocating routemeta, dropping it and re-allocating the same
+
+
+
+
+### Refactor
+
+- [**breaking**] Moved LOS into integration layer calculations
+
+
+
+
+## [unreleased]
+
+### Documentation
+
+- Tidy up typos and formatting
+
+
+
+
+### Performance
+
+- Avoid allocating routemeta, dropping it and re-allocating the same
+
+
+
+
+### Refactor
+
+- [**breaking**] Moved LOS into integration layer calculations
+
+
+
+
 ## [0.10.2] - 2024-09-02
 
 ### Miscellaneous Tasks

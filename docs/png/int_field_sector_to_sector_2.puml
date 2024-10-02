@@ -4,10 +4,10 @@ title
 IntegrationField
 Sector Goal - 2 with Actor (A)
 
-|<#000000>\n   X   \n|<#000000>\n   X   \n|<#e69138>\n   5   \n|<#bf9000>\n   6   \n|<#e06666>\n   A   \n|
-|<#000000>\n   X   \n|<#000000>\n   X   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|<#bf9000>\n   6   \n|
-|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|
+|<#000000>\n   X   \n|<#000000>\n   X   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|<#e06666>\n   A   \n|
+|<#000000>\n   X   \n|<#000000>\n   X   \n|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|<#e69138>\n   5   \n|
+|<#946cba>\n   0   \n|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#d5a6bd>\n   4   \n|
 |<#946cba>\n   0   \n|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|
-|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#a2c4c9>\n   3   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|
+|<#946cba>\n   0   \n|<#ffe599>\n   1   \n|<#b6d7a8>\n   2   \n|<#000000>\n   X   \n|<#000000>\n   X   \n|
 end title
 @enduml
