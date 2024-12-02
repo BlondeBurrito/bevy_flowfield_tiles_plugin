@@ -36,6 +36,7 @@ impl SectorID {
 /// The dimensions of the world
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Component, Default, Clone, Copy, Reflect)]
+#[reflect(Component)]
 pub struct MapDimensions {
 	/// Dimensions of the world
 	///

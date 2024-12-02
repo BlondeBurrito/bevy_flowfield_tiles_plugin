@@ -32,6 +32,7 @@ impl PhysicsLayer for Layer {
 }
 
 /// Create collider entities around the world
+#[cfg(not(tarpaulin_include))]
 pub fn create_wall_colliders(mut cmds: Commands) {
 	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 1.0);
 	let top_scale = Vec3::new(
@@ -96,6 +97,7 @@ pub struct Pathing {
 }
 
 /// If an actor has a target coordinate then obtain a route for it - if a route doesn't exist then send an event so that one is calculated
+#[cfg(not(tarpaulin_include))]
 pub fn get_or_request_route<T: Component>(
 	route_q: Query<(&RouteCache, &MapDimensions)>,
 	mut actor_q: Query<(&Transform, &mut Pathing), With<T>>,
@@ -142,6 +144,7 @@ const SPEED: f32 = 30000.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
+#[cfg(not(tarpaulin_include))]
 pub fn actor_steering<T: Component>(
 	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<T>>,
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
@@ -198,6 +201,7 @@ pub fn actor_steering<T: Component>(
 }
 
 /// Stop an actor once it has reached its goal
+#[cfg(not(tarpaulin_include))]
 pub fn stop_at_destination<T: Component>(
 	mut actors: Query<(&mut LinearVelocity, &mut Pathing, &Transform), With<T>>,
 ) {
@@ -219,6 +223,7 @@ pub fn stop_at_destination<T: Component>(
 /// If an actor has drained their route then they are most likely lost due to portals changing, clear their route so they may request a fresh one
 ///
 /// This may also happen if an actor has collided with a corner that has bounced it into a different sector
+#[cfg(not(tarpaulin_include))]
 pub fn check_if_route_exhausted<T: Component>(
 	mut actor_q: Query<(&mut Pathing, &mut LinearVelocity), With<T>>,
 ) {

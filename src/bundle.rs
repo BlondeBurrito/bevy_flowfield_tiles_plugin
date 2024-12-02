@@ -5,8 +5,8 @@
 use crate::prelude::*;
 use bevy::prelude::*;
 
-//TODO #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 /// Defines all required components for generating [FlowField] Tiles
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Bundle)]
 pub struct FlowFieldTilesBundle {
 	/// [CostField]s of all sectors

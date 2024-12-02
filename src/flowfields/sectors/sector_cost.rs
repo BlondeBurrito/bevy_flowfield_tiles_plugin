@@ -17,7 +17,8 @@ use bevy::prelude::*;
 	derive(serde::Deserialize, serde::Serialize),
 	serde(default)
 )]
-#[derive(Component, Clone, Default)]
+#[derive(Component, Clone, Default, Reflect)]
+#[reflect(Component)]
 pub struct SectorCostFields {
 	/// Initial costs based on the unit size of each field
 	baseline: BTreeMap<SectorID, CostField>,
