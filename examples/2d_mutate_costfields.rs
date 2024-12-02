@@ -112,6 +112,7 @@ fn setup(mut cmds: Commands) {
 /// If the current cost is `1` then it is updated to `255` and a [Collider] is inserted denoting an impassable field.
 ///
 /// If the current cost is `255` then
+#[allow(clippy::too_many_arguments)]
 fn click_update_cost(
 	mut cmds: Commands,
 	mut tile_q: Query<(Entity, &SectorLabel, &FieldCellLabel, &mut Sprite)>,
