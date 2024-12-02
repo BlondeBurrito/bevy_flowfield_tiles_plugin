@@ -62,20 +62,24 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			// grid origin is always in the top left
 			let x = -(map_length as f32) / 2.0 + 32.0 + (sprite_dimension * i as f32);
 			let y = map_depth as f32 / 2.0 - 32.0 - (sprite_dimension * j as f32);
-			cmds.spawn(
-				(Sprite {
+			cmds.spawn((
+				Sprite {
 					image: asset_server.load(get_basic_icon(*value)),
 					..default()
-				},Transform::from_xyz(x, y, 0.0))
-		)
+				},
+				Transform::from_xyz(x, y, 0.0),
+			))
 			.insert(FieldCellLabel(i, j));
 		}
 	}
 	// create the controllable actor
-	cmds.spawn((Sprite {
-		image: asset_server.load("2d/2d_actor_sprite.png"),
-		..default()
-	},Transform::from_xyz(0.0, 0.0, -1.0)))
+	cmds.spawn((
+		Sprite {
+			image: asset_server.load("2d/2d_actor_sprite.png"),
+			..default()
+		},
+		Transform::from_xyz(0.0, 0.0, -1.0),
+	))
 	.insert(Actor)
 	.insert(Pathing::default());
 }
@@ -95,40 +99,41 @@ fn user_input(
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
-		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) else {
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+		else {
 			return;
 		};
-			let map_dimensions = dimensions_q.get_single().unwrap();
-			info!("World cursor position: {}", world_position);
-			if let Some((target_sector_id, goal_id)) =
-				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
-			{
-				info!(
-					"Cursor sector_id {:?}, goal_id in sector {:?}",
-					target_sector_id, goal_id
-				);
-				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
-				let (source_sector_id, source_field_cell) = map_dimensions
-					.get_sector_and_field_cell_from_xy(tform.translation.truncate())
-					.unwrap();
-				info!(
-					"Actor sector_id {:?}, goal_id in sector {:?}",
-					source_sector_id, source_field_cell
-				);
-				event.send(EventPathRequest::new(
-					source_sector_id,
-					source_field_cell,
-					target_sector_id,
-					goal_id,
-				));
-				// update the actor pathing
-				pathing.source_sector = Some(source_sector_id);
-				pathing.source_field_cell = Some(source_field_cell);
-				pathing.target_sector = Some(target_sector_id);
-				pathing.target_goal = Some(goal_id);
-				pathing.portal_route = None;
-			} else {
-				error!("Cursor out of bounds");
+		let map_dimensions = dimensions_q.get_single().unwrap();
+		info!("World cursor position: {}", world_position);
+		if let Some((target_sector_id, goal_id)) =
+			map_dimensions.get_sector_and_field_cell_from_xy(world_position)
+		{
+			info!(
+				"Cursor sector_id {:?}, goal_id in sector {:?}",
+				target_sector_id, goal_id
+			);
+			let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
+			let (source_sector_id, source_field_cell) = map_dimensions
+				.get_sector_and_field_cell_from_xy(tform.translation.truncate())
+				.unwrap();
+			info!(
+				"Actor sector_id {:?}, goal_id in sector {:?}",
+				source_sector_id, source_field_cell
+			);
+			event.send(EventPathRequest::new(
+				source_sector_id,
+				source_field_cell,
+				target_sector_id,
+				goal_id,
+			));
+			// update the actor pathing
+			pathing.source_sector = Some(source_sector_id);
+			pathing.source_field_cell = Some(source_field_cell);
+			pathing.target_sector = Some(target_sector_id);
+			pathing.target_goal = Some(goal_id);
+			pathing.portal_route = None;
+		} else {
+			error!("Cursor out of bounds");
 		}
 	}
 }

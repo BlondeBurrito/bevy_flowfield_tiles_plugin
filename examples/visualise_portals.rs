@@ -31,10 +31,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let sprite_dimension = 64.0;
 	let mut proj = OrthographicProjection::default_2d();
 	proj.scale = 2.0;
-	cmds.spawn((
-		Camera2d,
-		proj
-	));
+	cmds.spawn((Camera2d, proj));
 	// let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
 	// let sector_cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, dir);
 	let path =
@@ -54,7 +51,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				let y = sector_offset.y - 32.0 - (sprite_dimension * j as f32);
 				cmds.spawn((
 					Sprite::from_image(asset_server.load(get_basic_icon(*value))),
-					Transform::from_xyz(x, y, 0.0)
+					Transform::from_xyz(x, y, 0.0),
 				))
 				.insert(FieldCellLabel(i, j))
 				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
@@ -132,63 +129,68 @@ fn click_update_cost(
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
-		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) else {
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+		else {
 			return;
 		};
-			let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
-			if let Some((sector_id, field_cell)) =
-				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
-			{
-				let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
-				let value = cost_field.get_field_cell_value(field_cell);
-				if value == 255 {
-					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
-					event.send(e);
-					// remove collider from tile
-					for (sector_label, field_label, mut sprite) in &mut tile_q {
-						if (sector_label.0, sector_label.1) == sector_id.get()
-							&& (field_label.0, field_label.1) == field_cell.get_column_row()
-						{
-							sprite.color = Color::WHITE;
-						}
+		let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
+		if let Some((sector_id, field_cell)) =
+			map_dimensions.get_sector_and_field_cell_from_xy(world_position)
+		{
+			let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
+			let value = cost_field.get_field_cell_value(field_cell);
+			if value == 255 {
+				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
+				event.send(e);
+				// remove collider from tile
+				for (sector_label, field_label, mut sprite) in &mut tile_q {
+					if (sector_label.0, sector_label.1) == sector_id.get()
+						&& (field_label.0, field_label.1) == field_cell.get_column_row()
+					{
+						sprite.color = Color::WHITE;
 					}
-				} else {
-					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
-					event.send(e);
-					// add collider to tile
-					for (sector_label, field_label, mut sprite) in &mut tile_q {
-						if (sector_label.0, sector_label.1) == sector_id.get()
-							&& (field_label.0, field_label.1) == field_cell.get_column_row()
-						{
-							sprite.color = Color::BLACK;
-						}
+				}
+			} else {
+				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
+				event.send(e);
+				// add collider to tile
+				for (sector_label, field_label, mut sprite) in &mut tile_q {
+					if (sector_label.0, sector_label.1) == sector_id.get()
+						&& (field_label.0, field_label.1) == field_cell.get_column_row()
+					{
+						sprite.color = Color::BLACK;
 					}
 				}
 			}
+		}
 	}
 }
 
 /// Create UI counters to measure the FPS and number of actors
 fn create_counter(mut cmds: Commands) {
-	cmds.spawn(
-		Node {
-			flex_direction: FlexDirection::Column,
-			..default()
-		})
+	cmds.spawn(Node {
+		flex_direction: FlexDirection::Column,
+		..default()
+	})
 	.with_children(|p| {
 		let categories = vec!["Portals: "];
 		for category in categories {
 			p.spawn(Node::default()).with_children(|p| {
-				p.spawn(
-					(Text::new(category),
+				p.spawn((
+					Text::new(category),
 					TextFont {
 						font_size: 30.0,
 						..default()
 					},
-				TextColor(Color::WHITE))).with_child((TextSpan::default(), TextFont {
-					font_size: 30.0,
-					..default()
-				}));
+					TextColor(Color::WHITE),
+				))
+				.with_child((
+					TextSpan::default(),
+					TextFont {
+						font_size: 30.0,
+						..default()
+					},
+				));
 			});
 		}
 	});
@@ -207,7 +209,7 @@ fn update_counter(sector_portals_q: Query<&SectorPortals>, mut query: Query<&mut
 	for mut text in &mut query {
 		**text = format!("{portal_count:.2}");
 		// if text.sections[0].value.as_str() == "Portals: " {
-			// text.sections[1].value = format!("{portal_count:.2}");
+		// text.sections[1].value = format!("{portal_count:.2}");
 		// }
 	}
 }

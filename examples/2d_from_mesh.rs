@@ -41,10 +41,7 @@ fn main() {
 fn setup(mut cmds: Commands) {
 	let mut proj = OrthographicProjection::default_2d();
 	proj.scale = 2.0;
-	cmds.spawn((
-		Camera2d,
-		proj
-	));
+	cmds.spawn((Camera2d, proj));
 }
 
 /// Labels meshes to be used to initialise a [FlowFieldTilesBundle]
@@ -77,7 +74,7 @@ fn create_meshes(
 		Mesh2d(meshes.add(upper_t)),
 		MeshMaterial2d(materials.add(Color::WHITE)),
 		Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-		Pathable
+		Pathable,
 	));
 
 	let lower_t = Mesh::new(
@@ -98,7 +95,7 @@ fn create_meshes(
 		Mesh2d(meshes.add(lower_t)),
 		MeshMaterial2d(materials.add(Color::WHITE)),
 		Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-		Pathable
+		Pathable,
 	));
 	let island = Mesh::new(
 		PrimitiveTopology::TriangleStrip,
@@ -118,7 +115,7 @@ fn create_meshes(
 		Mesh2d(meshes.add(island)),
 		MeshMaterial2d(materials.add(Color::WHITE)),
 		Transform::from_translation(Vec3::new(-580.0, -64.0, 0.0)),
-		Pathable
+		Pathable,
 	));
 	//TODO create collider meshes around the T?
 }
@@ -183,7 +180,8 @@ fn mark_pathable_field_cells(
 							if let Some(pos) =
 								map_dimensions.get_xy_from_field_sector(*sector, field_cell)
 							{
-								cmds.spawn((Sprite {
+								cmds.spawn((
+									Sprite {
 										color: Color::srgb(230.0, 0.0, 255.0),
 										..default()
 									},
@@ -191,8 +189,8 @@ fn mark_pathable_field_cells(
 										translation: pos.extend(1.0),
 										scale: Vec3::new(32.0, 32.0, 1.0),
 										..default()
-									},)
-								);
+									},
+								));
 							}
 						}
 					}

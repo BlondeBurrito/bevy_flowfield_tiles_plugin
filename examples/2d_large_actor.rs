@@ -60,10 +60,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, ACTOR_SIZE);
 	let mut proj = OrthographicProjection::default_2d();
 	proj.scale = 2.0;
-	cmds.spawn((
-		Camera2d,
-		proj
-	));
+	cmds.spawn((Camera2d, proj));
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
 	let fields = sector_cost_fields.get_baseline();
@@ -80,13 +77,14 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				let y = sector_offset.y - 32.0 - (sprite_y * j as f32);
 				// add colliders to impassable cells
 				if *value == 255 {
-					cmds.spawn((Sprite {
+					cmds.spawn((
+						Sprite {
 							custom_size: Some(Vec2::new(64.0, 64.0)),
 							image: asset_server.load(get_basic_icon(*value)),
 							..default()
 						},
-						Transform::from_xyz(x, y, 0.0),)
-					)
+						Transform::from_xyz(x, y, 0.0),
+					))
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
 					.insert(Collider::rectangle(
@@ -96,12 +94,13 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
-					cmds.spawn((Sprite {
-						image: asset_server.load(get_basic_icon(*value)),
-						..default()
+					cmds.spawn((
+						Sprite {
+							image: asset_server.load(get_basic_icon(*value)),
+							..default()
 						},
-						Transform::from_xyz(x, y, 0.0),)
-					)
+						Transform::from_xyz(x, y, 0.0),
+					))
 					.insert(FieldCellLabel(i, j))
 					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
 				}
@@ -124,7 +123,8 @@ fn setup_navigation(mut cmds: Commands) {
 		&path,
 	));
 	// create the controllable actor in the top right corner
-	cmds.spawn((Sprite {
+	cmds.spawn((
+		Sprite {
 			color: Color::srgb(230.0, 0.0, 255.0),
 			..default()
 		},
@@ -132,8 +132,8 @@ fn setup_navigation(mut cmds: Commands) {
 			translation: Vec3::new(886.0, 886.0, 1.0),
 			scale: Vec3::new(ACTOR_SIZE, 16.0, 1.0),
 			..default()
-		},)
-	)
+		},
+	))
 	.insert(Actor)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
@@ -157,22 +157,23 @@ fn user_input(
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
-		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) else {
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+		else {
 			return;
 		};
-			let map_dimensions = dimensions_q.get_single().unwrap();
-			if map_dimensions
-				.get_sector_and_field_cell_from_xy(world_position)
-				.is_some()
-			{
-				let mut pathing = actor_q.get_single_mut().unwrap();
-				// update the actor pathing
-				pathing.target_position = Some(world_position);
-				pathing.target_sector = None;
-				pathing.portal_route = None;
-				pathing.has_los = false;
-			} else {
-				error!("Cursor out of bounds");
+		let map_dimensions = dimensions_q.get_single().unwrap();
+		if map_dimensions
+			.get_sector_and_field_cell_from_xy(world_position)
+			.is_some()
+		{
+			let mut pathing = actor_q.get_single_mut().unwrap();
+			// update the actor pathing
+			pathing.target_position = Some(world_position);
+			pathing.target_sector = None;
+			pathing.portal_route = None;
+			pathing.has_los = false;
+		} else {
+			error!("Cursor out of bounds");
 		}
 	}
 }

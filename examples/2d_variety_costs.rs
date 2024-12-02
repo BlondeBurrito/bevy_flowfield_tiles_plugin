@@ -42,10 +42,7 @@ struct Actor;
 fn setup_visualisation(mut cmds: Commands) {
 	let mut proj = OrthographicProjection::default_2d();
 	proj.scale = 2.0;
-	cmds.spawn((
-		Camera2d,
-		proj
-	));
+	cmds.spawn((Camera2d, proj));
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
@@ -74,8 +71,8 @@ fn setup_visualisation(mut cmds: Commands) {
 				let y = sector_offset.y - 32.0 - (sprite_y * j as f32);
 				// add colliders to impassable cells
 				if *value == 255 {
-					cmds.spawn(
-						(Sprite {
+					cmds.spawn((
+						Sprite {
 							color: Color::BLACK,
 							..default()
 						},
@@ -83,16 +80,16 @@ fn setup_visualisation(mut cmds: Commands) {
 							translation: Vec3::new(x, y, 0.0),
 							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 							..default()
-						},)
-					)
+						},
+					))
 					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
 					// note in image editing software a pixel colour channel may range from 1-255, in bevy sprite the color channels range 0-1, so we convert the cost to a grey colour and take it as a percentage to be compatible
 					let grey_scale = (255.0 - *value as f32) / 255.0;
-					cmds.spawn(
-						(Sprite {
+					cmds.spawn((
+						Sprite {
 							color: Color::srgb(grey_scale, grey_scale, grey_scale),
 							..default()
 						},
@@ -100,8 +97,8 @@ fn setup_visualisation(mut cmds: Commands) {
 							translation: Vec3::new(x, y, 0.0),
 							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 							..default()
-						},)
-					);
+						},
+					));
 				}
 			}
 		}
@@ -111,8 +108,8 @@ fn setup_visualisation(mut cmds: Commands) {
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands) {
 	// create the controllable actor in the top right corner
-	cmds.spawn(
-		(Sprite {
+	cmds.spawn((
+		Sprite {
 			color: Color::srgb(230.0, 0.0, 255.0),
 			..default()
 		},
@@ -120,8 +117,8 @@ fn setup_navigation(mut cmds: Commands) {
 			translation: Vec3::new(0.0, 0.0, 2.0),
 			scale: Vec3::new(16.0, 16.0, 1.0),
 			..default()
-		},)
-	)
+		},
+	))
 	.insert(Actor)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
@@ -145,22 +142,23 @@ fn user_input(
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
-		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) else {
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+		else {
 			return;
 		};
-			let map_dimensions = dimensions_q.get_single().unwrap();
-			if map_dimensions
-				.get_sector_and_field_cell_from_xy(world_position)
-				.is_some()
-			{
-				let mut pathing = actor_q.get_single_mut().unwrap();
-				// update the actor pathing
-				pathing.target_position = Some(world_position);
-				pathing.target_sector = None;
-				pathing.portal_route = None;
-				pathing.has_los = false;
-			} else {
-				error!("Cursor out of bounds");
-			}
+		let map_dimensions = dimensions_q.get_single().unwrap();
+		if map_dimensions
+			.get_sector_and_field_cell_from_xy(world_position)
+			.is_some()
+		{
+			let mut pathing = actor_q.get_single_mut().unwrap();
+			// update the actor pathing
+			pathing.target_position = Some(world_position);
+			pathing.target_sector = None;
+			pathing.portal_route = None;
+			pathing.has_los = false;
+		} else {
+			error!("Cursor out of bounds");
+		}
 	}
 }

@@ -69,12 +69,12 @@ pub fn create_wall_colliders(mut cmds: Commands) {
 		cmds.spawn((
 			Sprite {
 				color: Color::BLACK,
-					..default()
+				..default()
 			},
-			Transform{
+			Transform {
 				translation: *loc,
-					scale: *scale,
-					..default()
+				scale: *scale,
+				..default()
 			},
 			RigidBody::Static,
 			Collider::rectangle(1.0, 1.0),
@@ -178,8 +178,7 @@ pub fn actor_steering<T: Component>(
 									pathing.has_los = true;
 									let dir = pathing.target_position.unwrap()
 										- tform.translation.truncate();
-									velocity.0 =
-										dir.normalize() * SPEED * time_step.delta_secs();
+									velocity.0 = dir.normalize() * SPEED * time_step.delta_secs();
 									break 'routes;
 								}
 								let dir = get_2d_direction_unit_vector_from_bits(cell_value);

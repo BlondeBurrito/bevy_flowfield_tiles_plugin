@@ -37,7 +37,7 @@ fn main() {
 				update_fps_counter,
 				update_actor_counter,
 				update_dur_counter,
-				update_flow_counter
+				update_flow_counter,
 			),
 		)
 		.add_systems(Update, actor_steering::<Actor>)
@@ -63,10 +63,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_dimensions = bundle.get_map_dimensions();
 	let mut proj = OrthographicProjection::default_2d();
 	proj.scale = 2.0;
-	cmds.spawn((
-		Camera2d,
-		proj
-	));
+	cmds.spawn((Camera2d, proj));
 	let sector_cost_fields = bundle.get_sector_cost_fields();
 	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
@@ -80,7 +77,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				let y = sector_offset.y - 32.0 - (FIELD_SPRITE_DIMENSION * j as f32);
 				// add colliders to impassable cells
 				if *value == 255 {
-					cmds.spawn((Sprite {
+					cmds.spawn((
+						Sprite {
 							color: Color::BLACK,
 							..default()
 						},
@@ -88,18 +86,19 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 							translation: Vec3::new(x, y, 0.0),
 							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 							..default()
-						},)
-					)
+						},
+					))
 					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
-					cmds.spawn((Sprite {
-						image: asset_server.load(get_basic_icon(*value)),
-						..default()
-					},
-						Transform::from_xyz(x, y, 0.0),)
-					);
+					cmds.spawn((
+						Sprite {
+							image: asset_server.load(get_basic_icon(*value)),
+							..default()
+						},
+						Transform::from_xyz(x, y, 0.0),
+					));
 				}
 			}
 		}
@@ -172,7 +171,8 @@ fn spawn_actors(
 		// request a path
 		event.send(EventPathRequest::new(sector_id, field, t_sector, t_field));
 		// spawn the actor which cna read the path later
-		cmds.spawn((Sprite {
+		cmds.spawn((
+			Sprite {
 				color: Color::srgb(230.0, 0.0, 255.0),
 				..default()
 			},
@@ -180,8 +180,8 @@ fn spawn_actors(
 				translation: Vec3::new(start_x, start_y, 1.0),
 				scale: Vec3::new(16.0, 16.0, 1.0),
 				..default()
-			},)
-		)
+			},
+		))
 		.insert(Actor)
 		.insert(RigidBody::Dynamic)
 		.insert(Collider::circle(1.0))
@@ -259,10 +259,9 @@ struct FlowCounter;
 /// Create UI counters to measure the FPS and number of actors
 fn create_counters(mut cmds: Commands) {
 	cmds.spawn(Node {
-			flex_direction: FlexDirection::Column,
-			..default()
-		},
-	)
+		flex_direction: FlexDirection::Column,
+		..default()
+	})
 	.with_children(|p| {
 		p.spawn(Node::default()).with_children(|p| {
 			p.spawn((
@@ -272,7 +271,8 @@ fn create_counters(mut cmds: Commands) {
 					..default()
 				},
 				TextColor(Color::WHITE),
-			)).with_child((
+			))
+			.with_child((
 				TextSpan::default(),
 				TextFont {
 					font_size: 30.0,
@@ -282,65 +282,71 @@ fn create_counters(mut cmds: Commands) {
 				FpsCounter,
 			));
 		});
-	p.spawn(Node::default()).with_children(|p| {
-		p.spawn((
-			Text::new("Actors: "),
-			TextFont {
-				font_size: 30.0,
-				..default()
-			},
-			TextColor(Color::WHITE),
-		)).with_child((
-			TextSpan::default(),
-			TextFont {
-				font_size: 30.0,
-				..default()
-			},
-			TextColor(Color::WHITE),
-			ActorCounter,
-		));
-	});
-	p.spawn(Node::default()).with_children(|p| {
-		p.spawn((
-			Text::new("Dur(s): "),
-			TextFont {
-				font_size: 30.0,
-				..default()
-			},
-			TextColor(Color::WHITE),
-		)).with_child((
-			TextSpan::default(),
-			TextFont {
-				font_size: 30.0,
-				..default()
-			},
-			TextColor(Color::WHITE),
-			DurationCounter,
-		));
-	});
-	p.spawn(Node::default()).with_children(|p| {
-		p.spawn((
-			Text::new("Gen Flows: "),
-			TextFont {
-				font_size: 30.0,
-				..default()
-			},
-			TextColor(Color::WHITE),
-		)).with_child((
-			TextSpan::default(),
-			TextFont {
-				font_size: 30.0,
-				..default()
-			},
-			TextColor(Color::WHITE),
-			FlowCounter,
-		));
-	});
+		p.spawn(Node::default()).with_children(|p| {
+			p.spawn((
+				Text::new("Actors: "),
+				TextFont {
+					font_size: 30.0,
+					..default()
+				},
+				TextColor(Color::WHITE),
+			))
+			.with_child((
+				TextSpan::default(),
+				TextFont {
+					font_size: 30.0,
+					..default()
+				},
+				TextColor(Color::WHITE),
+				ActorCounter,
+			));
+		});
+		p.spawn(Node::default()).with_children(|p| {
+			p.spawn((
+				Text::new("Dur(s): "),
+				TextFont {
+					font_size: 30.0,
+					..default()
+				},
+				TextColor(Color::WHITE),
+			))
+			.with_child((
+				TextSpan::default(),
+				TextFont {
+					font_size: 30.0,
+					..default()
+				},
+				TextColor(Color::WHITE),
+				DurationCounter,
+			));
+		});
+		p.spawn(Node::default()).with_children(|p| {
+			p.spawn((
+				Text::new("Gen Flows: "),
+				TextFont {
+					font_size: 30.0,
+					..default()
+				},
+				TextColor(Color::WHITE),
+			))
+			.with_child((
+				TextSpan::default(),
+				TextFont {
+					font_size: 30.0,
+					..default()
+				},
+				TextColor(Color::WHITE),
+				FlowCounter,
+			));
+		});
 	});
 }
 
 /// Update the FPS counter
-fn update_fps_counter(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut TextSpan, With<FpsCounter>>) {
+fn update_fps_counter(
+	diagnostics: Res<DiagnosticsStore>,
+	mut query: Query<&mut TextSpan, With<FpsCounter>>,
+) {
 	for mut text in &mut query {
 		if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
 			if let Some(val) = fps.smoothed() {
@@ -350,29 +356,35 @@ fn update_fps_counter(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut 
 	}
 }
 /// Update the actor count counter
-fn update_actor_counter(actors: Query<&Actor>, mut query: Query<&mut TextSpan, With<ActorCounter>>) {
+fn update_actor_counter(
+	actors: Query<&Actor>,
+	mut query: Query<&mut TextSpan, With<ActorCounter>>,
+) {
 	for mut text in &mut query {
 		let mut actor_count = 0;
-				for _ in actors.iter() {
-					actor_count += 1;
-				}
-				**text = format!("{actor_count:.2}");
+		for _ in actors.iter() {
+			actor_count += 1;
+		}
+		**text = format!("{actor_count:.2}");
 	}
 }
 /// Update the counter for how long the simulation has been running
 fn update_dur_counter(time: Res<Time>, mut query: Query<&mut TextSpan, With<DurationCounter>>) {
 	for mut text in &mut query {
 		let elapsed = time.elapsed().as_secs_f32();
-				**text = format!("{elapsed:.2}");
+		**text = format!("{elapsed:.2}");
 	}
 }
 /// Update the counter for the number of flow fields generated
-fn update_flow_counter(cache_q: Query<&FlowFieldCache>, mut query: Query<&mut TextSpan, With<FlowCounter>>) {
+fn update_flow_counter(
+	cache_q: Query<&FlowFieldCache>,
+	mut query: Query<&mut TextSpan, With<FlowCounter>>,
+) {
 	for mut text in &mut query {
 		let mut field_count = 0;
-				for cache in &cache_q {
-					field_count = cache.get().len();
-				}
-				**text = format!("{field_count:.2}");
+		for cache in &cache_q {
+			field_count = cache.get().len();
+		}
+		**text = format!("{field_count:.2}");
 	}
 }

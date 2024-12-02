@@ -51,10 +51,7 @@ struct Pathing {
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut tform = Transform::from_translation(Vec3::new(0.0, 40.0, 10.0));
 	tform.look_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y);
-	cmds.spawn((
-		Camera3d::default(),
-		tform,
-	));
+	cmds.spawn((Camera3d::default(), tform));
 	cmds.spawn(SceneRoot(asset_server.load("3d/3d_map.gltf#Scene0")));
 	cmds.spawn((
 		Transform::from_xyz(0.0, 50.0, 0.0),
@@ -63,7 +60,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			range: 100.,
 			shadows_enabled: true,
 			..default()
-		}
+		},
 	));
 }
 
@@ -95,7 +92,7 @@ fn setup_navigation(
 	cmds.spawn((
 		Mesh3d(mesh),
 		MeshMaterial3d(material),
-		Transform::from_xyz(14.5, 1.0, -14.5)
+		Transform::from_xyz(14.5, 1.0, -14.5),
 	))
 	.insert(Actor)
 	.insert(Velocity::default())
@@ -121,7 +118,10 @@ fn user_input(
 		let Ok(ray_3d) = camera.viewport_to_world(camera_transform, cursor_position) else {
 			return;
 		};
-		if let Some(world_position) = ray_3d.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y)).map(|distance| ray_3d.get_point(distance)) {
+		if let Some(world_position) = ray_3d
+			.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))
+			.map(|distance| ray_3d.get_point(distance))
+		{
 			let map_dimensions = dimensions_q.get_single().unwrap();
 			info!("World cursor position: {:?}", world_position);
 			if let Some((target_sector_id, goal_id)) =
