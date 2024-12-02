@@ -190,6 +190,12 @@ pub fn actor_steering<T: Component>(
 									pathing.portal_route = None;
 								}
 								velocity.0 = dir * SPEED * time_step.delta_secs();
+							} else {
+								// no field exists describing the sector the actor is in,
+								// allow actor to get a new route.
+								// This typically happens when a costfield has been changed
+								// so the fields are being regenerated
+								pathing.portal_route = None;
 							}
 						}
 						break 'routes;
@@ -234,6 +240,7 @@ pub fn check_if_route_exhausted<T: Component>(
 				warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
 				vel.0 *= 0.0;
 				pathing.portal_route = None;
+				pathing.has_los = false;
 			}
 		}
 	}

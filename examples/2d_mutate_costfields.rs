@@ -120,6 +120,7 @@ fn click_update_cost(
 	windows: Query<&Window, With<PrimaryWindow>>,
 	dimensions_q: Query<(&MapDimensions, &SectorCostFields)>,
 	mut event: EventWriter<EventUpdateCostfieldsCell>,
+	spatial_query: SpatialQuery,
 ) {
 	if input.just_released(MouseButton::Left) {
 		let (camera, camera_transform) = camera_q.single();
@@ -152,6 +153,16 @@ fn click_update_cost(
 					}
 				}
 			} else {
+				// block placing if occupied by actor
+				let intersections = spatial_query.shape_intersections(
+					&Collider::rectangle(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION),
+					world_position,
+					Rotation::default().into(),
+					&SpatialQueryFilter::from_mask(Layer::Actor),
+				);
+				if !intersections.is_empty() {
+					return;
+				}
 				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
 				event.send(e);
 				// add collider to tile
