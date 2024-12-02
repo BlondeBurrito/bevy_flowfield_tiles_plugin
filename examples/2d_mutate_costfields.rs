@@ -25,22 +25,25 @@ fn main() {
 			PhysicsPlugins::default(),
 			// PhysicsDebugPlugin::default(),
 		))
-		.insert_resource(SubstepCount(12))
+		.insert_resource(SubstepCount(6))
 		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(Startup, (setup, create_wall_colliders, create_counters))
 		.add_systems(PreUpdate, click_update_cost)
-		.insert_resource(Time::<Fixed>::from_seconds(0.1))
-		.add_systems(FixedUpdate, (spawn_actors, get_or_request_route::<Actor>))
+		// .insert_resource(Time::<Fixed>::from_seconds(0.1))
+		// .add_systems(FixedUpdate, spawn_actors)
 		.add_systems(
 			Update,
 			(
-				// get_or_request_route,
+				spawn_actors,
+				get_or_request_route::<Actor>,
 				check_if_route_exhausted::<Actor>,
-				// spawn_actors,
 				despawn_at_destination,
 				actor_steering::<Actor>,
-				update_counters,
+				update_fps_counter,
+				update_actor_counter,
+				update_dur_counter,
+				update_flow_counter
 			),
 		)
 		.add_systems(PostUpdate, despawn_tunneled_actors)
@@ -69,9 +72,12 @@ fn setup(mut cmds: Commands) {
 	let bundle = FlowFieldTilesBundle::new(map_length, map_depth, sector_resolution, actor_size);
 	// use the bundle before spawning it to help create the sprites
 	let map_dimensions = bundle.get_map_dimensions();
-	let mut camera = Camera2dBundle::default();
-	camera.projection.scale = 2.0;
-	cmds.spawn(camera);
+	let mut proj = OrthographicProjection::default_2d();
+	proj.scale = 2.0;
+	cmds.spawn((
+		Camera2d,
+		proj
+	));
 	let sector_cost_fields = bundle.get_sector_cost_fields();
 	let fields = sector_cost_fields.get_baseline();
 	// iterate over each sector field to place the sprites
@@ -84,18 +90,16 @@ fn setup(mut cmds: Commands) {
 				let x = sector_offset.x + 32.0 + (FIELD_SPRITE_DIMENSION * i as f32);
 				let y = sector_offset.y - 32.0 - (FIELD_SPRITE_DIMENSION * j as f32);
 				// start with sprites for everying being pathable
-				cmds.spawn(SpriteBundle {
-					sprite: Sprite {
+				cmds.spawn((Sprite {
 						color: Color::WHITE,
 						..default()
 					},
-					transform: Transform {
+					Transform {
 						translation: Vec3::new(x, y, 0.0),
 						scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 						..default()
-					},
-					..default()
-				})
+					},)
+				)
 				.insert(FieldCellLabel(i, j))
 				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
 			}
@@ -122,11 +126,12 @@ fn click_update_cost(
 	if input.just_released(MouseButton::Left) {
 		let (camera, camera_transform) = camera_q.single();
 		let window = windows.single();
-		if let Some(world_position) = window
-			.cursor_position()
-			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-			.map(|ray| ray.origin.truncate())
-		{
+		let Some(cursor_position) = window.cursor_position() else {
+			return;
+		};
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) else {
+			return;
+		};
 			let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
 			if let Some((sector_id, field_cell)) =
 				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
@@ -165,7 +170,6 @@ fn click_update_cost(
 					}
 				}
 			}
-		}
 	}
 }
 
@@ -241,18 +245,16 @@ fn spawn_actors(
 		// request a path
 		event.send(EventPathRequest::new(sector_id, field, t_sector, t_field));
 		// spawn the actor which can read the path later
-		cmds.spawn(SpriteBundle {
-			sprite: Sprite {
+		cmds.spawn((Sprite {
 				color: Color::srgb(230.0, 0.0, 255.0),
 				..default()
 			},
-			transform: Transform {
+			Transform {
 				translation: Vec3::new(start_x, start_y, 1.0),
 				scale: Vec3::new(16.0, 16.0, 1.0),
 				..default()
-			},
-			..default()
-		})
+			},)
+		)
 		.insert(Actor)
 		.insert(RigidBody::Dynamic)
 		.insert(Collider::circle(1.0))
@@ -325,76 +327,137 @@ fn despawn_tunneled_actors(
 		}
 	}
 }
+/// Labels FPS text
+#[derive(Component)]
+struct FpsCounter;
+/// Labels actor counter text
+#[derive(Component)]
+struct ActorCounter;
+/// Labels time elapsed text
+#[derive(Component)]
+
+struct DurationCounter;
+/// Labels number of flows generated text
+#[derive(Component)]
+struct FlowCounter;
 
 /// Create UI counters to measure the FPS and number of actors
 fn create_counters(mut cmds: Commands) {
-	cmds.spawn(NodeBundle {
-		style: Style {
+	cmds.spawn(Node {
 			flex_direction: FlexDirection::Column,
 			..default()
 		},
-		..default()
-	})
+	)
 	.with_children(|p| {
-		let categories = vec!["FPS: ", "Actors: ", "Dur(s): ", "Gen Flows: "];
-		for categroy in categories {
-			p.spawn(NodeBundle::default()).with_children(|p| {
-				p.spawn(TextBundle::from_sections([
-					TextSection::new(
-						categroy,
-						TextStyle {
-							font_size: 30.0,
-							color: Color::WHITE,
-							..default()
-						},
-					),
-					TextSection::from_style(TextStyle {
-						font_size: 30.0,
-						color: Color::WHITE,
-						..default()
-					}),
-				]));
-			});
-		}
+		p.spawn(Node::default()).with_children(|p| {
+			p.spawn((
+				Text::new("FPS: "),
+				TextFont {
+					font_size: 30.0,
+					..default()
+				},
+				TextColor(Color::WHITE),
+			)).with_child((
+				TextSpan::default(),
+				TextFont {
+					font_size: 30.0,
+					..default()
+				},
+				TextColor(Color::WHITE),
+				FpsCounter,
+			));
+		});
+	p.spawn(Node::default()).with_children(|p| {
+		p.spawn((
+			Text::new("Actors: "),
+			TextFont {
+				font_size: 30.0,
+				..default()
+			},
+			TextColor(Color::WHITE),
+		)).with_child((
+			TextSpan::default(),
+			TextFont {
+				font_size: 30.0,
+				..default()
+			},
+			TextColor(Color::WHITE),
+			ActorCounter,
+		));
+	});
+	p.spawn(Node::default()).with_children(|p| {
+		p.spawn((
+			Text::new("Dur(s): "),
+			TextFont {
+				font_size: 30.0,
+				..default()
+			},
+			TextColor(Color::WHITE),
+		)).with_child((
+			TextSpan::default(),
+			TextFont {
+				font_size: 30.0,
+				..default()
+			},
+			TextColor(Color::WHITE),
+			DurationCounter,
+		));
+	});
+	p.spawn(Node::default()).with_children(|p| {
+		p.spawn((
+			Text::new("Gen Flows: "),
+			TextFont {
+				font_size: 30.0,
+				..default()
+			},
+			TextColor(Color::WHITE),
+		)).with_child((
+			TextSpan::default(),
+			TextFont {
+				font_size: 30.0,
+				..default()
+			},
+			TextColor(Color::WHITE),
+			FlowCounter,
+		));
+	});
 	});
 }
 
-/// Update the counters for FPS, number of actors, time elapased and current fields cached
-fn update_counters(
-	diagnostics: Res<DiagnosticsStore>,
-	actors: Query<&Actor>,
-	time: Res<Time>,
-	cache_q: Query<&FlowFieldCache>,
-	mut query: Query<&mut Text>,
-) {
+/// Update the FPS counter
+fn update_fps_counter(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut TextSpan, With<FpsCounter>>) {
 	for mut text in &mut query {
-		match text.sections[0].value.as_str() {
-			"FPS: " => {
-				if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
-					if let Some(val) = fps.average() {
-						text.sections[1].value = format!("{val:.2}");
-					}
-				}
+		if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
+			if let Some(val) = fps.smoothed() {
+				**text = format!("{val:.2}");
 			}
-			"Actors: " => {
-				let mut actor_count = 0;
+		}
+	}
+}
+/// Update the actor count counter
+fn update_actor_counter(actors: Query<&Actor>, mut query: Query<&mut TextSpan, With<ActorCounter>>) {
+	for mut text in &mut query {
+		let mut actor_count = 0;
 				for _ in actors.iter() {
 					actor_count += 1;
 				}
-				text.sections[1].value = format!("{actor_count:.2}");
-			}
-			"Dur(s): " => {
-				let elapsed = time.elapsed().as_secs_f32();
-				text.sections[1].value = format!("{elapsed:.2}");
-			}
-			"Gen Flows: " => {
-				let mut field_count = 0;
+				**text = format!("{actor_count:.2}");
+	}
+}
+/// Update the counter for how long the simulation has been running
+fn update_dur_counter(time: Res<Time>, mut query: Query<&mut TextSpan, With<DurationCounter>>) {
+	for mut text in &mut query {
+		let elapsed = time.elapsed().as_secs_f32();
+				**text = format!("{elapsed:.2}");
+	}
+}
+/// Update the counter for the number of flow fields generated
+fn update_flow_counter(cache_q: Query<&FlowFieldCache>, mut query: Query<&mut TextSpan, With<FlowCounter>>) {
+	for mut text in &mut query {
+		let mut field_count = 0;
 				for cache in &cache_q {
 					field_count = cache.get().len();
 				}
-				text.sections[1].value = format!("{field_count:.2}");
-			}
-			_ => {}
-		}
+				**text = format!("{field_count:.2}");
 	}
 }

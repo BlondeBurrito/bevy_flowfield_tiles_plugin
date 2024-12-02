@@ -9,9 +9,11 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 pub const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 
 /// Used in CollisionLayers so that actors don't collide with one another, only the terrain
+#[derive(Default)]
 #[allow(clippy::missing_docs_in_private_items)]
 pub enum Layer {
 	Actor,
+	#[default]
 	Terrain,
 }
 
@@ -31,25 +33,25 @@ impl PhysicsLayer for Layer {
 
 /// Create collider entities around the world
 pub fn create_wall_colliders(mut cmds: Commands) {
-	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 0.0);
+	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 1.0);
 	let top_scale = Vec3::new(
 		FIELD_SPRITE_DIMENSION * 30.0,
 		FIELD_SPRITE_DIMENSION / 2.0,
 		1.0,
 	);
-	let bottom_location = Vec3::new(0.0, -FIELD_SPRITE_DIMENSION * 15.0, 0.0);
+	let bottom_location = Vec3::new(0.0, -FIELD_SPRITE_DIMENSION * 15.0, 1.0);
 	let bottom_scale = Vec3::new(
 		FIELD_SPRITE_DIMENSION * 30.0,
 		FIELD_SPRITE_DIMENSION / 2.0,
 		1.0,
 	);
-	let left_location = Vec3::new(-FIELD_SPRITE_DIMENSION * 15.0, 0.0, 0.0);
+	let left_location = Vec3::new(-FIELD_SPRITE_DIMENSION * 15.0, 0.0, 1.0);
 	let left_scale = Vec3::new(
 		FIELD_SPRITE_DIMENSION / 2.0,
 		FIELD_SPRITE_DIMENSION * 30.0,
 		1.0,
 	);
-	let right_location = Vec3::new(FIELD_SPRITE_DIMENSION * 15.0, 0.0, 0.0);
+	let right_location = Vec3::new(FIELD_SPRITE_DIMENSION * 15.0, 0.0, 1.0);
 	let right_scale = Vec3::new(
 		FIELD_SPRITE_DIMENSION / 2.0,
 		FIELD_SPRITE_DIMENSION * 30.0,
@@ -65,17 +67,14 @@ pub fn create_wall_colliders(mut cmds: Commands) {
 
 	for (loc, scale) in walls.iter() {
 		cmds.spawn((
-			SpriteBundle {
-				transform: Transform {
-					translation: *loc,
+			Sprite {
+				color: Color::BLACK,
+					..default()
+			},
+			Transform{
+				translation: *loc,
 					scale: *scale,
 					..default()
-				},
-				sprite: Sprite {
-					color: Color::BLACK,
-					..default()
-				},
-				..default()
 			},
 			RigidBody::Static,
 			Collider::rectangle(1.0, 1.0),
@@ -180,7 +179,7 @@ pub fn actor_steering<T: Component>(
 									let dir = pathing.target_position.unwrap()
 										- tform.translation.truncate();
 									velocity.0 =
-										dir.normalize() * SPEED * time_step.delta_seconds();
+										dir.normalize() * SPEED * time_step.delta_secs();
 									break 'routes;
 								}
 								let dir = get_2d_direction_unit_vector_from_bits(cell_value);
@@ -188,7 +187,7 @@ pub fn actor_steering<T: Component>(
 									warn!("Stuck");
 									pathing.portal_route = None;
 								}
-								velocity.0 = dir * SPEED * time_step.delta_seconds();
+								velocity.0 = dir * SPEED * time_step.delta_secs();
 							}
 						}
 						break 'routes;

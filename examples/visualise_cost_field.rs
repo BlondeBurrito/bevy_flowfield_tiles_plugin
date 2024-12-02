@@ -16,10 +16,9 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
 	let cost_field = CostField::from_ron(path);
 	// create a UI grid
-	cmds.spawn(Camera2dBundle::default());
-	cmds.spawn(NodeBundle {
+	cmds.spawn(Camera2d);
+	cmds.spawn((Node {
 		// background canvas
-		style: Style {
 			width: Val::Percent(100.0),
 			height: Val::Percent(100.0),
 			flex_direction: FlexDirection::Column,
@@ -27,54 +26,46 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			align_items: AlignItems::Center,
 			..Default::default()
 		},
-		background_color: BackgroundColor(Color::NONE),
-		..Default::default()
-	})
+		BackgroundColor(Color::NONE),)
+	)
 	.with_children(|p| {
 		// a centred box to contain the field values
-		p.spawn(NodeBundle {
-			style: Style {
+		p.spawn((Node {
 				width: Val::Px(500.0),
 				height: Val::Px(500.0),
 				flex_direction: FlexDirection::Row,
 				..Default::default()
 			},
-			background_color: BackgroundColor(Color::WHITE),
-			..Default::default()
-		})
+			BackgroundColor(Color::WHITE),)
+		)
 		.with_children(|p| {
 			// create each column from the field
 			for array in cost_field.get().iter() {
-				p.spawn(NodeBundle {
-					style: Style {
+				p.spawn(Node {
 						width: Val::Percent(10.0),
 						height: Val::Percent(100.0),
 						flex_direction: FlexDirection::Column,
 						..Default::default()
-					},
-					..Default::default()
 				})
 				.with_children(|p| {
 					// create each row value of the column
 					for value in array.iter() {
-						p.spawn(NodeBundle {
-							style: Style {
+						p.spawn(Node {
 								width: Val::Percent(100.0),
 								height: Val::Percent(10.0),
 								justify_content: JustifyContent::Center,
 								align_items: AlignItems::Center,
 								..Default::default()
-							},
-							..Default::default()
 						})
 						.with_children(|p| {
-							p.spawn(TextBundle::from_section(
-								value.to_string(),
-								TextStyle {
+							p.spawn((
+								Text::new(value.to_string()),
+								TextFont {
 									font: asset_server.load("fonts/FiraMono-Medium.ttf"),
 									font_size: 15.0,
-									color: Color::BLACK,
+									..default()
 								},
+								TextColor(Color::BLACK),
 							));
 						});
 					}

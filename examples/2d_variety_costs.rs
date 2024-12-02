@@ -40,9 +40,12 @@ struct Actor;
 
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands) {
-	let mut camera = Camera2dBundle::default();
-	camera.projection.scale = 2.0;
-	cmds.spawn(camera);
+	let mut proj = OrthographicProjection::default_2d();
+	proj.scale = 2.0;
+	cmds.spawn((
+		Camera2d,
+		proj
+	));
 	let map_length = 1920;
 	let map_depth = 1920;
 	let sector_resolution = 640;
@@ -71,36 +74,34 @@ fn setup_visualisation(mut cmds: Commands) {
 				let y = sector_offset.y - 32.0 - (sprite_y * j as f32);
 				// add colliders to impassable cells
 				if *value == 255 {
-					cmds.spawn(SpriteBundle {
-						sprite: Sprite {
+					cmds.spawn(
+						(Sprite {
 							color: Color::BLACK,
 							..default()
 						},
-						transform: Transform {
+						Transform {
 							translation: Vec3::new(x, y, 0.0),
 							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 							..default()
-						},
-						..default()
-					})
+						},)
+					)
 					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
 					// note in image editing software a pixel colour channel may range from 1-255, in bevy sprite the color channels range 0-1, so we convert the cost to a grey colour and take it as a percentage to be compatible
 					let grey_scale = (255.0 - *value as f32) / 255.0;
-					cmds.spawn(SpriteBundle {
-						sprite: Sprite {
+					cmds.spawn(
+						(Sprite {
 							color: Color::srgb(grey_scale, grey_scale, grey_scale),
 							..default()
 						},
-						transform: Transform {
+						Transform {
 							translation: Vec3::new(x, y, 0.0),
 							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 							..default()
-						},
-						..default()
-					});
+						},)
+					);
 				}
 			}
 		}
@@ -110,18 +111,17 @@ fn setup_visualisation(mut cmds: Commands) {
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands) {
 	// create the controllable actor in the top right corner
-	cmds.spawn(SpriteBundle {
-		sprite: Sprite {
+	cmds.spawn(
+		(Sprite {
 			color: Color::srgb(230.0, 0.0, 255.0),
 			..default()
 		},
-		transform: Transform {
+		Transform {
 			translation: Vec3::new(0.0, 0.0, 2.0),
 			scale: Vec3::new(16.0, 16.0, 1.0),
 			..default()
-		},
-		..default()
-	})
+		},)
+	)
 	.insert(Actor)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
@@ -142,11 +142,12 @@ fn user_input(
 		// get 2d world positionn of cursor
 		let (camera, camera_transform) = camera_q.single();
 		let window = windows.single();
-		if let Some(world_position) = window
-			.cursor_position()
-			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-			.map(|ray| ray.origin.truncate())
-		{
+		let Some(cursor_position) = window.cursor_position() else {
+			return;
+		};
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) else {
+			return;
+		};
 			let map_dimensions = dimensions_q.get_single().unwrap();
 			if map_dimensions
 				.get_sector_and_field_cell_from_xy(world_position)
@@ -161,6 +162,5 @@ fn user_input(
 			} else {
 				error!("Cursor out of bounds");
 			}
-		}
 	}
 }

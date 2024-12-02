@@ -54,10 +54,9 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	int_builder.build_integrated_cost(&sector_cost_fields);
 
 	// create a UI grid
-	cmds.spawn(Camera2dBundle::default());
-	cmds.spawn(NodeBundle {
+	cmds.spawn(Camera2d);
+	cmds.spawn((Node {
 		// background canvas
-		style: Style {
 			width: Val::Percent(100.0),
 			height: Val::Percent(100.0),
 			flex_direction: FlexDirection::Column,
@@ -65,38 +64,32 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			align_items: AlignItems::Center,
 			..Default::default()
 		},
-		background_color: BackgroundColor(Color::NONE),
-		..Default::default()
-	})
+		BackgroundColor(Color::NONE),
+	))
 	.with_children(|p| {
 		// a centred box to contain the fields
-		p.spawn(NodeBundle {
-			style: Style {
-				width: Val::Px(1000.0),
-				height: Val::Px(1000.0),
-				flex_direction: FlexDirection::Column,
-				flex_wrap: FlexWrap::Wrap,
-				flex_shrink: 0.0,
-				..Default::default()
-			},
-			background_color: BackgroundColor(Color::WHITE),
+		p.spawn((Node {
+			width: Val::Px(1000.0),
+			height: Val::Px(1000.0),
+			flex_direction: FlexDirection::Column,
+			flex_wrap: FlexWrap::Wrap,
+			flex_shrink: 0.0,
 			..Default::default()
-		})
+		},
+		BackgroundColor(Color::WHITE))
+		)
 		.with_children(|p| {
 			// create an area for each sector int field
 			for i in 0..map_dimensions.get_length() / 10 {
 				for j in 0..map_dimensions.get_depth() / 10 {
 					// bounding node of a sector
-					p.spawn(NodeBundle {
-						style: Style {
+					p.spawn(Node {
 							width: Val::Percent(100.0 / (map_dimensions.get_length() / 10) as f32),
 							height: Val::Percent(100.0 / (map_dimensions.get_depth() / 10) as f32),
 							flex_direction: FlexDirection::Column,
 							flex_wrap: FlexWrap::Wrap,
 							flex_shrink: 0.0,
 							..Default::default()
-						},
-						..Default::default()
 					})
 					.with_children(|p| {
 						// the array area of the sector
@@ -105,39 +98,35 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 						{
 							if sector.get() == (i, j) {
 								for column in int_field.get().iter() {
-									p.spawn(NodeBundle {
-										style: Style {
+									p.spawn(Node {
 											width: Val::Percent(10.0),
 											height: Val::Percent(100.0),
 											flex_direction: FlexDirection::Column,
 											..Default::default()
-										},
-										..Default::default()
 									})
 									.with_children(|p| {
 										for row_cost in column.iter() {
-											p.spawn(NodeBundle {
-												style: Style {
+											p.spawn((Node {
 													width: Val::Percent(100.0),
 													height: Val::Percent(10.0),
 													justify_content: JustifyContent::Center,
 													align_items: AlignItems::Center,
 													..Default::default()
-												},
-												background_color: BackgroundColor(get_colour(
+											},
+												BackgroundColor(get_colour(
 													*row_cost,
-												)),
-												..Default::default()
-											})
+												)))
+											)
 											.with_children(|p| {
-												p.spawn(TextBundle::from_section(
-													(row_cost & INT_FILTER_BITS_COST).to_string(),
-													TextStyle {
+												p.spawn((
+													Text::new((row_cost & INT_FILTER_BITS_COST).to_string()),
+													TextFont {
 														font: asset_server
 															.load("fonts/FiraSans-Bold.ttf"),
 														font_size: 10.0,
-														color: Color::BLACK,
+														..default()
 													},
+													TextColor(Color::BLACK)
 												));
 											});
 										}

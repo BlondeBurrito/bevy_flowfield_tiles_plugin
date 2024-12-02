@@ -56,26 +56,26 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	// use the impression of the cost field to just init node images
 	let cost_field = CostField::from_ron(c_path);
 	// create a blank visualisation
-	cmds.spawn(Camera2dBundle::default());
+	cmds.spawn(Camera2d);
 	for (i, column) in cost_field.get().iter().enumerate() {
 		for (j, value) in column.iter().enumerate() {
 			// grid origin is always in the top left
 			let x = -(map_length as f32) / 2.0 + 32.0 + (sprite_dimension * i as f32);
 			let y = map_depth as f32 / 2.0 - 32.0 - (sprite_dimension * j as f32);
-			cmds.spawn(SpriteBundle {
-				texture: asset_server.load(get_basic_icon(*value)),
-				transform: Transform::from_xyz(x, y, 0.0),
-				..default()
-			})
+			cmds.spawn(
+				(Sprite {
+					image: asset_server.load(get_basic_icon(*value)),
+					..default()
+				},Transform::from_xyz(x, y, 0.0))
+		)
 			.insert(FieldCellLabel(i, j));
 		}
 	}
 	// create the controllable actor
-	cmds.spawn(SpriteBundle {
-		texture: asset_server.load("2d/2d_actor_sprite.png"),
-		transform: Transform::from_xyz(0.0, 0.0, -1.0),
+	cmds.spawn((Sprite {
+		image: asset_server.load("2d/2d_actor_sprite.png"),
 		..default()
-	})
+	},Transform::from_xyz(0.0, 0.0, -1.0)))
 	.insert(Actor)
 	.insert(Pathing::default());
 }
@@ -92,11 +92,12 @@ fn user_input(
 		// get 2d world positionn of cursor
 		let (camera, camera_transform) = camera_q.single();
 		let window = windows.single();
-		if let Some(world_position) = window
-			.cursor_position()
-			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-			.map(|ray| ray.origin.truncate())
-		{
+		let Some(cursor_position) = window.cursor_position() else {
+			return;
+		};
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) else {
+			return;
+		};
 			let map_dimensions = dimensions_q.get_single().unwrap();
 			info!("World cursor position: {}", world_position);
 			if let Some((target_sector_id, goal_id)) =
@@ -128,7 +129,6 @@ fn user_input(
 				pathing.portal_route = None;
 			} else {
 				error!("Cursor out of bounds");
-			}
 		}
 	}
 }
@@ -152,7 +152,7 @@ fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Qu
 fn update_sprite_visuals_based_on_actor(
 	actor_q: Query<&Pathing, (With<Actor>, Changed<Pathing>)>,
 	flowfield_q: Query<&FlowFieldCache>,
-	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel)>,
+	mut field_cell_q: Query<(&mut Sprite, &FieldCellLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
 	for pathing in &actor_q {
@@ -161,14 +161,14 @@ fn update_sprite_visuals_based_on_actor(
 			let op_flowfield =
 				cache.get_field(route[0].0, pathing.target_sector.unwrap(), route[0].1);
 			if let Some(flowfield) = op_flowfield {
-				for (mut handle, field_cell_label) in field_cell_q.iter_mut() {
+				for (mut sprite, field_cell_label) in field_cell_q.iter_mut() {
 					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
 						field_cell_label.0,
 						field_cell_label.1,
 					));
 					let icon = get_ord_icon(flow_value);
 					let new_handle: Handle<Image> = asset_server.load(icon);
-					*handle = new_handle;
+					sprite.image = new_handle;
 				}
 			}
 		}
