@@ -7,7 +7,8 @@ publish = false
 
 [dependencies]
 bevy = { workspace = true, default-features = true, features=["wayland"]}
-avian2d = { version = "0.1", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+avian2d = { version = "0.2", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+# avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
 # examples_utils = { path = "crates/examples_utils" }
 bevy_flowfield_tiles_plugin = { path = "../../", features =["2d", "3d"] }
 

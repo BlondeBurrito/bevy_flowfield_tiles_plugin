@@ -29,9 +29,9 @@ struct FieldCellLabel(usize, usize);
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let sprite_dimension = 64.0;
-	let mut camera = Camera2dBundle::default();
-	camera.projection.scale = 2.0;
-	cmds.spawn(camera);
+	let mut proj = OrthographicProjection::default_2d();
+	proj.scale = 2.0;
+	cmds.spawn((Camera2d, proj));
 	// let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
 	// let sector_cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, dir);
 	let path =
@@ -49,11 +49,10 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
 				let x = sector_offset.x + 32.0 + (sprite_dimension * i as f32);
 				let y = sector_offset.y - 32.0 - (sprite_dimension * j as f32);
-				cmds.spawn(SpriteBundle {
-					texture: asset_server.load(get_basic_icon(*value)),
-					transform: Transform::from_xyz(x, y, 0.0),
-					..default()
-				})
+				cmds.spawn((
+					Sprite::from_image(asset_server.load(get_basic_icon(*value))),
+					Transform::from_xyz(x, y, 0.0),
+				))
 				.insert(FieldCellLabel(i, j))
 				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
 			}
@@ -65,7 +64,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 /// Redraw sprites when Portals are changed
 fn update_sprites(
 	query: Query<(&SectorPortals, &SectorCostFields), Changed<SectorPortals>>,
-	mut field_cell_q: Query<(&mut Handle<Image>, &FieldCellLabel, &SectorLabel)>,
+	mut field_cell_q: Query<(&mut Sprite, &FieldCellLabel, &SectorLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
 	for (sector_portals, sector_costfields) in &query {
@@ -82,18 +81,18 @@ fn update_sprites(
 			sector_portal_ids.insert(*sector, portal_ids);
 		}
 		// update all the sprites
-		for (mut handle, field_cell_label, sector_label) in field_cell_q.iter_mut() {
+		for (mut sprite, field_cell_label, sector_label) in field_cell_q.iter_mut() {
 			let sector_id = SectorID::new(sector_label.0, sector_label.1);
 			let field_cell = FieldCell::new(field_cell_label.0, field_cell_label.1);
 			let field = sector_costfields.get_scaled().get(&sector_id).unwrap();
 			let cost = field.get_field_cell_value(field_cell);
-			*handle = asset_server.load(get_basic_icon(cost));
+			sprite.image = asset_server.load(get_basic_icon(cost));
 			// lookup the sector and grid of a portal and overwrite as necessary
 			if sector_portal_ids.contains_key(&sector_id) {
 				let cell_id = sector_portal_ids.get(&sector_id).unwrap();
 				if cell_id.contains(&(field_cell_label.0, field_cell_label.1)) {
 					let new_handle: Handle<Image> = asset_server.load("ordinal_icons/portals.png");
-					*handle = new_handle;
+					sprite.image = new_handle;
 				}
 			}
 		}
@@ -115,7 +114,7 @@ fn get_basic_icon(value: u8) -> String {
 ///
 /// If the current cost is `1` then it is updated to `255` and a [Collider] is inserted denoting an impassable field.
 ///
-/// If the current cost is `255` then
+/// If the current cost is `255` then it is flipped to `1` and the collider removed
 fn click_update_cost(
 	mut tile_q: Query<(&SectorLabel, &FieldCellLabel, &mut Sprite)>,
 	input: Res<ButtonInput<MouseButton>>,
@@ -127,38 +126,39 @@ fn click_update_cost(
 	if input.just_released(MouseButton::Left) {
 		let (camera, camera_transform) = camera_q.single();
 		let window = windows.single();
-		if let Some(world_position) = window
-			.cursor_position()
-			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-			.map(|ray| ray.origin.truncate())
+		let Some(cursor_position) = window.cursor_position() else {
+			return;
+		};
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+		else {
+			return;
+		};
+		let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
+		if let Some((sector_id, field_cell)) =
+			map_dimensions.get_sector_and_field_cell_from_xy(world_position)
 		{
-			let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
-			if let Some((sector_id, field_cell)) =
-				map_dimensions.get_sector_and_field_cell_from_xy(world_position)
-			{
-				let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
-				let value = cost_field.get_field_cell_value(field_cell);
-				if value == 255 {
-					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
-					event.send(e);
-					// remove collider from tile
-					for (sector_label, field_label, mut sprite) in &mut tile_q {
-						if (sector_label.0, sector_label.1) == sector_id.get()
-							&& (field_label.0, field_label.1) == field_cell.get_column_row()
-						{
-							sprite.color = Color::WHITE;
-						}
+			let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
+			let value = cost_field.get_field_cell_value(field_cell);
+			if value == 255 {
+				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
+				event.send(e);
+				// remove collider from tile
+				for (sector_label, field_label, mut sprite) in &mut tile_q {
+					if (sector_label.0, sector_label.1) == sector_id.get()
+						&& (field_label.0, field_label.1) == field_cell.get_column_row()
+					{
+						sprite.color = Color::WHITE;
 					}
-				} else {
-					let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
-					event.send(e);
-					// add collider to tile
-					for (sector_label, field_label, mut sprite) in &mut tile_q {
-						if (sector_label.0, sector_label.1) == sector_id.get()
-							&& (field_label.0, field_label.1) == field_cell.get_column_row()
-						{
-							sprite.color = Color::BLACK;
-						}
+				}
+			} else {
+				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
+				event.send(e);
+				// add collider to tile
+				for (sector_label, field_label, mut sprite) in &mut tile_q {
+					if (sector_label.0, sector_label.1) == sector_id.get()
+						&& (field_label.0, field_label.1) == field_cell.get_column_row()
+					{
+						sprite.color = Color::BLACK;
 					}
 				}
 			}
@@ -168,39 +168,36 @@ fn click_update_cost(
 
 /// Create UI counters to measure the FPS and number of actors
 fn create_counter(mut cmds: Commands) {
-	cmds.spawn(NodeBundle {
-		style: Style {
-			flex_direction: FlexDirection::Column,
-			..default()
-		},
+	cmds.spawn(Node {
+		flex_direction: FlexDirection::Column,
 		..default()
 	})
 	.with_children(|p| {
 		let categories = vec!["Portals: "];
-		for categroy in categories {
-			p.spawn(NodeBundle::default()).with_children(|p| {
-				p.spawn(TextBundle::from_sections([
-					TextSection::new(
-						categroy,
-						TextStyle {
-							font_size: 30.0,
-							color: Color::WHITE,
-							..default()
-						},
-					),
-					TextSection::from_style(TextStyle {
+		for category in categories {
+			p.spawn(Node::default()).with_children(|p| {
+				p.spawn((
+					Text::new(category),
+					TextFont {
 						font_size: 30.0,
-						color: Color::WHITE,
 						..default()
-					}),
-				]));
+					},
+					TextColor(Color::WHITE),
+				))
+				.with_child((
+					TextSpan::default(),
+					TextFont {
+						font_size: 30.0,
+						..default()
+					},
+				));
 			});
 		}
 	});
 }
 
 /// Update the counters for FPS, number of actors, time elapased and current fields cached
-fn update_counter(sector_portals_q: Query<&SectorPortals>, mut query: Query<&mut Text>) {
+fn update_counter(sector_portals_q: Query<&SectorPortals>, mut query: Query<&mut TextSpan>) {
 	let mut portal_count = 0;
 	let sp = sector_portals_q.get_single().unwrap();
 	for portals in sp.get().values() {
@@ -210,8 +207,9 @@ fn update_counter(sector_portals_q: Query<&SectorPortals>, mut query: Query<&mut
 		}
 	}
 	for mut text in &mut query {
-		if text.sections[0].value.as_str() == "Portals: " {
-			text.sections[1].value = format!("{portal_count:.2}");
-		}
+		**text = format!("{portal_count:.2}");
+		// if text.sections[0].value.as_str() == "Portals: " {
+		// text.sections[1].value = format!("{portal_count:.2}");
+		// }
 	}
 }

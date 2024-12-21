@@ -2,7 +2,7 @@
 version = "0.11.0"
 authors = ["BlondeBurrito"]
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.83"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
@@ -16,7 +16,7 @@ members = ["crates/*"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.14", default-features = false, features = ["bevy_render", "wayland"] }
+bevy = { version = "0.15", default-features = false, features = ["bevy_render", "wayland"] }
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.8" }
 csv = { version = "1" }
@@ -50,7 +50,8 @@ publish = true
 criterion = "0.5"
 bevy = { workspace = true, default-features = true, features=["wayland"]}
 rand = "0.8"
-avian2d = { version = "0.1", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+avian2d = { version = "0.2", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+# avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
 examples_utils = { path = "crates/examples_utils" }
 
 [dependencies]

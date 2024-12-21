@@ -71,10 +71,10 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	}
 
 	// create a UI grid
-	cmds.spawn(Camera2dBundle::default());
-	cmds.spawn(NodeBundle {
-		// background canvas
-		style: Style {
+	cmds.spawn(Camera2d);
+	cmds.spawn((
+		Node {
+			// background canvas
 			width: Val::Percent(100.0),
 			height: Val::Percent(100.0),
 			flex_direction: FlexDirection::Column,
@@ -82,13 +82,12 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			align_items: AlignItems::Center,
 			..Default::default()
 		},
-		background_color: BackgroundColor(Color::NONE),
-		..Default::default()
-	})
+		BackgroundColor(Color::NONE),
+	))
 	.with_children(|p| {
 		// a centred box to contain the fields
-		p.spawn(NodeBundle {
-			style: Style {
+		p.spawn((
+			Node {
 				width: Val::Px(1000.0),
 				height: Val::Px(1000.0),
 				flex_direction: FlexDirection::Column,
@@ -96,23 +95,19 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				flex_shrink: 0.0,
 				..Default::default()
 			},
-			background_color: BackgroundColor(Color::WHITE),
-			..Default::default()
-		})
+			BackgroundColor(Color::WHITE),
+		))
 		.with_children(|p| {
 			// create an area for each sector int field
 			for i in 0..map_dimensions.get_length() / 10 {
 				for j in 0..map_dimensions.get_depth() / 10 {
 					// bounding node of a sector
-					p.spawn(NodeBundle {
-						style: Style {
-							width: Val::Percent(100.0 / (map_dimensions.get_length() / 10) as f32),
-							height: Val::Percent(100.0 / (map_dimensions.get_depth() / 10) as f32),
-							flex_direction: FlexDirection::Column,
-							flex_wrap: FlexWrap::Wrap,
-							flex_shrink: 0.0,
-							..Default::default()
-						},
+					p.spawn(Node {
+						width: Val::Percent(100.0 / (map_dimensions.get_length() / 10) as f32),
+						height: Val::Percent(100.0 / (map_dimensions.get_depth() / 10) as f32),
+						flex_direction: FlexDirection::Column,
+						flex_wrap: FlexWrap::Wrap,
+						flex_shrink: 0.0,
 						..Default::default()
 					})
 					.with_children(|p| {
@@ -121,31 +116,25 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 						if let Some(field) = flow_field {
 							// create each column from the field
 							for array in field.get().iter() {
-								p.spawn(NodeBundle {
-									style: Style {
-										width: Val::Percent(10.0),
-										height: Val::Percent(100.0),
-										flex_direction: FlexDirection::Column,
-										..Default::default()
-									},
+								p.spawn(Node {
+									width: Val::Percent(10.0),
+									height: Val::Percent(100.0),
+									flex_direction: FlexDirection::Column,
 									..Default::default()
 								})
 								.with_children(|p| {
 									// create each row value of the column
 									for value in array.iter() {
 										p.spawn((
-											NodeBundle {
-												style: Style {
-													width: Val::Percent(100.0),
-													height: Val::Percent(10.0),
-													justify_content: JustifyContent::Center,
-													align_items: AlignItems::Center,
-													..Default::default()
-												},
-												background_color: BackgroundColor(Color::WHITE),
+											Node {
+												width: Val::Percent(100.0),
+												height: Val::Percent(10.0),
+												justify_content: JustifyContent::Center,
+												align_items: AlignItems::Center,
 												..Default::default()
 											},
-											UiImage::new(asset_server.load(get_ord_icon(*value))),
+											BackgroundColor(Color::WHITE),
+											ImageNode::new(asset_server.load(get_ord_icon(*value))),
 										));
 									}
 								});

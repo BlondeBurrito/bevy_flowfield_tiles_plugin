@@ -30,11 +30,14 @@
 //! For Sectors other than the goal the process is effectively the same where boundary portals are treated as corners and wave propagation exapaned.
 //!
 
+use bevy::reflect::Reflect;
+
 use crate::prelude::*;
 
 /// Grouping of high-level route from goal to actor where the integration
 /// fields get populated when the builder arrives at the front of the queue
-#[derive(Default)]
+#[derive(Default, Reflect)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct IntegrationBuilder {
 	//TODO try avoiding allocating path here and within int_fields
 	/// Sector and Portals/goals describing the route from the target goal to the
@@ -194,7 +197,7 @@ pub const INT_FILTER_BITS_COST: u32 = 0b0000_0000_0000_0000_1111_1111_1111_1111;
 pub const INT_FILTER_BITS_FLAGS: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone)]
+#[derive(Clone, Reflect)]
 pub struct IntegrationField {
 	/// Integration array
 	field: [[u32; FIELD_RESOLUTION]; FIELD_RESOLUTION],

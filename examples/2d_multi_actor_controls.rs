@@ -59,9 +59,9 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let sector_resolution = 640;
 	let actor_size = 16.0;
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-	let mut camera = Camera2dBundle::default();
-	camera.projection.scale = 2.0;
-	cmds.spawn(camera);
+	let mut proj = OrthographicProjection::default_2d();
+	proj.scale = 2.0;
+	cmds.spawn((Camera2d, proj));
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
 	let fields = sector_cost_fields.get_baseline();
@@ -76,27 +76,28 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				let y = sector_offset.y - 32.0 - (FIELD_SPRITE_DIMENSION * j as f32);
 				// add colliders to impassable cells
 				if *value == 255 {
-					cmds.spawn(SpriteBundle {
-						sprite: Sprite {
+					cmds.spawn((
+						Sprite {
 							color: Color::BLACK,
 							..default()
 						},
-						transform: Transform {
+						Transform {
 							translation: Vec3::new(x, y, 0.0),
 							scale: Vec3::new(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION, 1.0),
 							..default()
 						},
-						..default()
-					})
+					))
 					.insert(Collider::rectangle(1.0, 1.0))
 					.insert(RigidBody::Static)
 					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
 				} else {
-					cmds.spawn(SpriteBundle {
-						texture: asset_server.load(get_basic_icon(*value)),
-						transform: Transform::from_xyz(x, y, 0.0),
-						..default()
-					});
+					cmds.spawn((
+						Sprite {
+							image: asset_server.load(get_basic_icon(*value)),
+							..default()
+						},
+						Transform::from_xyz(x, y, 0.0),
+					));
 				}
 			}
 		}
@@ -118,18 +119,17 @@ fn setup_navigation(mut cmds: Commands) {
 		&path,
 	));
 	// create an actor controlled with right click
-	cmds.spawn(SpriteBundle {
-		sprite: Sprite {
+	cmds.spawn((
+		Sprite {
 			color: Color::srgb(230.0, 0.0, 255.0),
 			..default()
 		},
-		transform: Transform {
+		Transform {
 			translation: Vec3::new(928.0, 920.0, 1.0),
 			scale: Vec3::new(16.0, 16.0, 1.0),
 			..default()
 		},
-		..default()
-	})
+	))
 	.insert(ActorA)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
@@ -137,18 +137,17 @@ fn setup_navigation(mut cmds: Commands) {
 	.insert(AngularDamping(1.0))
 	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
 	// create an actor controlled with left click
-	cmds.spawn(SpriteBundle {
-		sprite: Sprite {
+	cmds.spawn((
+		Sprite {
 			color: Color::srgb(0.0, 230.0, 255.0),
 			..default()
 		},
-		transform: Transform {
+		Transform {
 			translation: Vec3::new(-928.0, -920.0, 1.0),
 			scale: Vec3::new(16.0, 16.0, 1.0),
 			..default()
 		},
-		..default()
-	})
+	))
 	.insert(ActorB)
 	.insert(Pathing::default())
 	.insert(RigidBody::Dynamic)
@@ -171,52 +170,54 @@ fn user_input(
 		// get 2d world positionn of cursor
 		let (camera, camera_transform) = camera_q.single();
 		let window = windows.single();
-		if let Some(world_position) = window
-			.cursor_position()
-			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-			.map(|ray| ray.origin.truncate())
+		let Some(cursor_position) = window.cursor_position() else {
+			return;
+		};
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+		else {
+			return;
+		};
+		let map_dimensions = dimensions_q.get_single().unwrap();
+		if map_dimensions
+			.get_sector_and_field_cell_from_xy(world_position)
+			.is_some()
 		{
-			let map_dimensions = dimensions_q.get_single().unwrap();
-			if map_dimensions
-				.get_sector_and_field_cell_from_xy(world_position)
-				.is_some()
-			{
-				for mut pathing in actor_a_q.iter_mut() {
-					// update the actor pathing
-					pathing.target_position = Some(world_position);
-					pathing.target_sector = None;
-					pathing.portal_route = None;
-					pathing.has_los = false;
-				}
-			} else {
-				error!("Cursor out of bounds");
+			for mut pathing in actor_a_q.iter_mut() {
+				// update the actor pathing
+				pathing.target_position = Some(world_position);
+				pathing.target_sector = None;
+				pathing.portal_route = None;
+				pathing.has_los = false;
 			}
+		} else {
+			error!("Cursor out of bounds");
 		}
 	}
 	if mouse_button_input.just_released(MouseButton::Left) {
 		// get 2d world positionn of cursor
 		let (camera, camera_transform) = camera_q.single();
 		let window = windows.single();
-		if let Some(world_position) = window
-			.cursor_position()
-			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-			.map(|ray| ray.origin.truncate())
+		let Some(cursor_position) = window.cursor_position() else {
+			return;
+		};
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+		else {
+			return;
+		};
+		let map_dimensions = dimensions_q.get_single().unwrap();
+		if map_dimensions
+			.get_sector_and_field_cell_from_xy(world_position)
+			.is_some()
 		{
-			let map_dimensions = dimensions_q.get_single().unwrap();
-			if map_dimensions
-				.get_sector_and_field_cell_from_xy(world_position)
-				.is_some()
-			{
-				for mut pathing in actor_b_q.iter_mut() {
-					// update the actor pathing
-					pathing.target_position = Some(world_position);
-					pathing.target_sector = None;
-					pathing.portal_route = None;
-					pathing.has_los = false;
-				}
-			} else {
-				error!("Cursor out of bounds");
+			for mut pathing in actor_b_q.iter_mut() {
+				// update the actor pathing
+				pathing.target_position = Some(world_position);
+				pathing.target_sector = None;
+				pathing.portal_route = None;
+				pathing.has_los = false;
 			}
+		} else {
+			error!("Cursor out of bounds");
 		}
 	}
 }

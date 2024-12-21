@@ -49,24 +49,19 @@ struct Pathing {
 
 /// Spawn the map
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
-	let mut camera = Camera3dBundle::default();
-	camera.transform.translation = Vec3::new(0.0, 40.0, 10.0);
-	camera.transform.look_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y);
-	cmds.spawn(camera);
-	cmds.spawn(SceneBundle {
-		scene: asset_server.load("3d/3d_map.gltf#Scene0"),
-		..default()
-	});
-	cmds.spawn(PointLightBundle {
-		point_light: PointLight {
+	let mut tform = Transform::from_translation(Vec3::new(0.0, 40.0, 10.0));
+	tform.look_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y);
+	cmds.spawn((Camera3d::default(), tform));
+	cmds.spawn(SceneRoot(asset_server.load("3d/3d_map.gltf#Scene0")));
+	cmds.spawn((
+		Transform::from_xyz(0.0, 50.0, 0.0),
+		PointLight {
 			intensity: 9000.0,
 			range: 100.,
 			shadows_enabled: true,
 			..default()
 		},
-		transform: Transform::from_xyz(0.0, 50.0, 0.0),
-		..default()
-	});
+	));
 }
 
 /// Dir and magnitude of actor movement
@@ -94,12 +89,11 @@ fn setup_navigation(
 		base_color: Color::Srgba(Srgba::BLUE),
 		..default()
 	});
-	cmds.spawn(PbrBundle {
-		mesh,
-		material,
-		transform: Transform::from_xyz(14.5, 1.0, -14.5),
-		..default()
-	})
+	cmds.spawn((
+		Mesh3d(mesh),
+		MeshMaterial3d(material),
+		Transform::from_xyz(14.5, 1.0, -14.5),
+	))
 	.insert(Actor)
 	.insert(Velocity::default())
 	.insert(Pathing::default());
@@ -118,16 +112,17 @@ fn user_input(
 		// get 3d world positionn of cursor
 		let (camera, camera_transform) = camera_q.single();
 		let window = windows.single();
-		let ray_point = window
-			.cursor_position()
-			.and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-			.map(|ray| {
-				ray.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))
-					.map(|distance| ray.get_point(distance))
-			});
-		if let Some(op_world_position) = ray_point {
+		let Some(cursor_position) = window.cursor_position() else {
+			return;
+		};
+		let Ok(ray_3d) = camera.viewport_to_world(camera_transform, cursor_position) else {
+			return;
+		};
+		if let Some(world_position) = ray_3d
+			.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))
+			.map(|distance| ray_3d.get_point(distance))
+		{
 			let map_dimensions = dimensions_q.get_single().unwrap();
-			let world_position = op_world_position.unwrap();
 			info!("World cursor position: {:?}", world_position);
 			if let Some((target_sector_id, goal_id)) =
 				map_dimensions.get_sector_and_field_cell_from_xyz(world_position)

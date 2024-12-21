@@ -9,9 +9,11 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 pub const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 
 /// Used in CollisionLayers so that actors don't collide with one another, only the terrain
+#[derive(Default)]
 #[allow(clippy::missing_docs_in_private_items)]
 pub enum Layer {
 	Actor,
+	#[default]
 	Terrain,
 }
 
@@ -30,26 +32,27 @@ impl PhysicsLayer for Layer {
 }
 
 /// Create collider entities around the world
+#[cfg(not(tarpaulin_include))]
 pub fn create_wall_colliders(mut cmds: Commands) {
-	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 0.0);
+	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 1.0);
 	let top_scale = Vec3::new(
 		FIELD_SPRITE_DIMENSION * 30.0,
 		FIELD_SPRITE_DIMENSION / 2.0,
 		1.0,
 	);
-	let bottom_location = Vec3::new(0.0, -FIELD_SPRITE_DIMENSION * 15.0, 0.0);
+	let bottom_location = Vec3::new(0.0, -FIELD_SPRITE_DIMENSION * 15.0, 1.0);
 	let bottom_scale = Vec3::new(
 		FIELD_SPRITE_DIMENSION * 30.0,
 		FIELD_SPRITE_DIMENSION / 2.0,
 		1.0,
 	);
-	let left_location = Vec3::new(-FIELD_SPRITE_DIMENSION * 15.0, 0.0, 0.0);
+	let left_location = Vec3::new(-FIELD_SPRITE_DIMENSION * 15.0, 0.0, 1.0);
 	let left_scale = Vec3::new(
 		FIELD_SPRITE_DIMENSION / 2.0,
 		FIELD_SPRITE_DIMENSION * 30.0,
 		1.0,
 	);
-	let right_location = Vec3::new(FIELD_SPRITE_DIMENSION * 15.0, 0.0, 0.0);
+	let right_location = Vec3::new(FIELD_SPRITE_DIMENSION * 15.0, 0.0, 1.0);
 	let right_scale = Vec3::new(
 		FIELD_SPRITE_DIMENSION / 2.0,
 		FIELD_SPRITE_DIMENSION * 30.0,
@@ -65,16 +68,13 @@ pub fn create_wall_colliders(mut cmds: Commands) {
 
 	for (loc, scale) in walls.iter() {
 		cmds.spawn((
-			SpriteBundle {
-				transform: Transform {
-					translation: *loc,
-					scale: *scale,
-					..default()
-				},
-				sprite: Sprite {
-					color: Color::BLACK,
-					..default()
-				},
+			Sprite {
+				color: Color::BLACK,
+				..default()
+			},
+			Transform {
+				translation: *loc,
+				scale: *scale,
 				..default()
 			},
 			RigidBody::Static,
@@ -97,6 +97,7 @@ pub struct Pathing {
 }
 
 /// If an actor has a target coordinate then obtain a route for it - if a route doesn't exist then send an event so that one is calculated
+#[cfg(not(tarpaulin_include))]
 pub fn get_or_request_route<T: Component>(
 	route_q: Query<(&RouteCache, &MapDimensions)>,
 	mut actor_q: Query<(&Transform, &mut Pathing), With<T>>,
@@ -143,6 +144,7 @@ const SPEED: f32 = 30000.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
+#[cfg(not(tarpaulin_include))]
 pub fn actor_steering<T: Component>(
 	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<T>>,
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
@@ -179,8 +181,7 @@ pub fn actor_steering<T: Component>(
 									pathing.has_los = true;
 									let dir = pathing.target_position.unwrap()
 										- tform.translation.truncate();
-									velocity.0 =
-										dir.normalize() * SPEED * time_step.delta_seconds();
+									velocity.0 = dir.normalize() * SPEED * time_step.delta_secs();
 									break 'routes;
 								}
 								let dir = get_2d_direction_unit_vector_from_bits(cell_value);
@@ -188,7 +189,13 @@ pub fn actor_steering<T: Component>(
 									warn!("Stuck");
 									pathing.portal_route = None;
 								}
-								velocity.0 = dir * SPEED * time_step.delta_seconds();
+								velocity.0 = dir * SPEED * time_step.delta_secs();
+							} else {
+								// no field exists describing the sector the actor is in,
+								// allow actor to get a new route.
+								// This typically happens when a costfield has been changed
+								// so the fields are being regenerated
+								pathing.portal_route = None;
 							}
 						}
 						break 'routes;
@@ -200,6 +207,7 @@ pub fn actor_steering<T: Component>(
 }
 
 /// Stop an actor once it has reached its goal
+#[cfg(not(tarpaulin_include))]
 pub fn stop_at_destination<T: Component>(
 	mut actors: Query<(&mut LinearVelocity, &mut Pathing, &Transform), With<T>>,
 ) {
@@ -221,6 +229,7 @@ pub fn stop_at_destination<T: Component>(
 /// If an actor has drained their route then they are most likely lost due to portals changing, clear their route so they may request a fresh one
 ///
 /// This may also happen if an actor has collided with a corner that has bounced it into a different sector
+#[cfg(not(tarpaulin_include))]
 pub fn check_if_route_exhausted<T: Component>(
 	mut actor_q: Query<(&mut Pathing, &mut LinearVelocity), With<T>>,
 ) {
@@ -231,6 +240,7 @@ pub fn check_if_route_exhausted<T: Component>(
 				warn!("Exhausted route, a new one will be requested, has an actor had a collision knocking into a different sector?");
 				vel.0 *= 0.0;
 				pathing.portal_route = None;
+				pathing.has_los = false;
 			}
 		}
 	}

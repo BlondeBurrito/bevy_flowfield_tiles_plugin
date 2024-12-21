@@ -13,7 +13,6 @@ use bevy::{
 		mesh::{Indices, PrimitiveTopology},
 		render_asset::RenderAssetUsages,
 	},
-	sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 use examples_utils::_2d::create_wall_colliders;
 
@@ -40,9 +39,9 @@ fn main() {
 
 /// Init
 fn setup(mut cmds: Commands) {
-	let mut camera = Camera2dBundle::default();
-	camera.projection.scale = 2.0;
-	cmds.spawn(camera);
+	let mut proj = OrthographicProjection::default_2d();
+	proj.scale = 2.0;
+	cmds.spawn((Camera2d, proj));
 }
 
 /// Labels meshes to be used to initialise a [FlowFieldTilesBundle]
@@ -72,12 +71,9 @@ fn create_meshes(
 	.with_inserted_indices(Indices::U32(vec![0, 1, 2, 2, 3, 4, 4, 2, 0]));
 
 	cmds.spawn((
-		MaterialMesh2dBundle {
-			mesh: meshes.add(upper_t).into(),
-			material: materials.add(Color::WHITE),
-			transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-			..default()
-		},
+		Mesh2d(meshes.add(upper_t)),
+		MeshMaterial2d(materials.add(Color::WHITE)),
+		Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
 		Pathable,
 	));
 
@@ -96,12 +92,9 @@ fn create_meshes(
 	)
 	.with_inserted_indices(Indices::U32(vec![0, 1, 2, 2, 0, 3]));
 	cmds.spawn((
-		MaterialMesh2dBundle {
-			mesh: meshes.add(lower_t).into(),
-			material: materials.add(Color::WHITE),
-			transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-			..default()
-		},
+		Mesh2d(meshes.add(lower_t)),
+		MeshMaterial2d(materials.add(Color::WHITE)),
+		Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
 		Pathable,
 	));
 	let island = Mesh::new(
@@ -119,12 +112,9 @@ fn create_meshes(
 	)
 	.with_inserted_indices(Indices::U32(vec![0, 1, 2, 3]));
 	cmds.spawn((
-		MaterialMesh2dBundle {
-			mesh: meshes.add(island).into(),
-			material: materials.add(Color::WHITE),
-			transform: Transform::from_translation(Vec3::new(-580.0, -64.0, 0.0)),
-			..default()
-		},
+		Mesh2d(meshes.add(island)),
+		MeshMaterial2d(materials.add(Color::WHITE)),
+		Transform::from_translation(Vec3::new(-580.0, -64.0, 0.0)),
 		Pathable,
 	));
 	//TODO create collider meshes around the T?
@@ -133,7 +123,7 @@ fn create_meshes(
 /// Once the meshes are ready use them to create a [FlowFieldTilesBundle]
 fn create_flowfields_from_meshes(
 	mut cmds: Commands,
-	query: Query<(&Mesh2dHandle, &Transform), With<Pathable>>,
+	query: Query<(&Mesh2d, &Transform), With<Pathable>>,
 	meshes: Res<Assets<Mesh>>,
 	mut is_complete: Local<bool>,
 ) {
@@ -190,18 +180,17 @@ fn mark_pathable_field_cells(
 							if let Some(pos) =
 								map_dimensions.get_xy_from_field_sector(*sector, field_cell)
 							{
-								cmds.spawn(SpriteBundle {
-									sprite: Sprite {
+								cmds.spawn((
+									Sprite {
 										color: Color::srgb(230.0, 0.0, 255.0),
 										..default()
 									},
-									transform: Transform {
+									Transform {
 										translation: pos.extend(1.0),
 										scale: Vec3::new(32.0, 32.0, 1.0),
 										..default()
 									},
-									..default()
-								});
+								));
 							}
 						}
 					}

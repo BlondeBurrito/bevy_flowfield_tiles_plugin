@@ -180,6 +180,7 @@ fn walk_bresenham_steep(col_0: i32, row_0: i32, col_1: i32, row_1: i32) -> Vec<F
 
 /// Describes the properties of a route
 #[derive(Clone, Copy, Debug, Reflect)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RouteMetadata {
 	/// Starting sector of the route
 	source_sector: SectorID,
@@ -267,7 +268,8 @@ impl RouteMetadata {
 }
 
 /// List of sector-portal (or just the end goal) route describing the sector path an actor should take to move to a destination sector
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Reflect)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Route(Vec<(SectorID, FieldCell)>);
 
 impl Route {
@@ -286,7 +288,9 @@ impl Route {
 }
 
 /// Each key makes use of custom Ord and Eq implementations based on comparing `(source_id, target_id, goal_id)` so that RouteMetaData can be used to refer to the high-level route an actor has asked for. The value is a sector-portal (or just the end goal) route. An actor can use this as a fallback if the `field_cache` doesn't yet contain the granular [FlowField] routes or for when [CostField]s have been changed and so [FlowField]s in the cache need to be regenerated
-#[derive(Component, Default, Clone)]
+#[derive(Component, Default, Clone, Reflect)]
+#[reflect(Component)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RouteCache {
 	/// A queue of high-level routes which get processed into the `routes` field
 	route_queue: BTreeMap<RouteMetadata, Route>,
@@ -386,6 +390,7 @@ impl RouteCache {
 }
 /// Describes the properties of a [FlowField]
 #[derive(Clone, Copy, Reflect)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct FlowFieldMetadata {
 	/// The sector of the corresponding [FlowField]
 	sector_id: SectorID,
@@ -446,7 +451,9 @@ impl FlowFieldMetadata {
 /// cache to retrieve the field once it's built and inserted. Note that
 /// `goal_id` can refer to the true end-goal or it can refer to a portal
 /// position when a path spans multiple sectors
-#[derive(Component, Default)]
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct FlowFieldCache {
 	/// Routes describing the sector path and [IntegrationField]s where the
 	/// integration and flow fields can be incrementally built
