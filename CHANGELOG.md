@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12] - 2024-12-21
+
+### Features
+
+- [**breaking**] Bevy 0.15 (#69)
+
+
+
+
 ## [0.11.0] - 2024-10-02
 
 ### Refactor
