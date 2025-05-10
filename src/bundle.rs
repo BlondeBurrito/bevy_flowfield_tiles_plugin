@@ -242,6 +242,9 @@ mod tests {
 		let _ = b.get_map_dimensions();
 		let _ = b.get_route_cache();
 		let _ = b.get_flowfield_cache();
+		let mut b = FlowFieldTilesBundle::new(30, 30, 10, 0.5);
+		let _ = b.get_route_cache_mut();
+		let _ = b.get_flowfield_cache_mut();
 	}
 	#[test]
 	fn new_bundle_from_ron() {
