@@ -110,8 +110,8 @@ fn user_input(
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 3d world positionn of cursor
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -122,7 +122,7 @@ fn user_input(
 			.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y))
 			.map(|distance| ray_3d.get_point(distance))
 		{
-			let map_dimensions = dimensions_q.get_single().unwrap();
+			let map_dimensions = dimensions_q.single().unwrap();
 			info!("World cursor position: {:?}", world_position);
 			if let Some((target_sector_id, goal_id)) =
 				map_dimensions.get_sector_and_field_cell_from_xyz(world_position)
@@ -131,7 +131,7 @@ fn user_input(
 					"Cursor sector_id {:?}, goal_id in sector {:?}",
 					target_sector_id, goal_id
 				);
-				let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
+				let (tform, mut pathing) = actor_q.single_mut().unwrap();
 				let (source_sector_id, source_field_cell) = map_dimensions
 					.get_sector_and_field_cell_from_xyz(tform.translation)
 					.unwrap();
@@ -139,7 +139,7 @@ fn user_input(
 					"Actor sector_id {:?}, goal_id in sector {:?}",
 					source_sector_id, source_field_cell
 				);
-				event.send(EventPathRequest::new(
+				event.write(EventPathRequest::new(
 					source_sector_id,
 					source_field_cell,
 					target_sector_id,
@@ -160,9 +160,9 @@ fn user_input(
 }
 /// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
-	let mut pathing = actor_q.get_single_mut().unwrap();
+	let mut pathing = actor_q.single_mut().unwrap();
 	if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-		let route_cache = route_q.get_single().unwrap();
+		let route_cache = route_q.single().unwrap();
 		if let Some(route) = route_cache.get_route(
 			pathing.source_sector.unwrap(),
 			pathing.source_field_cell.unwrap(),
@@ -182,8 +182,8 @@ fn actor_steering(
 	mut actor_q: Query<(&mut Velocity, &mut Transform, &mut Pathing), With<Actor>>,
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
 ) {
-	let (mut velocity, tform, mut pathing) = actor_q.get_single_mut().unwrap();
-	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
+	let (mut velocity, tform, mut pathing) = actor_q.single_mut().unwrap();
+	let (flow_cache, map_dimensions) = flow_cache_q.single().unwrap();
 
 	if pathing.target_goal.is_some() {
 		let op_target_sector = pathing.target_sector;

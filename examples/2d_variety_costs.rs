@@ -40,8 +40,10 @@ struct Actor;
 
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands) {
-	let mut proj = OrthographicProjection::default_2d();
-	proj.scale = 2.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
 	cmds.spawn((Camera2d, proj));
 	let map_length = 1920;
 	let map_depth = 1920;
@@ -137,8 +139,8 @@ fn user_input(
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 2d world positionn of cursor
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -146,12 +148,12 @@ fn user_input(
 		else {
 			return;
 		};
-		let map_dimensions = dimensions_q.get_single().unwrap();
+		let map_dimensions = dimensions_q.single().unwrap();
 		if map_dimensions
 			.get_sector_and_field_cell_from_xy(world_position)
 			.is_some()
 		{
-			let mut pathing = actor_q.get_single_mut().unwrap();
+			let mut pathing = actor_q.single_mut().unwrap();
 			// update the actor pathing
 			pathing.target_position = Some(world_position);
 			pathing.target_sector = None;

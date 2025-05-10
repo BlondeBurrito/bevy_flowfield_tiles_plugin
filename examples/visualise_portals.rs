@@ -29,8 +29,10 @@ struct FieldCellLabel(usize, usize);
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let sprite_dimension = 64.0;
-	let mut proj = OrthographicProjection::default_2d();
-	proj.scale = 2.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
 	cmds.spawn((Camera2d, proj));
 	// let dir = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/csv/vis_portals/";
 	// let sector_cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, dir);
@@ -124,8 +126,8 @@ fn click_update_cost(
 	mut event: EventWriter<EventUpdateCostfieldsCell>,
 ) {
 	if input.just_released(MouseButton::Left) {
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -133,7 +135,7 @@ fn click_update_cost(
 		else {
 			return;
 		};
-		let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
+		let (map_dimensions, cost_fields) = dimensions_q.single().unwrap();
 		if let Some((sector_id, field_cell)) =
 			map_dimensions.get_sector_and_field_cell_from_xy(world_position)
 		{
@@ -141,7 +143,7 @@ fn click_update_cost(
 			let value = cost_field.get_field_cell_value(field_cell);
 			if value == 255 {
 				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
-				event.send(e);
+				event.write(e);
 				// remove collider from tile
 				for (sector_label, field_label, mut sprite) in &mut tile_q {
 					if (sector_label.0, sector_label.1) == sector_id.get()
@@ -152,7 +154,7 @@ fn click_update_cost(
 				}
 			} else {
 				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
-				event.send(e);
+				event.write(e);
 				// add collider to tile
 				for (sector_label, field_label, mut sprite) in &mut tile_q {
 					if (sector_label.0, sector_label.1) == sector_id.get()
@@ -199,7 +201,7 @@ fn create_counter(mut cmds: Commands) {
 /// Update the counters for FPS, number of actors, time elapased and current fields cached
 fn update_counter(sector_portals_q: Query<&SectorPortals>, mut query: Query<&mut TextSpan>) {
 	let mut portal_count = 0;
-	let sp = sector_portals_q.get_single().unwrap();
+	let sp = sector_portals_q.single().unwrap();
 	for portals in sp.get().values() {
 		let ords = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
 		for ord in ords.iter() {

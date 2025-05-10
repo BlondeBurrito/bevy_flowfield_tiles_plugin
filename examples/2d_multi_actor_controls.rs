@@ -59,8 +59,10 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let sector_resolution = 640;
 	let actor_size = 16.0;
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-	let mut proj = OrthographicProjection::default_2d();
-	proj.scale = 2.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
 	cmds.spawn((Camera2d, proj));
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
@@ -168,8 +170,8 @@ fn user_input(
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 2d world positionn of cursor
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -177,7 +179,7 @@ fn user_input(
 		else {
 			return;
 		};
-		let map_dimensions = dimensions_q.get_single().unwrap();
+		let map_dimensions = dimensions_q.single().unwrap();
 		if map_dimensions
 			.get_sector_and_field_cell_from_xy(world_position)
 			.is_some()
@@ -195,8 +197,8 @@ fn user_input(
 	}
 	if mouse_button_input.just_released(MouseButton::Left) {
 		// get 2d world positionn of cursor
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -204,7 +206,7 @@ fn user_input(
 		else {
 			return;
 		};
-		let map_dimensions = dimensions_q.get_single().unwrap();
+		let map_dimensions = dimensions_q.single().unwrap();
 		if map_dimensions
 			.get_sector_and_field_cell_from_xy(world_position)
 			.is_some()

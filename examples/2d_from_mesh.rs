@@ -39,8 +39,10 @@ fn main() {
 
 /// Init
 fn setup(mut cmds: Commands) {
-	let mut proj = OrthographicProjection::default_2d();
-	proj.scale = 2.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
 	cmds.spawn((Camera2d, proj));
 }
 

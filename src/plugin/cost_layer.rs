@@ -81,7 +81,7 @@ pub fn process_costfields_updates(
 				dimensions,
 			);
 		}
-		event_cache_clean.send(EventCleanCaches(*sector_id));
+		event_cache_clean.write(EventCleanCaches(*sector_id));
 	}
 }
 
@@ -185,7 +185,7 @@ pub fn clean_cache(
 			}
 			// send events to regenerate routes
 			for metadata in to_purge.iter() {
-				event_path_request.send(EventPathRequest::new(
+				event_path_request.write(EventPathRequest::new(
 					metadata.get_source_sector(),
 					metadata.get_source_field_cell(),
 					metadata.get_target_sector(),

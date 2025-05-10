@@ -5,11 +5,10 @@ pub mod cost_field;
 pub mod flow_field;
 pub mod integration_field;
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Duration};
 
 use crate::prelude::*;
 use bevy::prelude::*;
-use bevy::utils::Duration;
 
 /// Defines required access to field arrays
 pub trait Field<T> {

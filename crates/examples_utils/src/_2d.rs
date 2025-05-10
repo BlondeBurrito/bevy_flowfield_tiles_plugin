@@ -18,6 +18,7 @@ pub enum Layer {
 }
 
 // weird bug when using #derive where it thinks the crate bevy_xpbd_3d is being used >(
+#[cfg(not(tarpaulin_include))]
 impl PhysicsLayer for Layer {
 	fn to_bits(&self) -> u32 {
 		match self {
@@ -103,7 +104,7 @@ pub fn get_or_request_route<T: Component>(
 	mut actor_q: Query<(&Transform, &mut Pathing), With<T>>,
 	mut event: EventWriter<EventPathRequest>,
 ) {
-	let (route_cahe, map_dimensions) = route_q.get_single().unwrap();
+	let (route_cahe, map_dimensions) = route_q.single().unwrap();
 	for (tform, mut pathing) in &mut actor_q {
 		if let Some(target) = pathing.target_position {
 			// actor has no route, look one up or request one
@@ -125,7 +126,7 @@ pub fn get_or_request_route<T: Component>(
 							pathing.portal_route = Some(route.get().clone());
 						} else {
 							// request a route
-							event.send(EventPathRequest::new(
+							event.write(EventPathRequest::new(
 								source_sector,
 								source_field,
 								target_sector,
@@ -150,7 +151,7 @@ pub fn actor_steering<T: Component>(
 	flow_cache_q: Query<(&FlowFieldCache, &MapDimensions)>,
 	time_step: Res<Time>,
 ) {
-	let (flow_cache, map_dimensions) = flow_cache_q.get_single().unwrap();
+	let (flow_cache, map_dimensions) = flow_cache_q.single().unwrap();
 	for (mut velocity, tform, mut pathing) in actor_q.iter_mut() {
 		let op_target_sector = pathing.target_sector;
 		// lookup the overarching route
