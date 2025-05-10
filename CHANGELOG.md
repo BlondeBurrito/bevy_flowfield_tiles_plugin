@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.12] - 2024-12-21
+## [0.13] - 2025-05-10
+
+### Features
+
+- Updated to bevy 0.16
+
+
+
+
+## [0.12.0] - 2024-12-21
 
 ### Features
 
