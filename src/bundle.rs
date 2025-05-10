@@ -235,7 +235,13 @@ mod tests {
 	}
 	#[test]
 	fn new_bundle() {
-		let _ = FlowFieldTilesBundle::new(30, 30, 10, 0.5);
+		let b = FlowFieldTilesBundle::new(30, 30, 10, 0.5);
+		let _ = b.get_sector_cost_fields();
+		let _ = b.get_sector_portals();
+		let _ = b.get_portal_graph();
+		let _ = b.get_map_dimensions();
+		let _ = b.get_route_cache();
+		let _ = b.get_flowfield_cache();
 	}
 	#[test]
 	fn new_bundle_from_ron() {

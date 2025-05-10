@@ -18,6 +18,7 @@ pub enum Layer {
 }
 
 // weird bug when using #derive where it thinks the crate bevy_xpbd_3d is being used >(
+#[cfg(not(tarpaulin_include))]
 impl PhysicsLayer for Layer {
 	fn to_bits(&self) -> u32 {
 		match self {
