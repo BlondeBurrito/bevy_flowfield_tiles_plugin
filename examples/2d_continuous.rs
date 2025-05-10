@@ -12,13 +12,13 @@ use examples_utils::_2d::{
 
 use avian2d::prelude::*;
 use bevy_flowfield_tiles_plugin::prelude::*;
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 
 fn main() {
 	App::new()
 		.add_plugins((
 			DefaultPlugins,
-			FrameTimeDiagnosticsPlugin,
+			FrameTimeDiagnosticsPlugin::default(),
 			PhysicsPlugins::default(),
 			// PhysicsDebugPlugin::default(),
 		))
@@ -61,8 +61,10 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		FlowFieldTilesBundle::from_ron(map_length, map_depth, sector_resolution, actor_size, &path);
 	// use the bundle before spawning it to help create the sprites
 	let map_dimensions = bundle.get_map_dimensions();
-	let mut proj = OrthographicProjection::default_2d();
-	proj.scale = 2.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
 	cmds.spawn((Camera2d, proj));
 	let sector_cost_fields = bundle.get_sector_cost_fields();
 	let fields = sector_cost_fields.get_baseline();
@@ -128,10 +130,8 @@ fn spawn_actors(
 		(8, 0),
 		(9, 0),
 	];
-	let starting_sector = starting_sectors.choose(&mut rand::thread_rng()).unwrap();
-	let starting_field = starting_field_cells
-		.choose(&mut rand::thread_rng())
-		.unwrap();
+	let starting_sector = starting_sectors.choose(&mut rand::rng()).unwrap();
+	let starting_field = starting_field_cells.choose(&mut rand::rng()).unwrap();
 	let start_y = 928.0;
 	let start_x = ((-928 + starting_sector.0 * 640) + (starting_field.0 * 64)) as f32;
 
@@ -149,10 +149,10 @@ fn spawn_actors(
 		(8, 9),
 		(9, 9),
 	];
-	let target_sector = target_sectors.choose(&mut rand::thread_rng()).unwrap();
-	let target_field_cell = target_field_cells.choose(&mut rand::thread_rng()).unwrap();
+	let target_sector = target_sectors.choose(&mut rand::rng()).unwrap();
+	let target_field_cell = target_field_cells.choose(&mut rand::rng()).unwrap();
 
-	let map_data = map.get_single().unwrap();
+	let map_data = map.single().unwrap();
 	if let Some((sector_id, field)) =
 		map_data.get_sector_and_field_cell_from_xy(Vec2::new(start_x, start_y))
 	{
@@ -169,7 +169,7 @@ fn spawn_actors(
 			has_los: false,
 		};
 		// request a path
-		event.send(EventPathRequest::new(sector_id, field, t_sector, t_field));
+		event.write(EventPathRequest::new(sector_id, field, t_sector, t_field));
 		// spawn the actor which cna read the path later
 		cmds.spawn((
 			Sprite {
@@ -202,7 +202,7 @@ fn despawn_at_destination(
 			if (target - position).length_squared() < 36.0 {
 				// within 6 pixels of target
 				// so despawn
-				cmds.entity(entity).despawn_recursive();
+				cmds.entity(entity).despawn();
 			}
 		}
 	}
@@ -216,17 +216,17 @@ fn despawn_tunneled_actors(
 	actor_q: Query<(Entity, &Transform), With<Actor>>,
 	map: Query<&MapDimensions>,
 ) {
-	let dimensions = map.get_single().unwrap();
+	let dimensions = map.single().unwrap();
 	for (entity, tform) in &actor_q {
 		if tform.translation.x > (dimensions.get_length() as f32 / 2.0)
 			|| tform.translation.x < -(dimensions.get_length() as f32 / 2.0)
 		{
-			cmds.entity(entity).despawn_recursive();
+			cmds.entity(entity).despawn();
 		}
 		if tform.translation.y > (dimensions.get_depth() as f32 / 2.0)
 			|| tform.translation.y < -(dimensions.get_depth() as f32 / 2.0)
 		{
-			cmds.entity(entity).despawn_recursive();
+			cmds.entity(entity).despawn();
 		}
 	}
 }

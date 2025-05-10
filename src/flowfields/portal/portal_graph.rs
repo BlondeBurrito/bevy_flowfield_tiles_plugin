@@ -8,8 +8,8 @@
 
 use crate::prelude::*;
 use bevy::{
+	platform::collections::{HashMap, HashSet},
 	prelude::*,
-	utils::{HashMap, HashSet},
 };
 
 /// Used to provide a heuristic for portals that sit next to each other across

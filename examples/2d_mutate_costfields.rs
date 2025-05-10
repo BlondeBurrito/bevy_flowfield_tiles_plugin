@@ -15,14 +15,14 @@ use examples_utils::_2d::{
 	actor_steering, check_if_route_exhausted, create_wall_colliders, get_or_request_route, Layer,
 	Pathing, FIELD_SPRITE_DIMENSION,
 };
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 
 fn main() {
 	App::new()
 		.add_plugins((
 			DefaultPlugins,
-			FrameTimeDiagnosticsPlugin,
 			PhysicsPlugins::default(),
+			FrameTimeDiagnosticsPlugin::default(),
 			// PhysicsDebugPlugin::default(),
 		))
 		.insert_resource(SubstepCount(6))
@@ -72,8 +72,10 @@ fn setup(mut cmds: Commands) {
 	let bundle = FlowFieldTilesBundle::new(map_length, map_depth, sector_resolution, actor_size);
 	// use the bundle before spawning it to help create the sprites
 	let map_dimensions = bundle.get_map_dimensions();
-	let mut proj = OrthographicProjection::default_2d();
-	proj.scale = 2.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
 	cmds.spawn((Camera2d, proj));
 	let sector_cost_fields = bundle.get_sector_cost_fields();
 	let fields = sector_cost_fields.get_baseline();
@@ -124,8 +126,8 @@ fn click_update_cost(
 	spatial_query: SpatialQuery,
 ) {
 	if input.just_released(MouseButton::Left) {
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -133,7 +135,7 @@ fn click_update_cost(
 		else {
 			return;
 		};
-		let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
+		let (map_dimensions, cost_fields) = dimensions_q.single().unwrap();
 		if let Some((sector_id, field_cell)) =
 			map_dimensions.get_sector_and_field_cell_from_xy(world_position)
 		{
@@ -141,7 +143,7 @@ fn click_update_cost(
 			let value = cost_field.get_field_cell_value(field_cell);
 			if value == 255 {
 				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
-				event.send(e);
+				event.write(e);
 				// remove collider from tile
 				for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
 					if (sector_label.0, sector_label.1) == sector_id.get()
@@ -165,7 +167,7 @@ fn click_update_cost(
 					return;
 				}
 				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
-				event.send(e);
+				event.write(e);
 				// add collider to tile
 				for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
 					if (sector_label.0, sector_label.1) == sector_id.get()
@@ -213,10 +215,8 @@ fn spawn_actors(
 		(8, 0),
 		(9, 0),
 	];
-	let starting_sector = starting_sectors.choose(&mut rand::thread_rng()).unwrap();
-	let starting_field = starting_field_cells
-		.choose(&mut rand::thread_rng())
-		.unwrap();
+	let starting_sector = starting_sectors.choose(&mut rand::rng()).unwrap();
+	let starting_field = starting_field_cells.choose(&mut rand::rng()).unwrap();
 	let start_y = 928.0;
 	let start_x = ((-928 + starting_sector.0 * 640) + (starting_field.0 * 64)) as f32;
 
@@ -234,10 +234,10 @@ fn spawn_actors(
 		(8, 9),
 		(9, 9),
 	];
-	let target_sector = target_sectors.choose(&mut rand::thread_rng()).unwrap();
-	let target_field_cell = target_field_cells.choose(&mut rand::thread_rng()).unwrap();
+	let target_sector = target_sectors.choose(&mut rand::rng()).unwrap();
+	let target_field_cell = target_field_cells.choose(&mut rand::rng()).unwrap();
 
-	let map_data = map.get_single().unwrap();
+	let map_data = map.single().unwrap();
 	if let Some((sector_id, field)) =
 		map_data.get_sector_and_field_cell_from_xy(Vec2::new(start_x, start_y))
 	{
@@ -254,7 +254,7 @@ fn spawn_actors(
 			has_los: false,
 		};
 		// request a path
-		event.send(EventPathRequest::new(sector_id, field, t_sector, t_field));
+		event.write(EventPathRequest::new(sector_id, field, t_sector, t_field));
 		// spawn the actor which can read the path later
 		cmds.spawn((
 			Sprite {
@@ -310,7 +310,7 @@ fn despawn_at_destination(
 			if (target - position).length_squared() < 36.0 {
 				// within 6 pixels of target
 				// so despawn
-				cmds.entity(entity).despawn_recursive();
+				cmds.entity(entity).despawn();
 			}
 		}
 	}
@@ -325,17 +325,17 @@ fn despawn_tunneled_actors(
 	actor_q: Query<(Entity, &Transform), With<Actor>>,
 	map: Query<&MapDimensions>,
 ) {
-	let dimensions = map.get_single().unwrap();
+	let dimensions = map.single().unwrap();
 	for (entity, tform) in &actor_q {
 		if tform.translation.x > (dimensions.get_length() as f32 / 2.0)
 			|| tform.translation.x < -(dimensions.get_length() as f32 / 2.0)
 		{
-			cmds.entity(entity).despawn_recursive();
+			cmds.entity(entity).despawn();
 		}
 		if tform.translation.y > (dimensions.get_depth() as f32 / 2.0)
 			|| tform.translation.y < -(dimensions.get_depth() as f32 / 2.0)
 		{
-			cmds.entity(entity).despawn_recursive();
+			cmds.entity(entity).despawn();
 		}
 	}
 }

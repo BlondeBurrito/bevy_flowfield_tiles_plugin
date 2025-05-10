@@ -59,8 +59,10 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let sector_resolution = 640;
 	let actor_size = 16.0;
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-	let mut proj = OrthographicProjection::default_2d();
-	proj.scale = 2.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
 	cmds.spawn((Camera2d, proj));
 	// let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let path =
@@ -158,8 +160,8 @@ fn user_input(
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 2d world positionn of cursor
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -167,12 +169,12 @@ fn user_input(
 		else {
 			return;
 		};
-		let map_dimensions = dimensions_q.get_single().unwrap();
+		let map_dimensions = dimensions_q.single().unwrap();
 		if map_dimensions
 			.get_sector_and_field_cell_from_xy(world_position)
 			.is_some()
 		{
-			let mut pathing = actor_q.get_single_mut().unwrap();
+			let mut pathing = actor_q.single_mut().unwrap();
 			// update the actor pathing
 			pathing.target_position = Some(world_position);
 			pathing.target_sector = None;
@@ -203,9 +205,9 @@ fn update_sprite_visuals_based_on_actor(
 	mut field_cell_q: Query<(&mut Sprite, &FieldCellLabel, &SectorLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
-	let f_cache = flowfield_q.get_single().unwrap();
-	let sc_cache = costfield_q.get_single().unwrap();
-	let pathing = actor_q.get_single().unwrap();
+	let f_cache = flowfield_q.single().unwrap();
+	let sc_cache = costfield_q.single().unwrap();
+	let pathing = actor_q.single().unwrap();
 	if let Some(route) = &pathing.portal_route {
 		let mut route_map: HashMap<SectorID, FieldCell> = HashMap::new();
 		for (s, g) in route.iter() {
@@ -284,8 +286,8 @@ fn click_update_cost(
 	mut event: EventWriter<EventUpdateCostfieldsCell>,
 ) {
 	if input.just_released(MouseButton::Left) {
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -293,7 +295,7 @@ fn click_update_cost(
 		else {
 			return;
 		};
-		let (map_dimensions, cost_fields) = dimensions_q.get_single().unwrap();
+		let (map_dimensions, cost_fields) = dimensions_q.single().unwrap();
 		if let Some((sector_id, field_cell)) =
 			map_dimensions.get_sector_and_field_cell_from_xy(world_position)
 		{
@@ -301,7 +303,7 @@ fn click_update_cost(
 			let value = cost_field.get_field_cell_value(field_cell);
 			if value == 255 {
 				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
-				event.send(e);
+				event.write(e);
 				// remove collider from tile
 				for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
 					if (sector_label.0, sector_label.1) == sector_id.get()
@@ -315,7 +317,7 @@ fn click_update_cost(
 				}
 			} else {
 				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
-				event.send(e);
+				event.write(e);
 				// add collider to tile
 				for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
 					if (sector_label.0, sector_label.1) == sector_id.get()

@@ -58,8 +58,10 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_depth = 1920;
 	let sector_resolution = 640;
 	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, ACTOR_SIZE);
-	let mut proj = OrthographicProjection::default_2d();
-	proj.scale = 2.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
 	cmds.spawn((Camera2d, proj));
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
@@ -152,8 +154,8 @@ fn user_input(
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 2d world positionn of cursor
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -161,12 +163,12 @@ fn user_input(
 		else {
 			return;
 		};
-		let map_dimensions = dimensions_q.get_single().unwrap();
+		let map_dimensions = dimensions_q.single().unwrap();
 		if map_dimensions
 			.get_sector_and_field_cell_from_xy(world_position)
 			.is_some()
 		{
-			let mut pathing = actor_q.get_single_mut().unwrap();
+			let mut pathing = actor_q.single_mut().unwrap();
 			// update the actor pathing
 			pathing.target_position = Some(world_position);
 			pathing.target_sector = None;
@@ -197,9 +199,9 @@ fn update_sprite_visuals_based_on_actor(
 	mut field_cell_q: Query<(&mut Sprite, &FieldCellLabel, &SectorLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
-	let f_cache = flowfield_q.get_single().unwrap();
-	let sc_cache = costfield_q.get_single().unwrap();
-	let pathing = actor_q.get_single().unwrap();
+	let f_cache = flowfield_q.single().unwrap();
+	let sc_cache = costfield_q.single().unwrap();
+	let pathing = actor_q.single().unwrap();
 	if let Some(route) = &pathing.portal_route {
 		let mut route_map: HashMap<SectorID, FieldCell> = HashMap::new();
 		for (s, g) in route.iter() {

@@ -94,8 +94,8 @@ fn user_input(
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 2d world positionn of cursor
-		let (camera, camera_transform) = camera_q.single();
-		let window = windows.single();
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
 			return;
 		};
@@ -103,7 +103,7 @@ fn user_input(
 		else {
 			return;
 		};
-		let map_dimensions = dimensions_q.get_single().unwrap();
+		let map_dimensions = dimensions_q.single().unwrap();
 		info!("World cursor position: {}", world_position);
 		if let Some((target_sector_id, goal_id)) =
 			map_dimensions.get_sector_and_field_cell_from_xy(world_position)
@@ -112,7 +112,7 @@ fn user_input(
 				"Cursor sector_id {:?}, goal_id in sector {:?}",
 				target_sector_id, goal_id
 			);
-			let (tform, mut pathing) = actor_q.get_single_mut().unwrap();
+			let (tform, mut pathing) = actor_q.single_mut().unwrap();
 			let (source_sector_id, source_field_cell) = map_dimensions
 				.get_sector_and_field_cell_from_xy(tform.translation.truncate())
 				.unwrap();
@@ -120,7 +120,7 @@ fn user_input(
 				"Actor sector_id {:?}, goal_id in sector {:?}",
 				source_sector_id, source_field_cell
 			);
-			event.send(EventPathRequest::new(
+			event.write(EventPathRequest::new(
 				source_sector_id,
 				source_field_cell,
 				target_sector_id,
@@ -139,9 +139,9 @@ fn user_input(
 }
 /// There is a delay between the actor sending a path request and a route becoming available. This checks to see if the route is available and adds a copy to the actor
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<Actor>>, route_q: Query<&RouteCache>) {
-	let mut pathing = actor_q.get_single_mut().unwrap();
+	let mut pathing = actor_q.single_mut().unwrap();
 	if pathing.target_goal.is_some() && pathing.portal_route.is_none() {
-		let route_cache = route_q.get_single().unwrap();
+		let route_cache = route_q.single().unwrap();
 		if let Some(route) = route_cache.get_route(
 			pathing.source_sector.unwrap(),
 			pathing.source_field_cell.unwrap(),
@@ -161,7 +161,7 @@ fn update_sprite_visuals_based_on_actor(
 	asset_server: Res<AssetServer>,
 ) {
 	for pathing in &actor_q {
-		let cache = flowfield_q.get_single().unwrap();
+		let cache = flowfield_q.single().unwrap();
 		if let Some(route) = &pathing.portal_route {
 			let op_flowfield =
 				cache.get_field(route[0].0, pathing.target_sector.unwrap(), route[0].1);
