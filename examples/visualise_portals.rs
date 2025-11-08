@@ -123,7 +123,7 @@ fn click_update_cost(
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	dimensions_q: Query<(&MapDimensions, &SectorCostFields)>,
-	mut event: EventWriter<EventUpdateCostfieldsCell>,
+	mut event: MessageWriter<EventUpdateCostfieldsCell>,
 ) {
 	if input.just_released(MouseButton::Left) {
 		let (camera, camera_transform) = camera_q.single().unwrap();

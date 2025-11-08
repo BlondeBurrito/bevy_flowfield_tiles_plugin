@@ -747,7 +747,7 @@ impl SectorCostFields {
 }
 /// From a triple floating point representation of a mesh retreive a list of the edges as index pairs
 fn retrieve_mesh_edges(mesh: &&Mesh, vertex_points: &[[f32; 3]]) -> Vec<MeshTriEdge<usize>> {
-	use bevy::render::mesh::PrimitiveTopology;
+	use bevy::mesh::PrimitiveTopology;
 	let indices = mesh.indices().unwrap();
 	let indices_slice: Vec<usize> = indices.iter().collect();
 	let mut edge_indices = vec![];
@@ -987,10 +987,8 @@ impl EdgeLine {
 // #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
-	use bevy::render::{
-		mesh::{Indices, PrimitiveTopology},
-		render_asset::RenderAssetUsages,
-	};
+	use bevy::asset::RenderAssetUsages;
+	use bevy::mesh::{Indices, PrimitiveTopology};
 
 	use super::*;
 	#[test]

@@ -28,9 +28,9 @@ impl Plugin for FlowFieldTilesPlugin {
 			.register_type::<FieldCell>()
 			.register_type::<RouteMetadata>()
 			.register_type::<FlowFieldMetadata>()
-			.add_event::<cost_layer::EventUpdateCostfieldsCell>()
-			.add_event::<cost_layer::EventCleanCaches>()
-			.add_event::<flow_layer::EventPathRequest>()
+			.add_message::<cost_layer::EventUpdateCostfieldsCell>()
+			.add_message::<cost_layer::EventCleanCaches>()
+			.add_message::<flow_layer::EventPathRequest>()
 			.configure_sets(
 				PreUpdate,
 				(OrderingSet::Tidy, OrderingSet::Calculate).chain(),

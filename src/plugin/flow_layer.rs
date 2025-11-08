@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 /// A request to queue up an attempt at generating a Route and a series of
 /// [FlowField]s describing a path from the source to target
-#[derive(Event)]
+#[derive(Message)]
 pub struct EventPathRequest {
 	/// The starting sector of the request
 	source_sector: SectorID,
@@ -37,7 +37,7 @@ impl EventPathRequest {
 /// Process [EventPathRequest] and generate Routes to go into the [RouteCache] queue
 #[cfg(not(tarpaulin_include))]
 pub fn event_insert_route_queue(
-	mut events: EventReader<EventPathRequest>,
+	mut events: MessageReader<EventPathRequest>,
 	mut cache_q: Query<(
 		&mut RouteCache,
 		&PortalGraph,

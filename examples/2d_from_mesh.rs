@@ -8,11 +8,9 @@
 //TODO figure out way to "bridge" adhacent meshes to create a contiguous pathable area
 
 use bevy::{
+	asset::RenderAssetUsages,
+	mesh::{Indices, PrimitiveTopology},
 	prelude::*,
-	render::{
-		mesh::{Indices, PrimitiveTopology},
-		render_asset::RenderAssetUsages,
-	},
 };
 use examples_utils::_2d::create_wall_colliders;
 
