@@ -102,7 +102,7 @@ pub struct Pathing {
 pub fn get_or_request_route<T: Component>(
 	route_q: Query<(&RouteCache, &MapDimensions)>,
 	mut actor_q: Query<(&Transform, &mut Pathing), With<T>>,
-	mut event: EventWriter<EventPathRequest>,
+	mut event: MessageWriter<EventPathRequest>,
 ) {
 	let (route_cahe, map_dimensions) = route_q.single().unwrap();
 	for (tform, mut pathing) in &mut actor_q {

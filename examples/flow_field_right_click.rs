@@ -90,7 +90,7 @@ fn user_input(
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	dimensions_q: Query<&MapDimensions>,
 	mut actor_q: Query<(&Transform, &mut Pathing), With<Actor>>,
-	mut event: EventWriter<EventPathRequest>,
+	mut event: MessageWriter<EventPathRequest>,
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
 		// get 2d world positionn of cursor

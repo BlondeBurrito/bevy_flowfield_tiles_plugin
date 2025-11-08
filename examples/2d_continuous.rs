@@ -114,7 +114,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 fn spawn_actors(
 	mut cmds: Commands,
 	map: Query<&MapDimensions>,
-	mut event: EventWriter<EventPathRequest>,
+	mut event: MessageWriter<EventPathRequest>,
 ) {
 	// pick a start
 	let starting_sectors = [(0, 0), (1, 0), (2, 0)];

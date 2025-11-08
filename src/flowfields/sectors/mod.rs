@@ -255,7 +255,7 @@ impl MapDimensions {
 		// NB: use a negative Y here, as row ID goes from 0..n it's approaching the negative Y of real space
 		let sector_origin = Vec2::new(
 			(sector.get_column() * self.get_sector_resolution()) as f32,
-			(sector.get_row() * self.get_sector_resolution()) as f32 * -1.0,
+			-((sector.get_row() * self.get_sector_resolution()) as f32),
 		);
 		// now we know the real-space coordinates of the top left corner of the sector
 		let xy_of_sector_top_left = sector_grid_origin_offset + sector_origin;
@@ -267,7 +267,7 @@ impl MapDimensions {
 		// NB: use negative Y here, as row ID goes form 0..n it's approaching negative Y of real-space
 		let cell_position = Vec2::new(
 			field.get_column() as f32 * cell_size + cell_size / 2.0,
-			(field.get_row() as f32 * cell_size + cell_size / 2.0) * -1.0,
+			-(field.get_row() as f32 * cell_size + cell_size / 2.0),
 		);
 
 		let real_space_pos = xy_of_sector_top_left + cell_position;

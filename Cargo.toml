@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.13.0"
+version = "0.14.0"
 authors = ["BlondeBurrito"]
 edition = "2021"
 rust-version = "1.85"
@@ -16,7 +16,7 @@ members = ["crates/*"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.16", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
+bevy = { version = "0.17", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
 serde = { version = "1", features = ["derive"] }
 ron = { version = "0.10" }
 csv = { version = "1" }
@@ -50,7 +50,7 @@ publish = true
 criterion = "0.5"
 bevy = { workspace = true, default-features = true, features=["wayland"]}
 rand = "0.9"
-avian2d = { version = "0.3", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+avian2d = { version = "0.4", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
 # avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
 examples_utils = { path = "crates/examples_utils" }
 

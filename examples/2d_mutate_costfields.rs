@@ -122,7 +122,7 @@ fn click_update_cost(
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	dimensions_q: Query<(&MapDimensions, &SectorCostFields)>,
-	mut event: EventWriter<EventUpdateCostfieldsCell>,
+	mut event: MessageWriter<EventUpdateCostfieldsCell>,
 	spatial_query: SpatialQuery,
 ) {
 	if input.just_released(MouseButton::Left) {
@@ -191,7 +191,7 @@ fn click_update_cost(
 fn spawn_actors(
 	mut cmds: Commands,
 	map: Query<&MapDimensions>,
-	mut event: EventWriter<EventPathRequest>,
+	mut event: MessageWriter<EventPathRequest>,
 	actors_q: Query<&Actor>,
 ) {
 	let mut a_count = 0;

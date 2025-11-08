@@ -7,7 +7,7 @@ use crate::prelude::*;
 use bevy::prelude::*;
 
 /// Used to update a sectors [CostField]
-#[derive(Event)]
+#[derive(Message)]
 pub struct EventUpdateCostfieldsCell {
 	/// FieldCell to update
 	cell: FieldCell,
@@ -44,14 +44,14 @@ impl EventUpdateCostfieldsCell {
 /// Read [EventUpdateCostfieldsCell] and update the values within [CostField]
 #[cfg(not(tarpaulin_include))]
 pub fn process_costfields_updates(
-	mut events: EventReader<EventUpdateCostfieldsCell>,
+	mut events: MessageReader<EventUpdateCostfieldsCell>,
 	mut query: Query<(
 		&mut PortalGraph,
 		&mut SectorPortals,
 		&mut SectorCostFields,
 		&MapDimensions,
 	)>,
-	mut event_cache_clean: EventWriter<EventCleanCaches>,
+	mut event_cache_clean: MessageWriter<EventCleanCaches>,
 ) {
 	// coalesce events to avoid processing duplicates
 	let mut coalesced_sectors = Vec::new();
@@ -86,16 +86,16 @@ pub fn process_costfields_updates(
 }
 
 /// For the given sector any route or [FlowField] making use of it needs to have the cached entry removed and a new request made to regenerate the route
-#[derive(Event)]
+#[derive(Message)]
 pub struct EventCleanCaches(SectorID);
 
 /// Lookup any cached data records making use of sectors that have had their [CostField] adjusted and remove them from the cache
 #[cfg(not(tarpaulin_include))]
 pub fn clean_cache(
-	mut events: EventReader<EventCleanCaches>,
+	mut events: MessageReader<EventCleanCaches>,
 	mut q_flow: Query<&mut FlowFieldCache>,
 	mut q_route: Query<&mut RouteCache>,
-	mut event_path_request: EventWriter<EventPathRequest>,
+	mut event_path_request: MessageWriter<EventPathRequest>,
 ) {
 	let mut sectors = Vec::new();
 	for event in events.read() {

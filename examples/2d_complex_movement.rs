@@ -15,7 +15,7 @@ fn main() {
 		.add_plugins((
 			DefaultPlugins,
 			PhysicsPlugins::default(),
-			PhysicsDebugPlugin::default(),
+			PhysicsDebugPlugin,
 		))
 		.insert_resource(SubstepCount(30))
 		.insert_resource(Gravity(Vec2::ZERO))
