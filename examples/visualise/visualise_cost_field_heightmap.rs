@@ -14,7 +14,7 @@ fn main() {
 		.run();
 }
 /// Init world
-fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut cmds: Commands) {
 	// setup the field
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/heightmap.png";
 	let map_dimensions = MapDimensions::new(960, 960, 320, 1.0);
@@ -77,8 +77,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 								p.spawn((
 									Text::new(value.to_string()),
 									TextFont {
-										font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-										font_size: 13.0,
+										font: FontSource::Monospace,
+										font_size: FontSize::Px(13.0),
 										..default()
 									},
 									TextColor(Color::BLACK),

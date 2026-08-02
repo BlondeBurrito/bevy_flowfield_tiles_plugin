@@ -52,13 +52,15 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut tform = Transform::from_translation(Vec3::new(0.0, 40.0, 10.0));
 	tform.look_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y);
 	cmds.spawn((Camera3d::default(), tform));
-	cmds.spawn(SceneRoot(asset_server.load("3d/3d_map.gltf#Scene0")));
+	cmds.spawn(WorldAssetRoot(
+		asset_server.load(GltfAssetLabel::Scene(0).from_asset("3d/3d_map.gltf")),
+	));
 	cmds.spawn((
 		Transform::from_xyz(0.0, 50.0, 0.0),
 		PointLight {
 			intensity: 9000.0,
 			range: 100.,
-			shadows_enabled: true,
+			shadow_maps_enabled: true,
 			..default()
 		},
 	));

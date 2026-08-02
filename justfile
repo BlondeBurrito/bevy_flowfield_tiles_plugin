@@ -1,5 +1,5 @@
 # very useful command line runner - https://github.com/casey/just
-set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set shell := ["pwsh.exe", "-NoLogo", "-Command"]
 alias c := clippy
 alias d := doc
 alias db := debug

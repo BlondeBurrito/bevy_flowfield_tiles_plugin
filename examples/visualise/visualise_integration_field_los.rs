@@ -1,5 +1,6 @@
-//! Calculates an [IntegrationField] from a [CostField] and displays the cell
-//! cost values in a UI grid
+//! Calculates an [IntegrationField] as far the the Line-of-Sight calcualtion
+//! layer and displays which cells are LOS, impassable and wavefront blocked
+//! (unreachable cells due to blocking are labeled '?')
 //!
 
 use bevy::prelude::*;
@@ -12,7 +13,7 @@ fn main() {
 		.run();
 }
 /// Init world
-fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut cmds: Commands) {
 	// calculate the field
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
 	let cost_field = CostField::from_ron(path);
@@ -20,7 +21,6 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let mut int_field = IntegrationField::new(&goal, &cost_field);
 	let active_wavefront = vec![goal];
 	int_field.calculate_sector_goal_los(&active_wavefront, &goal);
-	int_field.calculate_field(&cost_field);
 	// create a UI grid
 	cmds.spawn(Camera2d);
 	cmds.spawn((
@@ -67,10 +67,10 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 						})
 						.with_children(|p| {
 							p.spawn((
-								Text::new((value & INT_FILTER_BITS_COST).to_string()),
+								Text::new(convert_integration_flags(*value)),
 								TextFont {
-									font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-									font_size: 15.0,
+									font: FontSource::Monospace,
+									font_size: FontSize::Px(15.0),
 									..default()
 								},
 								TextColor(Color::BLACK),
@@ -81,4 +81,21 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			}
 		});
 	});
+}
+/// Using the integration flags derive a character symbol to represent the value
+fn convert_integration_flags(value: u32) -> String {
+	let flags = value & INT_FILTER_BITS_FLAGS;
+	if flags & INT_BITS_GOAL == INT_BITS_GOAL {
+		String::from("G")
+	} else if flags & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
+		String::from("X")
+	} else if flags & INT_BITS_CORNER == INT_BITS_CORNER {
+		String::from("C")
+	} else if flags & INT_BITS_LOS == INT_BITS_LOS {
+		String::from("LOS")
+	} else if flags & INT_BITS_WAVE_BLOCKED == INT_BITS_WAVE_BLOCKED {
+		String::from("WB")
+	} else {
+		String::from("?")
+	}
 }

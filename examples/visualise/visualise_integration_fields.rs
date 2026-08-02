@@ -13,7 +13,7 @@ fn main() {
 		.run();
 }
 /// Init world
-fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut cmds: Commands) {
 	// calculate the fields
 	let map_dimensions = MapDimensions::new(30, 30, 10, 1.0);
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
@@ -125,9 +125,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 															.to_string(),
 													),
 													TextFont {
-														font: asset_server
-															.load("fonts/FiraSans-Bold.ttf"),
-														font_size: 10.0,
+														font: FontSource::Monospace,
+														font_size: FontSize::Px(10.0),
 														..default()
 													},
 													TextColor(Color::BLACK),

@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.14.0"
+version = "0.15.0"
 authors = ["BlondeBurrito"]
 edition = "2021"
 rust-version = "1.85"
@@ -16,9 +16,9 @@ members = ["crates/*"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.17", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
+bevy = { version = "0.19", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
 serde = { version = "1", features = ["derive"] }
-ron = { version = "0.10" }
+ron = { version = "0.12" }
 csv = { version = "1" }
 photon-rs = { version = "0.3"}
 
@@ -48,9 +48,9 @@ publish = true
 
 [dev-dependencies]
 criterion = "0.5"
-bevy = { workspace = true, default-features = true, features=["wayland"]}
+bevy = { workspace = true, default-features = true, features=["wayland", "system_font_discovery"]}
 rand = "0.9"
-avian2d = { version = "0.4", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+avian2d = { version = "0.7", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d examples for collision detection
 # avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
 examples_utils = { path = "crates/examples_utils" }
 
@@ -129,90 +129,90 @@ harness = false
 
 [[example]]
 name = "visualise_cost_field"
-path = "examples/visualise_cost_field.rs"
+path = "examples/visualise/visualise_cost_field.rs"
 required-features = ["ron"]
 
 [[example]]
 name = "visualise_cost_field_heightmap"
-path = "examples/visualise_cost_field_heightmap.rs"
+path = "examples/visualise/visualise_cost_field_heightmap.rs"
 required-features = ["heightmap"]
 
 [[example]]
 name = "visualise_portals"
-path = "examples/visualise_portals.rs"
+path = "examples/visualise/visualise_portals.rs"
 required-features = ["csv", "2d"]
 
 [[example]]
 name = "visualise_integration_field_los"
-path = "examples/visualise_integration_field_los.rs"
+path = "examples/visualise/visualise_integration_field_los.rs"
 required-features = ["ron"]
 
 [[example]]
 name = "visualise_integration_field"
-path = "examples/visualise_integration_field.rs"
+path = "examples/visualise/visualise_integration_field.rs"
 required-features = ["ron"]
 
 [[example]]
 name = "visualise_integration_fields"
-path = "examples/visualise_integration_fields.rs"
+path = "examples/visualise/visualise_integration_fields.rs"
 required-features = ["ron"]
 
 [[example]]
 name = "visualise_flow_field_tiles"
-path = "examples/visualise_flow_field_tiles.rs"
+path = "examples/visualise/visualise_flow_field_tiles.rs"
 required-features = ["ron"]
 
 [[example]]
 name = "flow_field_right_click"
-path = "examples/flow_field_right_click.rs"
+path = "examples/visualise/flow_field_right_click.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_with_steering"
-path = "examples/2d_with_steering.rs"
+path = "examples/2d/2d_with_steering.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_variety_costs"
-path = "examples/2d_variety_costs.rs"
+path = "examples/2d/2d_variety_costs.rs"
 required-features = ["heightmap", "2d"]
 
 [[example]]
 name = "2d_complex_movement"
-path = "examples/2d_complex_movement.rs"
+path = "examples/2d/2d_complex_movement.rs"
 required-features = ["csv", "2d"]
 
 [[example]]
 name = "2d_multi_actor"
-path = "examples/2d_multi_actor.rs"
+path = "examples/2d/2d_multi_actor.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_multi_actor_controls"
-path = "examples/2d_multi_actor_controls.rs"
+path = "examples/2d/2d_multi_actor_controls.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_mutate_costfields"
-path = "examples/2d_mutate_costfields.rs"
+path = "examples/2d/2d_mutate_costfields.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
-name = "3d_actor_movement"
-path = "examples/3d_actor_movement.rs"
-required-features = ["ron", "3d"]
-
-[[example]]
 name = "2d_continuous"
-path = "examples/2d_continuous.rs"
+path = "examples/2d/2d_continuous.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_large_actor"
-path = "examples/2d_large_actor.rs"
+path = "examples/2d/2d_large_actor.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_from_mesh"
-path = "examples/2d_from_mesh.rs"
+path = "examples/2d/2d_from_mesh.rs"
 required-features = ["2d"]
+
+[[example]]
+name = "3d_actor_movement"
+path = "examples/3d/3d_actor_movement.rs"
+required-features = ["ron", "3d"]

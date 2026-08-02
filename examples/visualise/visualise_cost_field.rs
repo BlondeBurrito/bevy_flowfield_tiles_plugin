@@ -11,7 +11,7 @@ fn main() {
 		.run();
 }
 /// Init world
-fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut cmds: Commands) {
 	// setup the field
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
 	let cost_field = CostField::from_ron(path);
@@ -63,8 +63,8 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 							p.spawn((
 								Text::new(value.to_string()),
 								TextFont {
-									font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-									font_size: 15.0,
+									font: FontSource::Monospace,
+									font_size: FontSize::Px(15.0),
 									..default()
 								},
 								TextColor(Color::BLACK),
