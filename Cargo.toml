@@ -1,8 +1,8 @@
 [workspace.package]
 version = "0.15.0"
 authors = ["BlondeBurrito"]
-edition = "2021"
-rust-version = "1.85"
+edition = "2024"
+rust-version = "1.97"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
