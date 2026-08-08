@@ -79,7 +79,7 @@ impl Ordinal {
 				//
 				//
 				let (col, row) = field_cell.get_column_row();
-				if col + row == FIELD_RESOLUTION {
+				if col + row == FIELD_RESOLUTION - 1 {
 					(
 						SectorID::new(1, -1),
 						FieldCell::new(0, FIELD_RESOLUTION - 1),

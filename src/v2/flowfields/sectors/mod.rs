@@ -37,7 +37,8 @@ impl SectorID {
 	}
 	/// Get the [SectorID] in an [Ordinal] direction a number of `steps` away from self
 	///
-	/// Warning: the calculated sector may not exist and should be verified after computation
+	/// Warning: the calculated sector may not exist and should be verified after
+	/// computation
 	pub fn get_in_ordinal_direction(&self, ordinal: &Ordinal, steps: usize) -> SectorID {
 		let steps = steps as i32;
 		match ordinal {
@@ -51,6 +52,22 @@ impl SectorID {
 			Ordinal::NorthWest => SectorID::new(self.column - steps, self.row - steps),
 			Ordinal::Zero => panic!("Ordinal::Zero should never be used to sector stepping"),
 		}
+	}
+	/// Get all possible [SectorID] around `self`, including diagonals
+	///
+	/// Warning: some calculated sectors may not exist and should be verified
+	/// after computation
+	pub fn get_surrounding_sectors(&self) -> [SectorID; 8] {
+		[
+			self.get_in_ordinal_direction(&Ordinal::North, 1),
+			self.get_in_ordinal_direction(&Ordinal::East, 1),
+			self.get_in_ordinal_direction(&Ordinal::South, 1),
+			self.get_in_ordinal_direction(&Ordinal::West, 1),
+			self.get_in_ordinal_direction(&Ordinal::NorthEast, 1),
+			self.get_in_ordinal_direction(&Ordinal::SouthEast, 1),
+			self.get_in_ordinal_direction(&Ordinal::SouthWest, 1),
+			self.get_in_ordinal_direction(&Ordinal::NorthWest, 1),
+		]
 	}
 }
 

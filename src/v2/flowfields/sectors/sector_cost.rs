@@ -174,25 +174,14 @@ impl SectorCostFields {
 			field.set_field_cell_value(cost, *field_cell);
 			*self.scaled.get_mut(sector).unwrap() = field.clone();
 		}
-		// reset the scaled field of the sectors around the mutated one
-		let ordinals = [
-			Ordinal::North,
-			Ordinal::East,
-			Ordinal::South,
-			Ordinal::West,
-			Ordinal::NorthEast,
-			Ordinal::SouthEast,
-			Ordinal::SouthWest,
-			Ordinal::NorthWest,
-		];
 		let mut adjacent_sectors = vec![];
-		for ordinal in ordinals.iter() {
-			let adjacent = sector.get_in_ordinal_direction(ordinal, 1);
+		for adjacent_sector in sector.get_surrounding_sectors() {
 			// only store valid sector
-			if self.baseline.contains_key(&adjacent) {
-				adjacent_sectors.push(adjacent);
+			if self.baseline.contains_key(&adjacent_sector) {
+				adjacent_sectors.push(adjacent_sector);
 			}
 		}
+		// reset the scaled field of the sectors around the mutated one
 		for adjacent in adjacent_sectors.iter() {
 			if let Some(base_field) = self.baseline.get(adjacent) {
 				*self.scaled.get_mut(adjacent).unwrap() = base_field.clone();
@@ -251,66 +240,6 @@ fn scale_in_ordinal_direction(
 			// close the gap
 			has_hit_wall = true;
 			break;
-		}
-
-		// calc next FieldCell
-		if let Some(new_cell) = origin_cell.get_in_ordinal_direction(ordinal, n as usize) {
-			// if hitting wall then breakout and close the gap
-			let cost = scaled
-				.get(origin_sector_id)
-				.unwrap()
-				.get_field_cell_value(new_cell);
-			if cost == 255 {
-				has_hit_wall = true;
-				break 'scale_loop;
-			} else {
-				fields_to_mark.push((*origin_sector_id, new_cell));
-			}
-		} else {
-			// encountered sector boundary
-			// attempt to propagate remaining steps into neighbouring sector
-			let (sector_delta, entry_cell) = ordinal.get_sector_cell_entry(&origin_cell);
-			let next_sector = SectorID::new(
-				origin_sector_id.column + sector_delta.column,
-				origin_sector_id.row + sector_delta.row,
-			);
-			let steps_remaining = scale_count - n;
-			if let Some(next_field) = scaled.get_mut(&next_sector) {
-				// begin walking in the neighbour sector
-				for a in 0..=steps_remaining {
-					// given that actor scale never exceeds field len we don't
-					// need to worry about walking into any more
-					// adjacent sectors
-					if let Some(new_cell) = entry_cell.get_in_ordinal_direction(ordinal, a as usize)
-					{
-						// if hitting wall then breakout and close the gap
-						let cost = next_field.get_field_cell_value(new_cell);
-						if cost == 255 {
-							has_hit_wall = true;
-							break 'scale_loop;
-						} else {
-							fields_to_mark.push((next_sector, new_cell));
-						}
-					} else {
-						// encountered another sector boundary
-						// attempt to propagate remaining steps into neighbouring sector
-						// due to actor scale constraint this is the only extra time
-						// a different sector may be entered
-						let (sector_delta, entry_cell) =
-							ordinal.get_sector_cell_entry(&origin_cell);
-						let next_sector = SectorID::new(
-							origin_sector_id.column + sector_delta.column,
-							origin_sector_id.row + sector_delta.row,
-						);
-						let steps_remaining = scale_count - n;
-					}
-				}
-			} else {
-				// next sector is not valid, stop walking
-				// but mark cells as we've hit a world boundary so the gap should be closed
-				has_hit_wall = true;
-				break;
-			}
 		}
 	}
 	if has_hit_wall {
@@ -404,6 +333,33 @@ mod tests {
 		let result = sector_costs
 			.scaled
 			.get(&mutate_sector)
+			.unwrap()
+			.get_field_cell_value(scaled_cell);
+		assert!(result == 255)
+	}
+
+	// scale across sector boundary to ensure gap is closed
+	#[test]
+	fn scale_across_fields1() {
+		let origin = (0.0, 0.0);
+		let size = (20.0, 20.0);
+		let world_unit_size = 1.0;
+		let actor_size = 1.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let mut sector_costs = SectorCostFields::new(&dimensions);
+		// create a wall gap that should be filled in by scaling
+		let mutate_sector1 = SectorID::new(0, 0);
+		let mutate_cell1 = FieldCell::new(9, 3);
+		let mutate_sector2 = SectorID::new(1, 0);
+		let mutate_cell2 = FieldCell::new(1, 5);
+		let cost = 255;
+		sector_costs.set_field_cost(&mutate_sector1, &mutate_cell1, cost, &dimensions);
+		sector_costs.set_field_cost(&mutate_sector2, &mutate_cell2, cost, &dimensions);
+
+		let scaled_cell = FieldCell::new(0, 4);
+		let result = sector_costs
+			.scaled
+			.get(&mutate_sector2)
 			.unwrap()
 			.get_field_cell_value(scaled_cell);
 		assert!(result == 255)

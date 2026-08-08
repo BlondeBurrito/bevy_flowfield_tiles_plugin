@@ -1,5 +1,23 @@
 //! A Portal indicates a pathable area from one Sector to another.
 //!
+//! ```txt
+//!  ____________ ____________ ____________ ____________
+//! |            |            |            |            |
+//! |            |            |            |            |
+//! |            |            |            |            |
+//! |            |            |            |            |
+//! |____________|____________|____________|____________|
+//! |            |            |            |            |
+//! |            |            |            |            |
+//! |         p<-|->p<---->p<-|->p         |            |
+//! |            |            |            |            |
+//! |____________|____________|____________|____________|
+//! |            |            |            |            |
+//! |            |            |            |            |
+//! |            |            |            |            |
+//! |            |            |            |            |
+//! |____________|____________|____________|____________|
+//! ```
 
 pub mod portal_graph;
 pub mod portals;
@@ -7,7 +25,7 @@ pub mod portals;
 use std::collections::BTreeMap;
 
 use bevy::prelude::*;
-use petgraph::{Directed, graph::NodeIndex, stable_graph::StableGraph};
+use petgraph::{Directed, Undirected, graph::NodeIndex, stable_graph::StableGraph};
 
 use crate::v2::flowfields::{
 	fields::{Field, FieldCell, cost_field::CostField},
@@ -117,7 +135,7 @@ pub struct Portals {
 	#[reflect(ignore)] //TODO
 	nodes: BTreeMap<PortalNode, NodeIndex<u32>>,
 	#[reflect(ignore)] //TODO
-	graph: StableGraph<i32, i32, Directed, u32>,
+	graph: StableGraph<i32, i32, Undirected, u32>,
 }
 
 impl Portals {
@@ -179,18 +197,23 @@ impl Portals {
 	}
 	/// When [CostField]s are changed the modified sector and its neighbours
 	/// should have their portals recalculated
-	pub fn update_portals(&mut self, sectors: &[SectorID], sector_costs: &SectorCostFields) {
+	pub fn update_portals(&mut self, sector: &SectorID, sector_costs: &SectorCostFields) {
+		// identify sectors around sector
+		let mut sectors = vec![*sector];
+		for s in sector.get_surrounding_sectors() {
+			if sector_costs.get_scaled_costs().contains_key(&s) {
+				sectors.push(s);
+			}
+		}
 		// remove nodes and recalculate portals
 		let portals = &mut self.portals;
 		let nodes = &mut self.nodes;
 		let portal_graph = &mut self.graph;
 		let scaled_costs = sector_costs.get_scaled_costs();
 		let cost_graphs = sector_costs.get_graphs();
-		for sector in sectors {
+		for sector in sectors.iter() {
 			// remove windows and nodes
 			remove_sector_nodes_and_windows(sector, portals, nodes, portal_graph);
-			// }
-			// for sector in sectors {
 			// recalculate portals
 			let origin_field = scaled_costs.get(sector).unwrap();
 			generate_sector_portals(portals, scaled_costs, sector, origin_field);
@@ -202,7 +225,7 @@ impl Portals {
 		}
 		// once effected sectors have portals regenerated and internal edges created,
 		// reestablish external edges
-		for sector in sectors {
+		for sector in sectors.iter() {
 			let windows = portals.get(sector).unwrap();
 			generate_sector_external_edges(sector, windows, nodes, portal_graph, portals);
 		}
@@ -288,7 +311,7 @@ fn walk_sector_boundary(
 fn generate_sector_nodes(
 	sector_id: &SectorID,
 	windows: &Windows,
-	portal_graph: &mut StableGraph<i32, i32, Directed, u32>,
+	portal_graph: &mut StableGraph<i32, i32, Undirected, u32>,
 	nodes: &mut BTreeMap<PortalNode, NodeIndex<u32>>,
 ) {
 	let ordinals = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
@@ -311,7 +334,7 @@ fn generate_sector_internal_edges(
 	windows: &Windows,
 	nodes: &BTreeMap<PortalNode, NodeIndex<u32>>,
 	cost_graphs: &BTreeMap<SectorID, StableGraph<u8, u8, Directed, u16>>,
-	portal_graph: &mut StableGraph<i32, i32, Directed, u32>,
+	portal_graph: &mut StableGraph<i32, i32, Undirected, u32>,
 ) {
 	// create a list of all the PortalWindow
 	let mut window_list: Vec<PortalWindow> = vec![];
@@ -355,7 +378,11 @@ fn generate_sector_internal_edges(
 				};
 				let this_node_index = nodes.get(&this_node).unwrap();
 				let other_node_index = nodes.get(&other_node).unwrap();
-				portal_graph.add_edge(*this_node_index, *other_node_index, path_cost as i32);
+				// edges are undirected so only add an edge if it doesn't exist
+				//TODO: do this check early to avoid unnecessary astar?
+				if !portal_graph.contains_edge(*this_node_index, *other_node_index) {
+					portal_graph.add_edge(*this_node_index, *other_node_index, path_cost as i32);
+				}
 			}
 		}
 	}
@@ -367,7 +394,7 @@ fn generate_sector_external_edges(
 	sector: &SectorID,
 	windows: &Windows,
 	nodes: &BTreeMap<PortalNode, NodeIndex<u32>>,
-	portal_graph: &mut StableGraph<i32, i32, Directed, u32>,
+	portal_graph: &mut StableGraph<i32, i32, Undirected, u32>,
 	portals: &BTreeMap<SectorID, Windows>,
 ) {
 	let ordinals = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
@@ -401,8 +428,11 @@ fn generate_sector_external_edges(
 				// extract the graph indices
 				if let Some(this_node_index) = nodes.get(&this_portal_node) {
 					if let Some(adjacent_node_index) = nodes.get(&adjacent_portal_node) {
-						// create the directed edge from this to adjacent
-						portal_graph.add_edge(*this_node_index, *adjacent_node_index, 1);
+						// edges are undirected, only add if one doesn't exist
+						if !portal_graph.contains_edge(*this_node_index, *adjacent_node_index) {
+							// create the directed edge from this to adjacent
+							portal_graph.add_edge(*this_node_index, *adjacent_node_index, 1);
+						}
 					}
 				}
 			}
@@ -415,7 +445,7 @@ fn remove_sector_nodes_and_windows(
 	sector: &SectorID,
 	portals: &mut BTreeMap<SectorID, Windows>,
 	nodes: &mut BTreeMap<PortalNode, NodeIndex<u32>>,
-	portal_graph: &mut StableGraph<i32, i32, Directed, u32>,
+	portal_graph: &mut StableGraph<i32, i32, Undirected, u32>,
 ) {
 	let windows = portals.get_mut(sector).unwrap();
 	let portal_windows = windows.remove_all();
@@ -778,6 +808,17 @@ mod tests {
 		assert!(0 == s1_west.len());
 	}
 
+	//  ____________ ____________
+	// |            |            |
+	// |            |            |
+	// |           p|p           |
+	// |     p      |     p      |
+	// |____________|____________|
+	// |     p      |     p      |
+	// |            |            |
+	// |           p|p           |
+	// |            |            |
+	// |____________|____________|
 	#[test]
 	fn default_node_edge_count() {
 		let origin = (0.0, 0.0);
@@ -792,12 +833,24 @@ mod tests {
 		let result_node_count = portals.graph.node_count();
 		assert_eq!(actual_node_count, result_node_count);
 
-		let actual_edge_count = 16;
+		let actual_edge_count = 8;
 		let result_edge_count = portals.graph.edge_count();
 		assert_eq!(actual_edge_count, result_edge_count);
 	}
 
 	// check nodes and edges when the SectorCost begins with a wall
+	//
+	//  ____________ ____________
+	// |            |            |
+	// |            |            |
+	// |           p|p           |
+	// |     p      |     p      |
+	// |____________|____________|
+	// |     p      |     p      |
+	// |           p|p           |
+	// |            |X           |
+	// |           p|p           |
+	// |____________|____________|
 	#[test]
 	fn graph_counts_initial_wall() {
 		let origin = (0.0, 0.0);
@@ -819,11 +872,22 @@ mod tests {
 		let result_node_count = portals.graph.node_count();
 		assert_eq!(actual_node_count, result_node_count);
 
-		let actual_edge_count = 26;
+		let actual_edge_count = 13;
 		let result_edge_count = portals.graph.edge_count();
 		assert_eq!(actual_edge_count, result_edge_count);
 	}
 
+	//  ____________ ____________
+	// |            |            |
+	// |            |            |
+	// |            |p           |
+	// |            |     p      |
+	// |____________|____________|
+	// |     p      |     p      |
+	// |            |            |
+	// |           p|p           |
+	// |            |            |
+	// |____________|____________|
 	#[test]
 	fn remove_nodes() {
 		let origin = (0.0, 0.0);
@@ -841,14 +905,32 @@ mod tests {
 		}
 
 		assert!(6 == portals.graph.node_count());
-		assert!(10 == portals.graph.edge_count());
+		assert!(5 == portals.graph.edge_count());
 	}
 
 	// generate portals, then update SectorCosts, then update portals
+	// internal_edges:top(1+3+3+1), bottom(1+3+3+1),S[3,1](3)...6,10,6
+	// external_edges:18
+	//  ____________ ____________ ____________ ____________
+	// |            |            |            |            |
+	// |            |            |            |            |
+	// |           p|p          p|p          p|p           |
+	// |     p      |     p      |     p      |     p      |
+	// |____________|____________|____________|____________|
+	// |     p      |     p      |     p      |     p      |
+	// |           p|p           |            |            |
+	// |            |X          p|p          p|p           |
+	// |     p     p|p    p      |     p      |     p      |
+	// |____________|____________|____________|____________|
+	// |     p      |     p      |     p      |     p      |
+	// |            |            |            |            |
+	// |           p|p          p|p          p|p           |
+	// |            |            |            |            |
+	// |____________|____________|____________|____________|
 	#[test]
 	fn graph_updated() {
 		let origin = (0.0, 0.0);
-		let size = (20.0, 20.0);
+		let size = (40.0, 30.0);
 		let world_unit_size = 1.0;
 		let actor_size = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
@@ -862,24 +944,17 @@ mod tests {
 			&dimensions,
 		);
 
-		portals.update_portals(
-			&[
-				SectorID::new(1, 1),
-				SectorID::new(1, 0),
-				SectorID::new(0, 1),
-			],
-			&sector_costs,
-		);
+		portals.update_portals(&SectorID::new(1, 1), &sector_costs);
 
 		println!("Windows {:?}", portals.portals);
 		println!("Nodes: {:?}", portals.nodes);
 		println!("Edges {:?}", portals.graph.edge_indices());
 
-		let actual_node_count = 10;
+		let actual_node_count = 36;
 		let result_node_count = portals.graph.node_count();
 		assert_eq!(actual_node_count, result_node_count);
 
-		let actual_edge_count = 26;
+		let actual_edge_count = 59;
 		let result_edge_count = portals.graph.edge_count();
 		assert_eq!(actual_edge_count, result_edge_count);
 	}
