@@ -18,9 +18,11 @@ members = ["crates/*"]
 [workspace.dependencies]
 bevy = { version = "0.19", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
 serde = { version = "1", features = ["derive"] }
+serde-big-array = { version = "0.5" }
 ron = { version = "0.12" }
 csv = { version = "1" }
 photon-rs = { version = "0.3"}
+petgraph = { version = "0.8", default-features = false, features = ["std", "stable_graph", "serde-1"] }
 
 [workspace.lints.clippy]
 cargo_common_metadata = "deny"
@@ -56,16 +58,18 @@ examples_utils = { path = "crates/examples_utils" }
 
 [dependencies]
 bevy = { workspace = true, features = ["bevy_render", "wayland"] }
-serde = { workspace = true, optional = true}
-ron = { workspace = true, optional = true}
-csv = { workspace = true, optional = true}
-photon-rs = {workspace = true, optional = true}
+petgraph = { workspace = true }
+serde = { workspace = true, optional = true }
+serde-big-array = { workspace = true, optional = true }
+ron = { workspace = true, optional = true }
+csv = { workspace = true, optional = true }
+photon-rs = {workspace = true, optional = true }
 
 [lints]
 workspace = true
 
 [features]
-serde = ["dep:serde"]
+serde = ["dep:serde", "dep:serde-big-array"]
 ron = ["serde", "dep:ron"]
 csv = ["serde", "dep:csv"]
 2d = []

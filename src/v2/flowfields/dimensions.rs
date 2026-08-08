@@ -1,0 +1,447 @@
+//! Defines the world size
+//!
+
+use bevy::prelude::*;
+
+use crate::v2::flowfields::utilities::{FIELD_RESOLUTION, Ordinal};
+use crate::v2::flowfields::{fields::FieldCell, sectors::SectorID};
+
+/// The dimensions and scaling of the world
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Component, Default, Clone, Copy, Reflect)]
+#[reflect(Component)]
+pub struct Dimensions {
+	/// The origin point of your game world. This is used to translate a point from Bevy global space into a [SectorID] and [FieldCell], and back
+	///
+	/// ## In 3d
+	///
+	/// This is taken as an `(x, z)` point in space
+	///
+	/// ## In 2d
+	///
+	/// This is taken as an `(x, y)` point in space
+	origin: (f32, f32),
+	/// Dimensions of the world
+	///
+	/// ## In 3d
+	///
+	/// This is taken as `(x, z)` length of the world, imagine a birds eye view of a world
+	///
+	/// ## In 2d
+	///
+	/// This is taken as the `(x, y)` length of the world
+	size: (f32, f32),
+	/// A unit of space, this forms the basis of the dimensions of a [FieldCell]
+	/// and influences the number of sectors computed
+	world_unit_size: f32,
+	/// Actor size influences the expansion of [CostField] impassable cells to
+	/// ensure that Actors avoid trying to path through small gaps which they
+	/// can't fit through - hence an alternative route will be explored to go
+	/// around small gaps
+	actor_scale: u32,
+}
+
+impl Dimensions {
+	/// Create a new instance of [MapDimensions].
+	pub fn new(
+		origin: (f32, f32),
+		size: (f32, f32),
+		world_unit_size: f32,
+		actor_size: f32,
+	) -> Self {
+		if size.0 <= 0.0 || size.1 <= 0.0 {
+			panic!(
+				"Size must be greater than 0.0, found size({}, {})",
+				size.0, size.1
+			)
+		}
+		if actor_size <= 0.0 {
+			panic!("Actor size cannot be less than zero");
+		}
+		if world_unit_size <= 0.0 {
+			panic!("World unit size must be more than zero")
+		}
+		let sector_len = world_unit_size * FIELD_RESOLUTION as f32;
+		let sector_columns = size.0 / sector_len;
+		let sector_rows = size.1 / sector_len;
+		if sector_columns < 1.0 || sector_rows < 1.0 {
+			panic!(
+				"world unit size x {} must be an exact factor of `size`",
+				FIELD_RESOLUTION
+			);
+		}
+		if actor_size >= sector_len {
+			panic!(
+				"actor_size cannot be bigger than the length of a sector. Sector length {}, actor size {}",
+				sector_len, actor_size
+			);
+		}
+		let actor_scale = (actor_size / world_unit_size).ceil() as u32;
+		if actor_scale >= 10 {
+			panic!("Actors cannot be larger than an entire sector");
+		}
+		Dimensions {
+			origin,
+			size,
+			world_unit_size,
+			actor_scale,
+		}
+	}
+	/// Get the size tuple of the world
+	pub fn get_size(&self) -> (f32, f32) {
+		self.size
+	}
+	/// Number of `x` units in size
+	pub fn get_length(&self) -> f32 {
+		self.size.0
+	}
+	/// 2d: number of `y` units in size
+	///
+	/// 3d: number of `z` units in size
+	pub fn get_depth(&self) -> f32 {
+		self.size.1
+	}
+	pub fn get_unit_scale(&self) -> f32 {
+		self.world_unit_size
+	}
+	pub fn get_actor_scale(&self) -> u32 {
+		self.actor_scale
+	}
+	/// Based on `size` and unit size calculate the number of [`FieldCell`] columns across all sectors
+	pub fn get_total_field_cell_columns(&self) -> usize {
+		(self.get_length() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as usize
+			* FIELD_RESOLUTION
+	}
+	/// Based on `size` and unit size calculate the number of [`FieldCell`] rows across all sectors
+	pub fn get_total_field_cell_rows(&self) -> usize {
+		(self.get_depth() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as usize
+			* FIELD_RESOLUTION
+	}
+	/// Get the number of sector columns
+	pub fn get_sector_column_count(&self) -> usize {
+		(self.get_length() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as usize
+	}
+	/// Get the number of sector rows
+	pub fn get_sector_row_count(&self) -> usize {
+		(self.get_depth() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as usize
+	}
+
+	/// From a global position in 2D `x, y` calculate the sector ID that point resides in
+	#[cfg(feature = "2d")]
+	pub fn get_sector_id_from_xy(&self, position: Vec2) -> Option<SectorID> {
+		let sector_len = self.world_unit_size * FIELD_RESOLUTION as f32;
+		// find the global point in space for Sector (0, 0) based on the global origin
+		let top_left = Vec2::new(self.size.0 / -2.0, self.size.1 / 2.0)
+			+ Vec2::new(self.origin.0, self.origin.1);
+		// find the bottom corner
+		let bottom_right = Vec2::new(self.size.0 / 2.0, self.size.1 / -2.0)
+			+ Vec2::new(self.origin.0, self.origin.1);
+		// ensure position is within bounds
+		if position.x < top_left.x
+			|| position.x > bottom_right.x
+			|| position.y > top_left.y
+			|| position.y < bottom_right.y
+		{
+			error!(
+				"Position is out of bounds of MapDimensions, x {}, y {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?",
+				position.x, position.y
+			);
+			//TODO use Result instead
+			return None;
+		}
+		// get the vector size from fields origin to position
+		let to_pos = (position - top_left).abs();
+		// the lengths of this vector when divided by the size of a sector reveal the sector ID
+		let col = (to_pos.x / sector_len).floor();
+		let row = (to_pos.y / sector_len).floor();
+		Some(SectorID::new(col as i32, row as i32))
+	}
+
+	/// Get the `(x,y)` coordinates of the top left corner of a sector in global space
+	#[cfg(feature = "2d")]
+	pub fn get_sector_corner_xy(&self, sector_id: SectorID) -> Vec2 {
+		let sector_len = self.world_unit_size * FIELD_RESOLUTION as f32;
+		// find the global point in space for Sector (0, 0) based on the global origin
+		let top_left = Vec2::new(self.size.0 / -2.0, self.size.1 / 2.0)
+			+ Vec2::new(self.origin.0, self.origin.1);
+
+		let relative_offset = Vec2::new(
+			sector_id.get_column() as f32 * sector_len,
+			sector_id.get_row() as f32 * -sector_len,
+		);
+
+		top_left + relative_offset
+	}
+	//TODO return Result
+	/// From a 2d position get the sector and field cell it resides in
+	#[cfg(feature = "2d")]
+	pub fn get_sector_and_field_cell_from_xy(
+		&self,
+		position: Vec2,
+	) -> Option<(SectorID, FieldCell)> {
+		if let Some(sector_id) = self.get_sector_id_from_xy(position) {
+			let sector_corner_origin = self.get_sector_corner_xy(sector_id);
+			let field_id_0 =
+				((position.x - sector_corner_origin.x) / self.world_unit_size).floor() as usize;
+			let field_id_1 =
+				((-position.y + sector_corner_origin.y) / self.world_unit_size).floor() as usize;
+			let field_id = FieldCell::new(field_id_0, field_id_1);
+			return Some((sector_id, field_id));
+		}
+		None
+	}
+	/// From a field cell within a Sector retrieve the 2d Vec2 of its
+	/// position. If the position sits outside of the world then [None] is
+	/// returned
+	#[cfg(feature = "2d")]
+	pub fn get_xy_from_field_sector(&self, sector: SectorID, field: FieldCell) -> Option<Vec2> {
+		let sector_xy = self.get_sector_corner_xy(sector);
+		let f_col = field.get_column() as f32;
+		let f_row = field.get_row() as f32;
+
+		let f_offset = Vec2::new(f_col * self.world_unit_size, -f_row * self.world_unit_size);
+		// point in space for top-left corner of the field cell
+		let point = sector_xy + f_offset;
+		if point.x.abs() > self.origin.0 + self.get_length() / 2.0
+			|| point.y.abs() > self.origin.1 + self.get_depth() / 2.0
+		{
+			None
+		} else {
+			Some(point)
+		}
+	}
+
+	/// From a field cell within a Sector retrieve the 2d (x-z) Vec3 of its
+	/// position. If the position is outside of the world then [None] is
+	/// returned
+	///
+	/// The `y` coordinate is defaulted to `0.0`.
+	#[cfg(feature = "3d")]
+	pub fn get_xyz_from_field_sector(&self, sector: SectorID, field: FieldCell) -> Option<Vec3> {
+		let sector_xyz = self.get_sector_corner_xyz(sector);
+		let f_col = field.get_column() as f32;
+		let f_row = field.get_row() as f32;
+
+		let f_offset = Vec3::new(
+			f_col * self.world_unit_size,
+			0.0,
+			f_row * self.world_unit_size,
+		);
+		// point in space for top-left corner of the field cell
+		let point = sector_xyz + f_offset;
+		if point.x.abs() > self.origin.0 + self.get_length() / 2.0
+			|| point.z.abs() > self.origin.1 + self.get_depth() / 2.0
+		{
+			None
+		} else {
+			Some(point)
+		}
+	}
+
+	/// From a position in `x, y, z` space and the dimensions of the map calculate
+	/// the sector ID that point resides in
+	#[cfg(feature = "3d")]
+	pub fn get_sector_id_from_xyz(&self, position: Vec3) -> Option<SectorID> {
+		let sector_len = self.world_unit_size * FIELD_RESOLUTION as f32;
+		// find the global point in space for Sector (0, 0) based on the global origin
+		let top_left = Vec2::new(self.size.0 / -2.0, self.size.1 / -2.0)
+			+ Vec2::new(self.origin.0, self.origin.1);
+		// find the bottom corner
+		let bottom_right = Vec2::new(self.size.0 / 2.0, self.size.1 / 2.0)
+			+ Vec2::new(self.origin.0, self.origin.1);
+		// ensure position is within bounds
+		if position.x < top_left.x
+			|| position.x > bottom_right.x
+			|| position.z < top_left.y
+			|| position.z > bottom_right.y
+		{
+			error!(
+				"Position is out of bounds of MapDimensions, x {}, z {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?",
+				position.x, position.z
+			);
+			//TODO use Result instead
+			return None;
+		}
+		// get the vector size from fields origin to position
+		let to_pos = (position.xz() - top_left).abs();
+		// the lengths of this vector when divided by the size of a sector reveal the sector ID
+		let col = (to_pos.x / sector_len).floor();
+		let row = (to_pos.y / sector_len).floor();
+		Some(SectorID::new(col as i32, row as i32))
+	}
+
+	/// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
+	#[cfg(feature = "3d")]
+	pub fn get_sector_corner_xyz(&self, sector_id: SectorID) -> Vec3 {
+		let sector_len = self.world_unit_size * FIELD_RESOLUTION as f32;
+		// find the global point in space for Sector (0, 0) based on the global origin
+		let top_left = Vec3::new(self.size.0 / -2.0, 0.0, self.size.1 / -2.0)
+			+ Vec3::new(self.origin.0, 0.0, self.origin.1);
+
+		let relative_offset = Vec3::new(
+			sector_id.get_column() as f32 * sector_len,
+			0.0,
+			sector_id.get_row() as f32 * -sector_len,
+		);
+
+		top_left + relative_offset
+	}
+	//TODO return Result
+	/// From a point in 3D space calculate what Sector and field cell it resides in
+	#[cfg(feature = "3d")]
+	pub fn get_sector_and_field_cell_from_xyz(
+		&self,
+		position: Vec3,
+	) -> Option<(SectorID, FieldCell)> {
+		if let Some(sector_id) = self.get_sector_id_from_xyz(position) {
+			let sector_corner_origin = self.get_sector_corner_xyz(sector_id);
+			let field_id_0 =
+				((position.x - sector_corner_origin.x) / self.world_unit_size).floor() as usize;
+			let field_id_1 =
+				((position.z - sector_corner_origin.z) / self.world_unit_size).floor() as usize;
+			let field_id = FieldCell::new(field_id_0, field_id_1);
+			return Some((sector_id, field_id));
+		}
+		None
+	}
+
+	/// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
+	/// of the map retrieve the IDs neighbouring sectors
+	pub fn get_ids_of_neighbouring_sectors(self, sector_id: &SectorID) -> Vec<SectorID> {
+		Ordinal::get_sector_neighbours(
+			sector_id,
+			self.get_length(),
+			self.get_depth(),
+			self.get_unit_scale(),
+		)
+	}
+
+	/// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
+	/// of the map retrieve the IDs neighbouring sectors and the [Ordinal] direction from the
+	/// current sector that that sector is found in
+	pub fn get_ordinal_and_ids_of_neighbouring_sectors(
+		&self,
+		sector_id: &SectorID,
+	) -> Vec<(Ordinal, SectorID)> {
+		Ordinal::get_sector_neighbours_with_ordinal(
+			sector_id,
+			self.get_length(),
+			self.get_depth(),
+			self.get_unit_scale(),
+		)
+	}
+	/// From an [Ordinal] get the ID of a neighbouring sector. Returns [None]
+	/// if the sector would be out of bounds
+	pub fn get_sector_id_from_ordinal(
+		&self,
+		ordinal: Ordinal,
+		sector_id: &SectorID,
+	) -> Option<SectorID> {
+		let sector_column_limit =
+			(self.get_length() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as i32 - 1;
+		let sector_row_limit =
+			(self.get_depth() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as i32 - 1;
+		match ordinal {
+			Ordinal::North => {
+				if sector_id.get_row() - 1 >= 0 {
+					Some(SectorID::new(
+						sector_id.get_column(),
+						sector_id.get_row() - 1,
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::East => {
+				if sector_id.get_column() + 1 <= sector_column_limit {
+					Some(SectorID::new(
+						sector_id.get_column() + 1,
+						sector_id.get_row(),
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::South => {
+				if sector_id.get_row() + 1 <= sector_row_limit {
+					Some(SectorID::new(
+						sector_id.get_column(),
+						sector_id.get_row() + 1,
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::West => {
+				if sector_id.get_column() - 1 >= 0 {
+					Some(SectorID::new(
+						sector_id.get_column() - 1,
+						sector_id.get_row(),
+					))
+				} else {
+					None
+				}
+			}
+			Ordinal::NorthEast => {
+				if sector_id.get_row() - 1 >= 0 {
+					if sector_id.get_column() + 1 <= sector_column_limit {
+						Some(SectorID::new(
+							sector_id.get_column() + 1,
+							sector_id.get_row() - 1,
+						))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::SouthEast => {
+				if sector_id.get_row() + 1 <= sector_row_limit {
+					if sector_id.get_column() + 1 <= sector_column_limit {
+						Some(SectorID::new(
+							sector_id.get_column() + 1,
+							sector_id.get_row() + 1,
+						))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::SouthWest => {
+				if sector_id.get_row() + 1 <= sector_row_limit {
+					if sector_id.get_column() - 1 >= 0 {
+						Some(SectorID::new(
+							sector_id.get_column() - 1,
+							sector_id.get_row() + 1,
+						))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::NorthWest => {
+				if sector_id.get_row() - 1 >= 0 {
+					if sector_id.get_column() - 1 >= 0 {
+						Some(SectorID::new(
+							sector_id.get_column() - 1,
+							sector_id.get_row() - 1,
+						))
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+			Ordinal::Zero => {
+				error!("`get_sector_id_from_ordinal` should never be called with `Ordinal::Zero`");
+				None
+			}
+		}
+	}
+}

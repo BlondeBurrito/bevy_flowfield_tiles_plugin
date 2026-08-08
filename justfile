@@ -53,7 +53,7 @@ bench-compare: build
 debug:
   cargo build --workspace --all-features
 # run tests
-test: debug
+test:
   cargo test --release --workspace --all-features
 # generate documentation
 doc:
