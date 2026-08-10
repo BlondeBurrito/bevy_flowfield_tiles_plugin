@@ -40,3 +40,35 @@ async fn example() -> Option<PathId> {
 	let p = PathBroker::get();
 	p.await
 }
+
+/// Describes and keys into a pathable segment of FlowFields
+pub struct RouteStep {
+	sector: SectorID,
+	/// Goal [FieldCell] as an index
+	goal: usize,
+	/// If Some then the actual goal is a [PortalWindow]. If None then the sector is the end goal sector
+	portal: Option<PortalWindow>,
+}
+
+impl RouteStep {
+	/// Init [RouteStep]
+	pub fn new(sector: &SectorID, goal: usize, portal: Option<PortalWindow>) -> Self {
+		RouteStep {
+			sector: *sector,
+			goal,
+			portal,
+		}
+	}
+	/// Get a reference to the sector
+	pub fn get_sector(&self) -> &SectorID {
+		&self.sector
+	}
+	/// Get the goal of the step
+	pub fn get_goal(&self) -> usize {
+		self.goal
+	}
+	/// Get the portal of the step
+	pub fn portal(&self) -> &Option<PortalWindow> {
+		&self.portal
+	}
+}

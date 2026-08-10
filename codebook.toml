@@ -4,7 +4,10 @@ dictionaries = [
 ]
 words = [
     "Bresenham",
+    "Bresenham's",
+    "Eikonal",
     "FBM",
+    "PDE",
     "SMAA",
     "Sobel",
     "Subpage",
@@ -55,6 +58,7 @@ words = [
     "serde",
     "tform",
     "vsync",
+    "wavefronts",
     "wgpu",
     "wip",
     "wireframes",

@@ -29,6 +29,7 @@ use petgraph::{Directed, Undirected, graph::NodeIndex, stable_graph::StableGraph
 
 use crate::v2::flowfields::{
 	fields::{Field, FieldCell, cost_field::CostField},
+	route_cache::RouteStep,
 	sectors::{SectorID, sector_cost::SectorCostFields},
 	utilities::Ordinal,
 };
@@ -53,6 +54,31 @@ impl PortalWindow {
 			let mid_row = (self.start.get_row() + self.end.get_row()) / 2;
 			FieldCell::new(self.start.get_column(), mid_row)
 		}
+	}
+	/// Get the indices of every cell along the window
+	pub fn get_all_window_cells(&self) -> Vec<usize> {
+		let mut cells = vec![];
+		if self.start == self.end {
+			cells.push(self.start.as_1d_index());
+		} else {
+			// based on column being either the same or different walk along the window
+			if self.start.get_column() != self.end.get_column() {
+				// columns are different so the window runs
+				// left to right, either along the northern boundary
+				// or the southern one
+				for col in self.start.get_column()..=self.end.get_column() {
+					cells.push(FieldCell::new(col, self.start.get_row()).as_1d_index());
+				}
+			} else {
+				// columns are the same so the window runs
+				// top to bottom, either along the eastern ot western boundary
+				for row in self.start.get_row()..=self.end.get_row() {
+					cells.push(FieldCell::new(self.start.get_column(), row).as_1d_index());
+				}
+			}
+		}
+
+		cells
 	}
 }
 
@@ -89,16 +115,16 @@ impl Windows {
 			),
 		}
 	}
-	// /// Get all [PortalWindow]
-	// fn get_all(&self) -> Vec<PortalWindow> {
-	// 	let mut portal_windows: Vec<PortalWindow> = vec![];
-	// 	portal_windows.extend(&self.north);
-	// 	portal_windows.extend(&self.east);
-	// 	portal_windows.extend(&self.south);
-	// 	portal_windows.extend(&self.west);
+	/// Get all [PortalWindow]
+	fn get_all(&self) -> Vec<PortalWindow> {
+		let mut portal_windows: Vec<PortalWindow> = vec![];
+		portal_windows.extend(&self.north);
+		portal_windows.extend(&self.east);
+		portal_windows.extend(&self.south);
+		portal_windows.extend(&self.west);
 
-	// 	portal_windows
-	// }
+		portal_windows
+	}
 	/// Remove all [PortalWindow] and return them
 	fn remove_all(&mut self) -> Vec<PortalWindow> {
 		let mut portal_windows = vec![];
@@ -122,7 +148,7 @@ impl Windows {
 /// Represents a node in the portal graph
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Default, Debug, Clone, Reflect, Ord, PartialOrd, Eq, Copy, PartialEq)]
-struct PortalNode {
+pub struct PortalNode {
 	sector: SectorID,
 	window: PortalWindow,
 }
@@ -228,6 +254,176 @@ impl Portals {
 		for sector in sectors.iter() {
 			let windows = portals.get(sector).unwrap();
 			generate_sector_external_edges(sector, windows, nodes, portal_graph, portals);
+		}
+	}
+	/// Attempt to find a portal-portal path from one sector to another
+	pub fn find_path(
+		&self,
+		source_sector: &SectorID,
+		source_cell: &FieldCell,
+		goal_sector: &SectorID,
+		goal_cell: &FieldCell,
+		sector_costs: &SectorCostFields,
+	) -> Option<Vec<RouteStep>> {
+		// handle source and goal sectors being the same
+		if *source_sector == *goal_sector {
+			// two scenarios
+			// 1) actor can clearly path to the goal
+			let cost_graph = sector_costs.get_graphs().get(source_sector).unwrap();
+			let start = source_cell.as_1d_index() as u16;
+			let end = goal_cell.as_1d_index() as u16;
+			if let Some(_) = petgraph::algo::astar(
+				cost_graph,
+				start.into(),
+				|f| f == end.into(),
+				|e| *e.weight(),
+				|_| 0,
+			) {
+				return Some(vec![RouteStep::new(
+					source_sector,
+					goal_cell.as_1d_index(),
+					None,
+				)]);
+			}
+			// 2) wall across sector, meaning actor needs to path into a different
+			// sector, "go around" and come back in
+			// proceed as normal
+		}
+		//
+		let cost_graphs = sector_costs.get_graphs();
+		let portal_graph = &self.graph;
+
+		// find which source portals are accessible from the source_cell
+		let source_portals = self.portals.get(source_sector).unwrap().get_all();
+		let mut source_nodes = vec![];
+		for window in source_portals.iter() {
+			let midpoint = window.get_midpoint();
+			let cost_graph = cost_graphs.get(source_sector).unwrap();
+			// search for a cell route in the costs graph
+			let start = source_cell.as_1d_index() as u16;
+			let end = midpoint.as_1d_index() as u16;
+			if let Some(_) = petgraph::algo::astar(
+				cost_graph,
+				start.into(),
+				|f| f == end.into(),
+				|e| *e.weight(),
+				|_| 0,
+			) {
+				// lookup the graph node of the portal that's reachable and record it
+				let portal_node = PortalNode {
+					sector: *source_sector,
+					window: *window,
+				};
+				if let Some(graph_node) = self.nodes.get(&portal_node) {
+					source_nodes.push(graph_node);
+				}
+			}
+		}
+
+		// find which portals in the goal sector can reach the target_cell
+		let target_portals = self.portals.get(goal_sector).unwrap().get_all();
+		let mut target_nodes = vec![];
+		for window in target_portals.iter() {
+			let midpoint = window.get_midpoint();
+			let cost_graph = cost_graphs.get(goal_sector).unwrap();
+			// search for a cell route in the costs graph
+			let start = midpoint.as_1d_index() as u16;
+			let end = goal_cell.as_1d_index() as u16;
+			if let Some(_) = petgraph::algo::astar(
+				cost_graph,
+				start.into(),
+				|f| f == end.into(),
+				|e| *e.weight(),
+				|_| 0,
+			) {
+				// lookup the graph node of the portal that's reachable and record it
+				let portal_node = PortalNode {
+					sector: *goal_sector,
+					window: *window,
+				};
+				if let Some(graph_node) = self.nodes.get(&portal_node) {
+					target_nodes.push(graph_node);
+				}
+			}
+		}
+
+		// with source and goal PortalNode now attempt to find the best portal-portal
+		// path
+		//
+		// make a record of the best path if it exists
+		let mut best_path: Option<(i32, Vec<PortalNode>)> = None;
+		for start in source_nodes {
+			for end in target_nodes.iter() {
+				if let Some((cost, steps)) = petgraph::algo::astar(
+					portal_graph,
+					*start,
+					|f| f == **end,
+					|e| *e.weight(),
+					|_| 0,
+				) {
+					if let Some((best_cost, best_route)) = best_path.as_mut() {
+						if cost < *best_cost {
+							*best_cost = cost;
+
+							let mut p_node_route = vec![];
+							for s in steps {
+								for (pn, pi) in self.nodes.iter() {
+									if *pi == s {
+										p_node_route.push(*pn);
+									}
+								}
+							}
+							*best_route = p_node_route;
+						}
+					} else {
+						let mut p_node_route = vec![];
+						for s in steps {
+							for (pn, pi) in self.nodes.iter() {
+								if *pi == s {
+									p_node_route.push(*pn);
+								}
+							}
+						}
+						best_path = Some((cost, p_node_route));
+					}
+				}
+			}
+		}
+		if let Some((_, node_path)) = best_path {
+			// record the path but only make records of steps with exit portals and the
+			// final goal.
+			// Most steps are effectively pairs describing the entry portal and exit
+			// portal. We only care about the very first step, the last step and steps
+			// that contain portals exiting a sector
+			let mut final_route = vec![];
+			for (i, segment) in node_path.iter().enumerate() {
+				if i == node_path.len() - 1 {
+					// the goal sector uses true goal, not portal
+					final_route.push(RouteStep::new(
+						&segment.sector,
+						goal_cell.as_1d_index(),
+						None,
+					));
+				} else if i == 0 {
+					// start sector is just the exit portals
+					final_route.push(RouteStep::new(
+						&segment.sector,
+						segment.window.get_midpoint().as_1d_index(),
+						Some(segment.window),
+					));
+				} else if i % 2 == 0 {
+					// other than start and end only record even steps, those are the exit
+					// portal ones
+					final_route.push(RouteStep::new(
+						&segment.sector,
+						segment.window.get_midpoint().as_1d_index(),
+						Some(segment.window),
+					));
+				}
+			}
+			Some(final_route)
+		} else {
+			None
 		}
 	}
 }
@@ -946,10 +1142,6 @@ mod tests {
 
 		portals.update_portals(&SectorID::new(1, 1), &sector_costs);
 
-		println!("Windows {:?}", portals.portals);
-		println!("Nodes: {:?}", portals.nodes);
-		println!("Edges {:?}", portals.graph.edge_indices());
-
 		let actual_node_count = 36;
 		let result_node_count = portals.graph.node_count();
 		assert_eq!(actual_node_count, result_node_count);
@@ -957,5 +1149,31 @@ mod tests {
 		let actual_edge_count = 59;
 		let result_edge_count = portals.graph.edge_count();
 		assert_eq!(actual_edge_count, result_edge_count);
+	}
+
+	#[test]
+	fn best_path() {
+		let origin = (0.0, 0.0);
+		let size = (40.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_size = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let sector_costs = SectorCostFields::new(&dimensions);
+		let portals = Portals::new(&sector_costs);
+
+		let source_sector = SectorID::new(0, 0);
+		let source_cell = FieldCell::new(3, 4);
+		let goal_sector = SectorID::new(3, 0);
+		let goal_cell = FieldCell::new(5, 5);
+		let path = portals.find_path(
+			&source_sector,
+			&source_cell,
+			&goal_sector,
+			&goal_cell,
+			&sector_costs,
+		);
+
+		let actual_len = 4;
+		assert_eq!(actual_len, path.unwrap().len());
 	}
 }
