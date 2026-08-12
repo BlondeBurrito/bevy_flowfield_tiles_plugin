@@ -40,9 +40,20 @@ use crate::v2::flowfields::{
 pub struct PortalWindow {
 	start: FieldCell,
 	end: FieldCell,
+	/// The side of the sector the window sits on. This is required to distinguish
+	/// between portals where `start == end` and it sits in a corner
+	boundary: Ordinal,
 }
 
 impl PortalWindow {
+	/// Init [PortalWindow]
+	pub fn new(start: FieldCell, end: FieldCell, ordinal: Ordinal) -> Self {
+		PortalWindow {
+			start,
+			end,
+			boundary: ordinal,
+		}
+	}
 	/// Get the middle [FieldCell] of the window
 	fn get_midpoint(&self) -> FieldCell {
 		if self.start == self.end {
@@ -79,6 +90,10 @@ impl PortalWindow {
 		}
 
 		cells
+	}
+	/// Get the side of the sector that the window sits upon
+	pub fn get_boundary(&self) -> &Ordinal {
+		&self.boundary
 	}
 }
 
@@ -477,6 +492,7 @@ fn walk_sector_boundary(
 					let portal_window = PortalWindow {
 						start: **start,
 						end: **end,
+						boundary: *ordinal,
 					};
 					windows.push(portal_window);
 					current_window.clear();
@@ -492,6 +508,7 @@ fn walk_sector_boundary(
 				let portal_window = PortalWindow {
 					start: **start,
 					end: **end,
+					boundary: *ordinal,
 				};
 				windows.push(portal_window);
 				current_window.clear();
@@ -600,13 +617,7 @@ fn generate_sector_external_edges(
 		// find the adjacent sector so that its windows can be found
 		let adjacent_sector = sector.get_in_ordinal_direction(ordinal, 1);
 		// get the mirrored ordinal in the adjacent sector
-		let adjacent_ordinal = match ordinal {
-			Ordinal::North => Ordinal::South,
-			Ordinal::East => Ordinal::West,
-			Ordinal::South => Ordinal::North,
-			Ordinal::West => Ordinal::East,
-			_ => panic!("This should never panic"),
-		};
+		let adjacent_ordinal = ordinal.inverse();
 		if let Some(adjacent_windows) = portals.get(&adjacent_sector) {
 			let adjacent_portal_windows =
 				adjacent_windows.get_windows_for_ordinal(&adjacent_ordinal);
@@ -779,6 +790,7 @@ mod tests {
 		let window = PortalWindow {
 			start: FieldCell::new(0, 3),
 			end: FieldCell::new(0, 9),
+			boundary: Ordinal::West,
 		};
 
 		let actual = FieldCell::new(0, 6);
@@ -791,6 +803,7 @@ mod tests {
 		let window = PortalWindow {
 			start: FieldCell::new(9, 5),
 			end: FieldCell::new(9, 7),
+			boundary: Ordinal::East,
 		};
 
 		let actual = FieldCell::new(9, 6);
@@ -803,6 +816,7 @@ mod tests {
 		let window = PortalWindow {
 			start: FieldCell::new(0, 3),
 			end: FieldCell::new(0, 3),
+			boundary: Ordinal::West,
 		};
 
 		let actual = FieldCell::new(0, 3);
@@ -815,18 +829,22 @@ mod tests {
 		let north = vec![PortalWindow {
 			start: FieldCell::new(0, 0),
 			end: FieldCell::new(5, 0),
+			boundary: Ordinal::North,
 		}];
 		let east = vec![PortalWindow {
 			start: FieldCell::new(9, 0),
 			end: FieldCell::new(9, 4),
+			boundary: Ordinal::East,
 		}];
 		let south = vec![PortalWindow {
 			start: FieldCell::new(2, 9),
 			end: FieldCell::new(7, 9),
+			boundary: Ordinal::South,
 		}];
 		let west = vec![PortalWindow {
 			start: FieldCell::new(0, 4),
 			end: FieldCell::new(0, 8),
+			boundary: Ordinal::West,
 		}];
 		let windows = Windows {
 			north: north.clone(),
@@ -847,6 +865,7 @@ mod tests {
 			north: vec![PortalWindow {
 				start: FieldCell::new(0, 0),
 				end: FieldCell::new(5, 0),
+				boundary: Ordinal::North,
 			}],
 			east: vec![],
 			south: vec![],
@@ -855,6 +874,7 @@ mod tests {
 		let new = PortalWindow {
 			start: FieldCell::new(7, 0),
 			end: FieldCell::new(9, 0),
+			boundary: Ordinal::North,
 		};
 		windows.add_window(new, &Ordinal::North);
 
@@ -862,10 +882,12 @@ mod tests {
 			PortalWindow {
 				start: FieldCell::new(0, 0),
 				end: FieldCell::new(5, 0),
+				boundary: Ordinal::North,
 			},
 			PortalWindow {
 				start: FieldCell::new(7, 0),
 				end: FieldCell::new(9, 0),
+				boundary: Ordinal::North,
 			},
 		];
 		let result = windows.north;
@@ -878,18 +900,22 @@ mod tests {
 			north: vec![PortalWindow {
 				start: FieldCell::new(0, 0),
 				end: FieldCell::new(5, 0),
+				boundary: Ordinal::North,
 			}],
 			east: vec![PortalWindow {
 				start: FieldCell::new(9, 0),
 				end: FieldCell::new(9, 4),
+				boundary: Ordinal::East,
 			}],
 			south: vec![PortalWindow {
 				start: FieldCell::new(2, 9),
 				end: FieldCell::new(7, 9),
+				boundary: Ordinal::South,
 			}],
 			west: vec![PortalWindow {
 				start: FieldCell::new(0, 4),
 				end: FieldCell::new(0, 8),
+				boundary: Ordinal::West,
 			}],
 		};
 		let result = windows.remove_all();
@@ -897,18 +923,22 @@ mod tests {
 			PortalWindow {
 				start: FieldCell::new(0, 0),
 				end: FieldCell::new(5, 0),
+				boundary: Ordinal::North,
 			},
 			PortalWindow {
 				start: FieldCell::new(9, 0),
 				end: FieldCell::new(9, 4),
+				boundary: Ordinal::East,
 			},
 			PortalWindow {
 				start: FieldCell::new(2, 9),
 				end: FieldCell::new(7, 9),
+				boundary: Ordinal::South,
 			},
 			PortalWindow {
 				start: FieldCell::new(0, 4),
 				end: FieldCell::new(0, 8),
+				boundary: Ordinal::West,
 			},
 		];
 		assert_eq!(actual, result);

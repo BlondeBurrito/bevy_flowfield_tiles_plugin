@@ -66,7 +66,7 @@ impl Dimensions {
 		let sector_rows = size.1 / sector_len;
 		if sector_columns < 1.0 || sector_rows < 1.0 {
 			panic!(
-				"world unit size x {} must be an exact factor of `size`",
+				"`world_unit_size * {}` must be an exact factor of `size`",
 				FIELD_RESOLUTION
 			);
 		}

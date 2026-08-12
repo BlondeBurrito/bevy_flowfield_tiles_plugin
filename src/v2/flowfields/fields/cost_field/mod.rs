@@ -44,7 +44,6 @@
 // pub mod neighbours;
 
 use bevy::reflect::Reflect;
-use serde_big_array::BigArray;
 
 use crate::v2::flowfields::{
 	fields::{Field, FieldCell},
@@ -55,7 +54,7 @@ use crate::v2::flowfields::{
 #[derive(Clone, Reflect, Debug)]
 pub struct CostField {
 	/// One dimensional array of cost values
-	#[serde(with = "BigArray")]
+	#[cfg_attr(feature = "serde", serde(with = "serde_big_array::BigArray"))]
 	field: [u8; FIELD_RESOLUTION * FIELD_RESOLUTION],
 }
 
