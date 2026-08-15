@@ -17,7 +17,7 @@ members = ["crates/*"]
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
 bevy = { version = "0.19", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive", "rc"] }
 serde-big-array = { version = "0.5" }
 ron = { version = "0.12" }
 csv = { version = "1" }

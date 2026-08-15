@@ -159,7 +159,7 @@ impl Dimensions {
 
 	/// Get the `(x,y)` coordinates of the top left corner of a sector in global space
 	#[cfg(feature = "2d")]
-	pub fn get_sector_corner_xy(&self, sector_id: SectorID) -> Vec2 {
+	pub fn get_sector_corner_xy(&self, sector_id: &SectorID) -> Vec2 {
 		let sector_len = self.world_unit_size * FIELD_RESOLUTION as f32;
 		// find the global point in space for Sector (0, 0) based on the global origin
 		let top_left = Vec2::new(self.size.0 / -2.0, self.size.1 / 2.0)
@@ -180,7 +180,7 @@ impl Dimensions {
 		position: Vec2,
 	) -> Option<(SectorID, FieldCell)> {
 		if let Some(sector_id) = self.get_sector_id_from_xy(position) {
-			let sector_corner_origin = self.get_sector_corner_xy(sector_id);
+			let sector_corner_origin = self.get_sector_corner_xy(&sector_id);
 			let field_id_0 =
 				((position.x - sector_corner_origin.x) / self.world_unit_size).floor() as usize;
 			let field_id_1 =
@@ -195,7 +195,7 @@ impl Dimensions {
 	/// returned
 	#[cfg(feature = "2d")]
 	pub fn get_xy_from_field_sector(&self, sector: SectorID, field: FieldCell) -> Option<Vec2> {
-		let sector_xy = self.get_sector_corner_xy(sector);
+		let sector_xy = self.get_sector_corner_xy(&sector);
 		let f_col = field.get_column() as f32;
 		let f_row = field.get_row() as f32;
 

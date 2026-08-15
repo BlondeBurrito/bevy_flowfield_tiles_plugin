@@ -7,60 +7,96 @@
 use std::collections::HashMap;
 
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_flowfield_tiles_plugin::v2::bundle::FlowFieldTiles;
+use bevy_flowfield_tiles_plugin::v2::{
+	bundle::FlowFieldTiles,
+	flowfields::{fields::Field, utilities::FIELD_RESOLUTION},
+	plugin::FlowFieldTilesPlugin,
+};
 
 fn main() {
-	// 	App::new()
-	// 		.add_plugins(DefaultPlugins)
-	// 		.add_plugins(FlowFieldTilesPlugin)
-	// 		.add_systems(Startup, (setup_visualisation, create_counter))
-	// 		.add_systems(Update, (update_sprites, click_update_cost, update_counter))
-	// 		.run();
+	App::new()
+		.add_plugins(DefaultPlugins)
+		.add_plugins(FlowFieldTilesPlugin)
+		.add_systems(
+			Startup,
+			(
+				setup_visualisation,
+				// create_counter
+			),
+		)
+		// 		.add_systems(Update, (update_sprites, click_update_cost, update_counter))
+		.run();
 }
 
-// /// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
-// #[derive(Component)]
-// struct SectorLabel(u32, u32);
+/// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
+#[derive(Component)]
+struct SectorLabel(i32, i32);
 
-// /// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
-// #[derive(Component)]
-// struct FieldCellLabel(usize, usize);
+/// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
+#[derive(Component)]
+struct FieldCellLabel(usize, usize);
 
-// /// Spawn sprites to represent the world
-// fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
-// 	let sprite_dimension = 64.0;
-// 	let proj = Projection::Orthographic(OrthographicProjection {
-// 		scale: 2.0,
-// 		..OrthographicProjection::default_2d()
-// 	});
-// 	cmds.spawn((Camera2d, proj));
+/// Spawn sprites to represent the world
+fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
+	let sprite_dimension = 64.0;
+	let proj = Projection::Orthographic(OrthographicProjection {
+		scale: 2.0,
+		..OrthographicProjection::default_2d()
+	});
+	cmds.spawn((Camera2d, proj));
 
-// 	let path =
-// 		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields_continuous_layout.ron";
-// 	let bundle = FlowFieldTiles::from_ron((0.0, 0.0), (1920.0, 1920.0), 64.0, 16.0, &path);
-// 	let map_dimensions = bundle.get_map_dimensions();
-// 	let sector_cost_fields = bundle.get_sector_cost_fields();
-// 	let fields = sector_cost_fields.get_baseline();
-// 	// iterate over each sector field to place the sprites
-// 	for (sector_id, field) in fields.iter() {
-// 		// iterate over the dimensions of the field
-// 		for (i, column) in field.get().iter().enumerate() {
-// 			for (j, value) in column.iter().enumerate() {
-// 				// grid origin is always in the top left
-// 				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
-// 				let x = sector_offset.x + 32.0 + (sprite_dimension * i as f32);
-// 				let y = sector_offset.y - 32.0 - (sprite_dimension * j as f32);
-// 				cmds.spawn((
-// 					Sprite::from_image(asset_server.load(get_basic_icon(*value))),
-// 					Transform::from_xyz(x, y, 0.0),
-// 				))
-// 				.insert(FieldCellLabel(i, j))
-// 				.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
-// 			}
-// 		}
-// 	}
-// 	cmds.spawn(bundle);
-// }
+	let path =
+		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields_continuous_layout.ron";
+	let flowfield_tiles = FlowFieldTiles::from_ron((0.0, 0.0), (1920.0, 1920.0), 64.0, 16.0, &path);
+	let dimensions = flowfield_tiles.get_dimensions();
+	let costfields = flowfield_tiles.get_sector_cost_fields();
+	let read_costfields = costfields.read().unwrap();
+
+	// iter over each sector creating sprites
+	for (sector, costfield) in read_costfields.get_scaled_costs().iter() {
+		let sector_top_left = dimensions.get_sector_corner_xy(sector);
+
+		for (i, cost) in costfield.get().iter().enumerate() {
+			let y_i = i / FIELD_RESOLUTION;
+			let x_i = i % FIELD_RESOLUTION;
+			// grid origin is always in the top left
+			let x = sector_top_left.x + 32.0 + (sprite_dimension * x_i as f32);
+			let y = sector_top_left.y - 32.0 - (sprite_dimension * y_i as f32);
+
+			cmds.spawn((
+				Sprite::from_image(asset_server.load(get_basic_icon(*cost))),
+				Transform::from_xyz(x, y, 0.0),
+			))
+			.insert(FieldCellLabel(x_i, y_i))
+			.insert(SectorLabel(sector.get_column(), sector.get_row()));
+		}
+	}
+	// remove read lock so the entity can be created
+	drop(read_costfields);
+	cmds.spawn(flowfield_tiles);
+
+	// let sector_cost_fields = bundle.get_sector_cost_fields();
+	// let fields = sector_cost_fields.get_baseline();
+	// // iterate over each sector field to place the sprites
+	// for (sector_id, field) in fields.iter() {
+	// 	// iterate over the dimensions of the field
+	// 	for (i, column) in field.get().iter().enumerate() {
+	// 		for (j, value) in column.iter().enumerate() {
+	// 			// grid origin is always in the top left
+	// 			let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
+	// 			let x = sector_offset.x + 32.0 + (sprite_dimension * i as f32);
+	// 			let y = sector_offset.y - 32.0 - (sprite_dimension * j as f32);
+	// 			cmds.spawn((
+	// 				Sprite::from_image(asset_server.load(get_basic_icon(*value))),
+	// 				Transform::from_xyz(x, y, 0.0),
+	// 			))
+	// 			.insert(FieldCellLabel(i, j))
+	// 			.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
+	// 		}
+	// 	}
+	// }
+	// cmds.spawn(bundle);
+}
 
 // /// Redraw sprites when Portals are changed
 // fn update_sprites(
@@ -100,16 +136,16 @@ fn main() {
 // 	}
 // }
 
-// /// Get asset path to sprite icons
-// fn get_basic_icon(value: u8) -> String {
-// 	if value == 255 {
-// 		String::from("ordinal_icons/impassable.png")
-// 	} else if value == 1 {
-// 		String::from("ordinal_icons/goal.png")
-// 	} else {
-// 		panic!("Require basic icon")
-// 	}
-// }
+/// Get asset path to sprite icons
+fn get_basic_icon(value: u8) -> String {
+	if value == 255 {
+		String::from("ordinal_icons/impassable.png")
+	} else if value == 1 {
+		String::from("ordinal_icons/goal.png")
+	} else {
+		panic!("Require basic icon")
+	}
+}
 
 // /// Left clicking on a tile/field will flip the value of it in the [CostField]
 // ///

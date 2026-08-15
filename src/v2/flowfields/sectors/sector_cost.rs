@@ -3,7 +3,7 @@
 //!
 //!
 
-use bevy::prelude::*;
+use bevy::{math::u8, prelude::*};
 use petgraph::{Directed, stable_graph::StableGraph};
 use std::collections::BTreeMap;
 
@@ -386,6 +386,43 @@ fn wipe_sector_graph(
 ) {
 	if let Some(graph) = graphs.get_mut(sector) {
 		graph.clear();
+	}
+}
+
+/// A record of a `cost` update that is to be applied to the [CostField] of
+/// `sector` and `cell`
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Default, Reflect)]
+pub struct CostFieldUpdateItem {
+	/// The sector to be updated
+	sector: SectorID,
+	/// The cell to be updated
+	cell: FieldCell,
+	/// The new cost to be applied
+	cost: u8,
+}
+
+impl CostFieldUpdateItem {
+	/// Create a new [CostFieldUpdateItem]. This should be inserted into the
+	/// costfield update queue
+	pub fn new(sector_id: &SectorID, cell: &FieldCell, cost: u8) -> Self {
+		CostFieldUpdateItem {
+			sector: *sector_id,
+			cell: *cell,
+			cost,
+		}
+	}
+	/// Get a reference to the [SectorID] that is to be updated
+	pub fn sector(&self) -> &SectorID {
+		&self.sector
+	}
+	/// Get a reference to the [FieldCell] that is to be updated
+	pub fn cell(&self) -> &FieldCell {
+		&self.cell
+	}
+	/// Get the `cost` that it to be applied
+	pub fn cost(&self) -> u8 {
+		self.cost
 	}
 }
 
