@@ -144,7 +144,7 @@ required-features = ["heightmap"]
 [[example]]
 name = "visualise_portals"
 path = "examples/visualise/visualise_portals.rs"
-required-features = ["csv", "2d"]
+required-features = ["ron", "2d"]
 
 [[example]]
 name = "visualise_integration_field_los"

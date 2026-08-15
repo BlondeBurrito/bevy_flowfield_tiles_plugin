@@ -1,6 +1,6 @@
 SectorCostFields(
 	baseline : {
-		SectorID((0, 0)): CostField(
+		SectorID(column: 0,	row: 0): CostField(
 			field: (
 				1, 1, 1, 1, 1, 1, 255, 255, 255, 255, // row 0
 				1, 1, 1, 1, 1, 1, 1, 255, 255, 255, // row 1
@@ -14,7 +14,7 @@ SectorCostFields(
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1  // row 9
 			)
 		),
-		SectorID((1, 0)): CostField(
+		SectorID(column: 1,	row: 0): CostField(
 			field: (
 				1, 1, 1, 1, 1, 1, 1, 1, 255, 255, // row 0
 				1, 1, 1, 1, 1, 1, 1, 1, 255, 255, // row 1
@@ -28,7 +28,7 @@ SectorCostFields(
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1  // row 9
 			)
 		),
-		SectorID((2, 0)): CostField(
+		SectorID(column: 2,	row: 0): CostField(
 			field: (
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 0
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 1
@@ -42,7 +42,7 @@ SectorCostFields(
 				1, 1, 1, 1, 1, 1, 255, 255, 255, 255  // row 9
 			)
 		),
-		SectorID((0, 1)): CostField(
+		SectorID(column: 0,	row: 1): CostField(
 			field: (
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 0
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 1
@@ -56,7 +56,7 @@ SectorCostFields(
 				1, 1, 1, 1, 1, 255, 1, 1, 1, 1  // row 9
 			)
 		),
-		SectorID((1, 1)): CostField(
+		SectorID(column: 1,	row: 1): CostField(
 			field: (
 				1, 1, 1, 1, 1, 255, 1, 1, 1, 1, // row 0
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 1
@@ -70,7 +70,7 @@ SectorCostFields(
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1  // row 9
 			)
 		),
-		SectorID((2, 1)): CostField(
+		SectorID(column: 2,	row: 1): CostField(
 			field: (
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 0
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 1
@@ -84,7 +84,7 @@ SectorCostFields(
 				255, 255, 1, 1, 1, 1, 1, 1, 1, 1  // row 9
 			)
 		),
-		SectorID((0, 2)): CostField(
+		SectorID(column: 0,	row: 2): CostField(
 			field: (
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 0
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 1
@@ -98,7 +98,7 @@ SectorCostFields(
 				1, 1, 1, 1, 1, 1, 1, 255, 255, 1  // row 9
 			)
 		),
-		SectorID((1, 2)): CostField(
+		SectorID(column: 1,	row: 2): CostField(
 			field: (
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 0
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 1
@@ -112,7 +112,7 @@ SectorCostFields(
 				255, 255, 255, 1, 1, 1, 1, 1, 1, 1  // row 9
 			)
 		),
-		SectorID((2, 2)): CostField(
+		SectorID(column: 2,	row: 2): CostField(
 			field: (
 				255, 255, 1, 1, 1, 1, 1, 1, 1, 1, // row 0
 				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // row 1

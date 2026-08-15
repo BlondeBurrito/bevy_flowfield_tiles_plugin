@@ -85,6 +85,10 @@ impl SectorCostFields {
 			Err(e) => panic!("Failed deserializing SectorCostFields: {}", e),
 		};
 		fields.scale_all_costfields(dimensions);
+		for key in fields.baseline.keys() {
+			fields.graphs.insert(*key, StableGraph::default());
+		}
+		create_all_graphs(&mut fields.graphs, &fields.scaled);
 		fields
 	}
 	/// Create a [SectorCostFields] from a greyscale image where each pixel
@@ -158,6 +162,12 @@ impl SectorCostFields {
 		// now that costs are populated calculate the scaled fields that will
 		// be used in the algorithm
 		sector_cost_fields.scale_all_costfields(dimensions);
+		for key in sector_cost_fields.baseline.keys() {
+			sector_cost_fields
+				.graphs
+				.insert(*key, StableGraph::default());
+		}
+		create_all_graphs(&mut sector_cost_fields.graphs, &sector_cost_fields.scaled);
 		sector_cost_fields
 	}
 	/// Iterate over all sectors and scale any impassable [FieldCell] based on `actor_scale`.

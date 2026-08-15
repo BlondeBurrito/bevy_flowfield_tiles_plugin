@@ -100,7 +100,7 @@ impl PortalWindow {
 /// Hold the [PortalWindow] for each boundary
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Default, Debug, Clone, Reflect)]
-struct Windows {
+pub struct Windows {
 	north: Vec<PortalWindow>,
 	east: Vec<PortalWindow>,
 	south: Vec<PortalWindow>,
@@ -131,7 +131,7 @@ impl Windows {
 		}
 	}
 	/// Get all [PortalWindow]
-	fn get_all(&self) -> Vec<PortalWindow> {
+	pub fn get_all(&self) -> Vec<PortalWindow> {
 		let mut portal_windows: Vec<PortalWindow> = vec![];
 		portal_windows.extend(&self.north);
 		portal_windows.extend(&self.east);
@@ -441,6 +441,10 @@ impl Portals {
 			None
 		}
 	}
+	/// Get a reference to the map of portal windows
+	pub fn get_portals(&self) -> &BTreeMap<SectorID, Windows> {
+		&self.portals
+	}
 }
 
 /// Walk through each boundary of sector and compute the [`PortalWindow`s]
@@ -557,7 +561,7 @@ fn generate_sector_internal_edges(
 	window_list.extend(&windows.west);
 	// we need to cost graph of this sector to verify if two portal windows can
 	// actually path to one another
-	let cost_graph = cost_graphs.get(sector).unwrap();
+	let cost_graph = cost_graphs.get(sector).expect("Sector is missing a graph");
 	// iter over all the windows doubly and establish edges for windows that can see each other
 	for this_window in window_list.iter() {
 		for other_window in window_list.iter() {

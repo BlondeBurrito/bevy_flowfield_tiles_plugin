@@ -61,6 +61,10 @@ impl FlowFieldTiles {
 	pub fn get_sector_cost_fields_mut(&mut self) -> &mut Arc<RwLock<SectorCostFields>> {
 		&mut self.sector_cost_fields
 	}
+	/// Get a reference to [Portals]
+	pub fn get_portals(&self) -> &Arc<RwLock<Portals>> {
+		&self.portals
+	}
 	// /// Get a reference to the [SectorPortals]
 	// pub fn get_sector_portals(&self) -> &SectorPortals {
 	// 	&self.sector_portals
