@@ -37,6 +37,10 @@ impl FlowFieldTiles {
 	pub fn get_sector_cost_fields(&self) -> &SectorCostFields {
 		&self.sector_cost_fields
 	}
+	/// Get a mutable reference to the [SectorCostFields]
+	pub fn get_sector_cost_fields_mut(&mut self) -> &mut SectorCostFields {
+		&mut self.sector_cost_fields
+	}
 	// /// Get a reference to the [SectorPortals]
 	// pub fn get_sector_portals(&self) -> &SectorPortals {
 	// 	&self.sector_portals
@@ -71,6 +75,81 @@ impl FlowFieldTiles {
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
 		let cost_fields = SectorCostFields::new(&dimensions);
 		let portals = Portals::new(&cost_fields);
+		// let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
+		// // update default portals for cost fields
+		// for sector_id in cost_fields.get_scaled().keys() {
+		// 	portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
+		// }
+		// let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
+		// let route_cache = RouteCache::default();
+		// let cache = FlowFieldCache::default();
+		FlowFieldTiles {
+			dimensions,
+			sector_cost_fields: cost_fields,
+			portals,
+			// sector_portals: portals,
+			// portal_graph: graph,
+			// route_cache,
+			// flow_field_cache: cache,
+		}
+	}
+	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
+	#[cfg(feature = "ron")]
+	pub fn from_ron(
+		origin: (f32, f32),
+		size: (f32, f32),
+		world_unit_size: f32,
+		actor_size: f32,
+		file_path: &str,
+	) -> Self {
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let cost_fields = SectorCostFields::from_ron(file_path.into(), &dimensions);
+		let portals = Portals::new(&cost_fields);
+
+		// let map_dimensions =
+		// 	MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+		// let cost_fields = SectorCostFields::from_ron(path.to_string(), &map_dimensions);
+		// if ((map_length * map_depth) / (sector_resolution * sector_resolution)) as usize
+		// 	!= cost_fields.get_baseline().len()
+		// {
+		// 	panic!("Map size ({}, {}) with resolution {} produces ({}x{}) sectors. Ron file only produces {} sectors", map_length, map_depth, sector_resolution, map_length/sector_resolution, map_depth/sector_resolution, cost_fields.get_baseline().len());
+		// }
+		// let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
+		// // update default portals for cost fields
+		// for sector_id in cost_fields.get_scaled().keys() {
+		// 	portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
+		// }
+		// let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
+		// let route_cache = RouteCache::default();
+		// let cache = FlowFieldCache::default();
+		FlowFieldTiles {
+			dimensions,
+			sector_cost_fields: cost_fields,
+			portals,
+			// sector_portals: portals,
+			// portal_graph: graph,
+			// route_cache,
+			// flow_field_cache: cache,
+		}
+	}
+	/// From a greyscale heightmap image initialise a bundle where the
+	/// [CostField]s are derived from the pixel values of the image
+	#[cfg(not(tarpaulin_include))]
+	#[cfg(feature = "heightmap")]
+	pub fn from_heightmap(
+		origin: (f32, f32),
+		size: (f32, f32),
+		world_unit_size: f32,
+		actor_size: f32,
+		file_path: &str,
+	) -> Self {
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let cost_fields = SectorCostFields::from_heightmap(&dimensions, file_path.into());
+		let portals = Portals::new(&cost_fields);
+
+		// let map_dimensions =
+		// 	MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
+		// let cost_fields = SectorCostFields::from_heightmap(&map_dimensions, file_path.to_string());
 		// let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
 		// // update default portals for cost fields
 		// for sector_id in cost_fields.get_scaled().keys() {

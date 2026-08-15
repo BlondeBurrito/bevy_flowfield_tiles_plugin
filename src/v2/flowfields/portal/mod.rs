@@ -637,7 +637,7 @@ fn generate_sector_external_edges(
 					if let Some(adjacent_node_index) = nodes.get(&adjacent_portal_node) {
 						// edges are undirected, only add if one doesn't exist
 						if !portal_graph.contains_edge(*this_node_index, *adjacent_node_index) {
-							// create the directed edge from this to adjacent
+							// create the undirected edge from this to adjacent
 							portal_graph.add_edge(*this_node_index, *adjacent_node_index, 1);
 						}
 					}

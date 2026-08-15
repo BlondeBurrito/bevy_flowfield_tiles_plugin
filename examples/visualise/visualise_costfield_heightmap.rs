@@ -5,7 +5,9 @@
 //!
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::prelude::*;
+use bevy_flowfield_tiles_plugin::v2::flowfields::{
+	dimensions::Dimensions, fields::Field, sectors::sector_cost::SectorCostFields,
+};
 
 fn main() {
 	App::new()
@@ -17,8 +19,8 @@ fn main() {
 fn setup(mut cmds: Commands) {
 	// setup the field
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/heightmap.png";
-	let map_dimensions = MapDimensions::new(960, 960, 320, 1.0);
-	let sector_cost_fields = SectorCostFields::from_heightmap(&map_dimensions, path);
+	let map_dimensions = Dimensions::new((0.0, 0.0), (960.0, 960.0), 32.0, 1.0);
+	let sector_costfields = SectorCostFields::from_heightmap(&map_dimensions, path);
 	// create a UI grid
 	cmds.spawn(Camera2d);
 	cmds.spawn((
@@ -44,47 +46,36 @@ fn setup(mut cmds: Commands) {
 	))
 	.with_children(|p| {
 		// create a box for each sector
-		for field in sector_cost_fields.get_scaled().values() {
+		for costfield in sector_costfields.get_scaled_costs().values() {
 			p.spawn((
 				Node {
 					width: Val::Px(300.0),
 					height: Val::Px(300.0),
 					flex_direction: FlexDirection::Row,
+					flex_wrap: FlexWrap::Wrap,
 					..Default::default()
 				},
 				BackgroundColor(Color::WHITE),
 			))
 			.with_children(|p| {
-				// create each column from the field
-				for array in field.get().iter() {
+				for value in costfield.get().iter() {
 					p.spawn(Node {
 						width: Val::Percent(10.0),
-						height: Val::Percent(100.0),
-						flex_direction: FlexDirection::Column,
+						height: Val::Percent(10.0),
+						justify_content: JustifyContent::Center,
+						align_items: AlignItems::Center,
 						..Default::default()
 					})
 					.with_children(|p| {
-						// create each row value of the column
-						for value in array.iter() {
-							p.spawn(Node {
-								width: Val::Percent(100.0),
-								height: Val::Percent(10.0),
-								justify_content: JustifyContent::Center,
-								align_items: AlignItems::Center,
-								..Default::default()
-							})
-							.with_children(|p| {
-								p.spawn((
-									Text::new(value.to_string()),
-									TextFont {
-										font: FontSource::Monospace,
-										font_size: FontSize::Px(13.0),
-										..default()
-									},
-									TextColor(Color::BLACK),
-								));
-							});
-						}
+						p.spawn((
+							Text::new(value.to_string()),
+							TextFont {
+								font: FontSource::Monospace,
+								font_size: FontSize::Px(15.0),
+								..default()
+							},
+							TextColor(Color::BLACK),
+						));
 					});
 				}
 			});

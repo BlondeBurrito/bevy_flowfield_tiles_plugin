@@ -132,13 +132,13 @@ harness = false
 ###################
 
 [[example]]
-name = "visualise_cost_field"
-path = "examples/visualise/visualise_cost_field.rs"
+name = "visualise_costfield"
+path = "examples/visualise/visualise_costfield.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "visualise_cost_field_heightmap"
-path = "examples/visualise/visualise_cost_field_heightmap.rs"
+name = "visualise_costfield_heightmap"
+path = "examples/visualise/visualise_costfield_heightmap.rs"
 required-features = ["heightmap"]
 
 [[example]]

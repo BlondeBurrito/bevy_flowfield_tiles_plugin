@@ -103,10 +103,10 @@ impl Field<u32> for IntegrationField {
 
 impl IntegrationField {
 	/// Init [IntegrationField] with impassable/walls marked and goal values set
-	pub fn init(costfield: &CostField, route_step: &RouteStep) -> Self {
+	pub fn init(scaled_costfield: &CostField, route_step: &RouteStep) -> Self {
 		let mut field = IntegrationField::default();
 		// mark walls
-		for (i, value) in costfield.get().iter().enumerate() {
+		for (i, value) in scaled_costfield.get().iter().enumerate() {
 			if *value == 255 {
 				field.field[i] = 65535 + INT_BITS_IMPASSABLE;
 			}
@@ -142,7 +142,7 @@ impl IntegrationField {
 	}
 	/// Perform the integrated cost calculation to build the [IntegrationField],
 	/// beginning with the 'los_corners'
-	pub fn build(&mut self, costfield: &CostField) {
+	pub fn build(&mut self, scaled_costfield: &CostField) {
 		// list of active wavefront, element 0 is the cell, element 1 is the integrated cost
 		let mut wavefront = vec![];
 		for goal in self.los_corners.iter() {
@@ -151,7 +151,7 @@ impl IntegrationField {
 				self.get_field_cell_value(FieldCell::from_index(*goal)),
 			));
 		}
-		propagate_integrated_wavefront(self, costfield, wavefront);
+		propagate_integrated_wavefront(self, scaled_costfield, wavefront);
 	}
 }
 

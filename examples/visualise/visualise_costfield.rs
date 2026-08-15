@@ -2,7 +2,7 @@
 //!
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::prelude::*;
+use bevy_flowfield_tiles_plugin::v2::flowfields::fields::{Field, cost_field::CostField};
 
 fn main() {
 	App::new()
@@ -13,8 +13,8 @@ fn main() {
 /// Init world
 fn setup(mut cmds: Commands) {
 	// setup the field
-	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
-	let cost_field = CostField::from_ron(path);
+	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/costfield_impassable.ron";
+	let costfield = CostField::from_ron(path);
 	// create a UI grid
 	cmds.spawn(Camera2d);
 	cmds.spawn((
@@ -36,41 +36,30 @@ fn setup(mut cmds: Commands) {
 				width: Val::Px(500.0),
 				height: Val::Px(500.0),
 				flex_direction: FlexDirection::Row,
+				flex_wrap: FlexWrap::Wrap,
 				..Default::default()
 			},
 			BackgroundColor(Color::WHITE),
 		))
 		.with_children(|p| {
-			// create each column from the field
-			for array in cost_field.get().iter() {
+			for value in costfield.get().iter() {
 				p.spawn(Node {
 					width: Val::Percent(10.0),
-					height: Val::Percent(100.0),
-					flex_direction: FlexDirection::Column,
+					height: Val::Percent(10.0),
+					justify_content: JustifyContent::Center,
+					align_items: AlignItems::Center,
 					..Default::default()
 				})
 				.with_children(|p| {
-					// create each row value of the column
-					for value in array.iter() {
-						p.spawn(Node {
-							width: Val::Percent(100.0),
-							height: Val::Percent(10.0),
-							justify_content: JustifyContent::Center,
-							align_items: AlignItems::Center,
-							..Default::default()
-						})
-						.with_children(|p| {
-							p.spawn((
-								Text::new(value.to_string()),
-								TextFont {
-									font: FontSource::Monospace,
-									font_size: FontSize::Px(15.0),
-									..default()
-								},
-								TextColor(Color::BLACK),
-							));
-						});
-					}
+					p.spawn((
+						Text::new(value.to_string()),
+						TextFont {
+							font: FontSource::Monospace,
+							font_size: FontSize::Px(15.0),
+							..default()
+						},
+						TextColor(Color::BLACK),
+					));
 				});
 			}
 		});

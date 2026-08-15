@@ -94,6 +94,16 @@ impl CostField {
 			field: [cost; FIELD_RESOLUTION * FIELD_RESOLUTION],
 		}
 	}
+	/// From a `ron` file generate the [CostField]
+	#[cfg(feature = "ron")]
+	pub fn from_ron(path: String) -> Self {
+		let file = std::fs::File::open(path).expect("Failed opening CostField file");
+		let field: CostField = match ron::de::from_reader(file) {
+			Ok(field) => field,
+			Err(e) => panic!("Failed deserializing CostField: {}", e),
+		};
+		field
+	}
 }
 
 #[rustfmt::skip]

@@ -237,7 +237,7 @@ fn set_portal_direction(flowfield: &mut FlowField, window: &PortalWindow) {
 // ) {
 // }
 
-/// Compare the neighbours of a cell of the [FlowField] and determine their bits
+/// Compare the neighbours of a cell in the [FlowField] and determine their bits
 fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &IntegrationField) {
 	// skip if marked as wall or LOS or goal
 	if *flow_value & BITS_IMPASSABLE == BITS_IMPASSABLE
@@ -416,6 +416,7 @@ mod tests {
 	// X = wall
 	// L = LOS
 	// b = wave blocked
+	//TODO: see note of this diagram in integration field tests
 	// ```txt
 	//  ___ ___ ___ ___ ___ ___ ___ ___ ___ ___
 	// |   |   |   |   |   |   |   |   |   |   |
@@ -465,5 +466,44 @@ mod tests {
 			r & BITS_COST_FILTER
 		);
 		assert!(r & BITS_IMPASSABLE == BITS_IMPASSABLE);
+
+		let r_c = FieldCell::new(4, 8);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_GOAL == BITS_GOAL);
+
+		let r_c = FieldCell::new(4, 7);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_HAS_LOS == BITS_HAS_LOS);
+	}
+
+	#[test]
+	fn portal_dir_north() {
+		let costfield = CostField::default();
+		let sector = SectorID::new(1, 1);
+		let goal = 0;
+		let portal = Some(PortalWindow::new(
+			FieldCell::new(0, 0),
+			FieldCell::new(0, 0),
+			Ordinal::North,
+		));
+		let route_step = RouteStep::new(&sector, goal, portal);
+		let int_field = IntegrationField::init(&costfield, &route_step);
+
+		let flowfield = FlowField::new(&route_step, &int_field);
+
+		let r_c = flowfield.field[0];
+		assert!(r_c & BITS_NORTH == BITS_NORTH)
 	}
 }
