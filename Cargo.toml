@@ -147,28 +147,28 @@ path = "examples/visualise/visualise_portals.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
-name = "visualise_integration_field_los"
-path = "examples/visualise/visualise_integration_field_los.rs"
+name = "visualise_integrationfield_los"
+path = "examples/visualise/visualise_integrationfield_los.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "visualise_integration_field"
-path = "examples/visualise/visualise_integration_field.rs"
+name = "visualise_integrationfield"
+path = "examples/visualise/visualise_integrationfield.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "visualise_integration_fields"
-path = "examples/visualise/visualise_integration_fields.rs"
+name = "visualise_integrationfields"
+path = "examples/visualise/visualise_integrationfields.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "visualise_flow_field_tiles"
-path = "examples/visualise/visualise_flow_field_tiles.rs"
+name = "visualise_flowfield_tiles"
+path = "examples/visualise/visualise_flowfield_tiles.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "flow_field_right_click"
-path = "examples/visualise/flow_field_right_click.rs"
+name = "flowfield_right_click"
+path = "examples/visualise/flowfield_right_click.rs"
 required-features = ["ron", "2d"]
 
 [[example]]

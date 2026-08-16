@@ -1,10 +1,21 @@
-//! Calculates an [IntegrationField] as far the the Line-of-Sight calcualtion
+//! Calculates an [IntegrationField] as far the the Line-of-Sight calculation
 //! layer and displays which cells are LOS, impassable and wavefront blocked
 //! (unreachable cells due to blocking are labeled '?')
 //!
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::prelude::*;
+use bevy_flowfield_tiles_plugin::v2::flowfields::{
+	fields::{
+		Field,
+		cost_field::CostField,
+		integration_field::{
+			INT_BITS_CORNER, INT_BITS_GOAL, INT_BITS_IMPASSABLE, INT_BITS_LOS,
+			INT_BITS_WAVE_BLOCKED, INT_FILTER_BITS_FLAGS, IntegrationField,
+		},
+	},
+	route_cache::RouteStep,
+	sectors::SectorID,
+};
 
 fn main() {
 	App::new()
@@ -15,12 +26,10 @@ fn main() {
 /// Init world
 fn setup(mut cmds: Commands) {
 	// calculate the field
-	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/cost_field_impassable.ron";
-	let cost_field = CostField::from_ron(path);
-	let goal = FieldCell::new(4, 4);
-	let mut int_field = IntegrationField::new(&goal, &cost_field);
-	let active_wavefront = vec![goal];
-	int_field.calculate_sector_goal_los(&active_wavefront, &goal);
+	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/costfield_impassable.ron";
+	let costfield = CostField::from_ron(path);
+	let route_step = RouteStep::new(&SectorID::new(0, 0), 44, None);
+	let intfield = IntegrationField::init(&costfield, &route_step);
 	// create a UI grid
 	cmds.spawn(Camera2d);
 	cmds.spawn((
@@ -42,41 +51,30 @@ fn setup(mut cmds: Commands) {
 				width: Val::Px(500.0),
 				height: Val::Px(500.0),
 				flex_direction: FlexDirection::Row,
+				flex_wrap: FlexWrap::Wrap,
 				..Default::default()
 			},
 			BackgroundColor(Color::WHITE),
 		))
 		.with_children(|p| {
-			// create each column from the field
-			for array in int_field.get().iter() {
+			for value in intfield.get().iter() {
 				p.spawn(Node {
 					width: Val::Percent(10.0),
-					height: Val::Percent(100.0),
-					flex_direction: FlexDirection::Column,
+					height: Val::Percent(10.0),
+					justify_content: JustifyContent::Center,
+					align_items: AlignItems::Center,
 					..Default::default()
 				})
 				.with_children(|p| {
-					// create each row value of the column
-					for value in array.iter() {
-						p.spawn(Node {
-							width: Val::Percent(100.0),
-							height: Val::Percent(10.0),
-							justify_content: JustifyContent::Center,
-							align_items: AlignItems::Center,
-							..Default::default()
-						})
-						.with_children(|p| {
-							p.spawn((
-								Text::new(convert_integration_flags(*value)),
-								TextFont {
-									font: FontSource::Monospace,
-									font_size: FontSize::Px(15.0),
-									..default()
-								},
-								TextColor(Color::BLACK),
-							));
-						});
-					}
+					p.spawn((
+						Text::new(convert_integration_flags(*value)),
+						TextFont {
+							font: FontSource::Monospace,
+							font_size: FontSize::Px(15.0),
+							..default()
+						},
+						TextColor(Color::BLACK),
+					));
 				});
 			}
 		});

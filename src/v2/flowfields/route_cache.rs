@@ -42,6 +42,8 @@ async fn example() -> Option<PathId> {
 }
 
 /// Describes and keys into a pathable segment of FlowFields
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RouteStep {
 	sector: SectorID,
 	/// Goal [FieldCell] as an index

@@ -7,11 +7,17 @@ use std::{
 	sync::{Arc, RwLock},
 };
 
-use bevy::{prelude::*, tasks::Task};
+use bevy::{
+	prelude::*,
+	tasks::{AsyncComputeTaskPool, Task},
+};
 
 use crate::v2::flowfields::{
 	dimensions::Dimensions,
+	fields::{FieldCell, flow_field::FlowField},
+	flowfield_cache::FlowFieldCache,
 	portal::Portals,
+	route_cache::RouteStep,
 	sectors::{
 		SectorID,
 		sector_cost::{CostFieldUpdateItem, SectorCostFields},
@@ -44,8 +50,14 @@ pub struct FlowFieldTiles {
 	// pub portal_graph: PortalGraph,
 	// /// Cache of overarching portal-portal routes
 	// pub route_cache: RouteCache,
-	// /// Cache of [FlowField]s that can be queried in a steering pipeline
-	// pub flow_field_cache: FlowFieldCache,
+	/// Store groups of routes that will be used to create [FlowField]
+	pub flow_queue: Arc<RwLock<VecDeque<Vec<RouteStep>>>>,
+	/// Stores [bevy::tasks::AsyncComputeTaskPool] [Task] when a group of
+	/// [FlowField]s are being built
+	#[cfg_attr(feature = "serde", serde(skip))]
+	pub flow_gen_task: Option<Task<Vec<(RouteStep, FlowField)>>>,
+	/// Cache of [FlowField]s that can be queried in a steering pipeline
+	pub flowfield_cache: FlowFieldCache,
 }
 
 impl FlowFieldTiles {
@@ -120,7 +132,9 @@ impl FlowFieldTiles {
 			// sector_portals: portals,
 			// portal_graph: graph,
 			// route_cache,
-			// flow_field_cache: cache,
+			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
+			flow_gen_task: None,
+			flowfield_cache: FlowFieldCache::default(),
 		}
 	}
 	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
@@ -167,7 +181,9 @@ impl FlowFieldTiles {
 			// sector_portals: portals,
 			// portal_graph: graph,
 			// route_cache,
-			// flow_field_cache: cache,
+			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
+			flow_gen_task: None,
+			flowfield_cache: FlowFieldCache::default(),
 		}
 	}
 	/// From a greyscale heightmap image initialise a bundle where the
@@ -211,14 +227,100 @@ impl FlowFieldTiles {
 			// sector_portals: portals,
 			// portal_graph: graph,
 			// route_cache,
-			// flow_field_cache: cache,
+			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
+			flow_gen_task: None,
+			flowfield_cache: FlowFieldCache::default(),
 		}
 	}
-	/// Add a [CostFieldUpdateItem] to the queue
-	pub fn add_costfield_update(&mut self, position: Vec2, cost: u8) {
+	/// Add a [CostFieldUpdateItem] to the queue based on the [Dimensions]
+	/// `world_unit_size` at the supplied `position`
+	#[cfg(feature = "2d")]
+	pub fn add_costfield_update_2d(&mut self, position: Vec2, cost: u8) {
 		if let Some((sector, cell)) = self.dimensions.get_sector_and_field_cell_from_xy(position) {
 			let item = CostFieldUpdateItem::new(&sector, &cell, cost);
 			self.costfield_update_queue.push_back(item);
 		}
+	}
+	/// Add a [CostFieldUpdateItem] to the queue based on the [Dimensions]
+	/// `world_unit_size` at the supplied `position`
+	#[cfg(feature = "3d")]
+	pub fn add_costfield_update_3d(&mut self, position: Vec3, cost: u8) {
+		if let Some((sector, cell)) = self.dimensions.get_sector_and_field_cell_from_xyz(position) {
+			let item = CostFieldUpdateItem::new(&sector, &cell, cost);
+			self.costfield_update_queue.push_back(item);
+		}
+	}
+
+	/// TODO
+	#[cfg(feature = "2d")]
+	pub fn get_route_2d(&self, from: Vec2, to: Vec2) -> Option<Task<Option<Vec<RouteStep>>>> {
+		let Some((source_sector, source_cell)) =
+			self.dimensions.get_sector_and_field_cell_from_xy(from)
+		else {
+			return None;
+		};
+		let Some((goal_sector, goal_cell)) = self.dimensions.get_sector_and_field_cell_from_xy(to)
+		else {
+			return None;
+		};
+		//
+		self.get_route(source_sector, source_cell, goal_sector, goal_cell)
+	}
+	/// TODO
+	#[cfg(feature = "3d")]
+	pub fn get_route_3d(&self, from: Vec3, to: Vec3) -> Option<Task<Option<Vec<RouteStep>>>> {
+		let Some((source_sector, source_cell)) =
+			self.dimensions.get_sector_and_field_cell_from_xyz(from)
+		else {
+			return None;
+		};
+		let Some((goal_sector, goal_cell)) = self.dimensions.get_sector_and_field_cell_from_xyz(to)
+		else {
+			return None;
+		};
+		self.get_route(source_sector, source_cell, goal_sector, goal_cell)
+	}
+	/// From a source and goal attempt to retrieve a series of [RouteStep]
+	/// describing the path
+	fn get_route(
+		&self,
+		source_sector: SectorID,
+		source_cell: FieldCell,
+		goal_sector: SectorID,
+		goal_cell: FieldCell,
+	) -> Option<Task<Option<Vec<RouteStep>>>> {
+		let costfields = self.sector_cost_fields.clone();
+		let portals = self.portals.clone();
+		let queue = self.flow_queue.clone();
+		//
+		let thread_pool = AsyncComputeTaskPool::get();
+		let task = thread_pool.spawn(async move {
+			let read_costfields = costfields.read().unwrap();
+			let read_portals = portals.read().unwrap();
+			let path = read_portals.find_path(
+				&source_sector,
+				&source_cell,
+				&goal_sector,
+				&goal_cell,
+				&*read_costfields,
+			);
+
+			if let Some(p) = path {
+				// push route into a queue for flowfield generation
+				let mut write_queue = queue.write().unwrap();
+				write_queue.push_back(p.clone());
+				Some(p)
+			} else {
+				None
+			}
+		});
+		Some(task)
+	}
+
+	/// Retrieve a [FlowField] based on a [RouteStep]
+	///
+	/// This will return `None` if the [FlowField] has not been generated yet
+	pub fn read_flowfield(&self, route_step: &RouteStep) -> Option<&FlowField> {
+		self.flowfield_cache.get(route_step)
 	}
 }

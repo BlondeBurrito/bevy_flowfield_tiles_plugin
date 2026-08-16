@@ -157,9 +157,9 @@ fn click_update_cost(
 			let costfield = read_costfields.get_scaled_costs().get(&sector_id).unwrap();
 			let value = costfield.get_field_cell_value(field_cell);
 			if value == 255 {
-				flowfield_tiles.add_costfield_update(world_position, 1);
+				flowfield_tiles.add_costfield_update_2d(world_position, 1);
 			} else {
-				flowfield_tiles.add_costfield_update(world_position, 255);
+				flowfield_tiles.add_costfield_update_2d(world_position, 255);
 			}
 		}
 	}

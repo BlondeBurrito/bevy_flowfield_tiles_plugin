@@ -7,3 +7,4 @@
 - add new test suite to integration field
 - add test suite to bresenham
 - add a debug plugin to draw fields, use an auto_insert parameter to add a component to FlowFieldTiles which enables displaying them. When using multiple entities for actor sizes note to users that auto_insert should be false and they should manually add the component for trigger visibility of particular entity fields
+- currently updated costfields lead to out of date flowfields being deleted but not re-queued for replacement, how to address this?

@@ -67,6 +67,7 @@
 
 pub mod dimensions;
 pub mod fields;
+pub mod flowfield_cache;
 pub mod portal;
 pub mod route_cache;
 pub mod sectors;

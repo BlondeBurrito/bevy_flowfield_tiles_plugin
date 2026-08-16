@@ -11,7 +11,7 @@ use crate::v2::flowfields::{
 		Field, FieldCell,
 		integration_field::{
 			INT_BITS_GOAL, INT_BITS_IMPASSABLE, INT_BITS_LOS, INT_BITS_PORTAL,
-			INT_FILTER_BITS_COST, IntegrationField,
+			INT_FILTER_BITS_COST, INT_FILTER_BITS_FLAGS, IntegrationField,
 		},
 	},
 	portal::PortalWindow,
@@ -46,7 +46,7 @@ const BITS_GOAL: u8 = 0b0100_0000;
 /// Flags a field cell as being a portal to another sector
 const BITS_PORTAL_GOAL: u8 = 0b1000_0000;
 /// Bit to indicate an impassable cell
-const BITS_IMPASSABLE: u8 = 0b1111_0000;
+const BITS_IMPASSABLE: u8 = 0b1110_0000;
 /// Helper for filtering a value for flags
 const BITS_FLAG_FILTER: u8 = 0b1111_0000;
 /// Helper for filtering a value for directional bits
@@ -128,14 +128,17 @@ impl FlowField {
 	/// Indicates that a cell is the target goal
 	pub fn is_goal(&self, field_cell: &FieldCell) -> bool {
 		self.field[field_cell.as_1d_index()] & BITS_GOAL == BITS_GOAL
+			&& self.is_pathable(field_cell)
 	}
 	/// Indicates that a cell is a portal goal
 	pub fn is_portal_goal(&self, field_cell: &FieldCell) -> bool {
 		self.field[field_cell.as_1d_index()] & BITS_PORTAL_GOAL == BITS_PORTAL_GOAL
+			&& self.is_pathable(field_cell)
 	}
 	/// Check if a [FieldCell] has Line-of-Sight to a goal. If so an actor can stop reading [FlowField] and path in a straight line to it
 	pub fn has_los(&self, field_cell: &FieldCell) -> bool {
 		self.field[field_cell.as_1d_index()] & BITS_HAS_LOS == BITS_HAS_LOS
+			&& self.is_pathable(field_cell)
 	}
 	/// Read directional bits of a cell and get the direction vector
 	#[cfg(feature = "2d")]
@@ -156,7 +159,7 @@ impl FlowField {
 				None
 			}
 			_ => {
-				debug!(
+				warn!(
 					"First 4 bits of cell are not recognised directions: {}, bits {}",
 					field_cell, bit_dir
 				);
@@ -347,8 +350,8 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 			// can point to LOS, record it if it is the best one
 			if let Some((o, v)) = &mut best_los_dir {
 				if n_int_value & INT_FILTER_BITS_COST < *v {
-					*v = n_int_value & INT_FILTER_BITS_COST;
 					*o = *ordinal;
+					*v = n_int_value & INT_FILTER_BITS_COST;
 				}
 			} else {
 				best_los_dir = Some((*ordinal, n_int_value & INT_FILTER_BITS_COST));
@@ -396,6 +399,49 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 		// have no integrated-cost calculation, nothing will point towards
 		// it and it can't point at anything. Treat it as wall
 		*flow_value |= BITS_IMPASSABLE;
+	}
+}
+
+/// Indicates that a cell is pathable
+pub fn is_pathable(cell_value: u8) -> bool {
+	cell_value & BITS_PATHABLE == BITS_PATHABLE
+}
+
+/// Indicates that a cell is the target goal
+pub fn is_goal(cell_value: u8) -> bool {
+	cell_value & BITS_GOAL == BITS_GOAL && is_pathable(cell_value)
+}
+
+/// Indicates that a cell is a portal goal
+pub fn is_portal_goal(cell_value: u8) -> bool {
+	cell_value & BITS_PORTAL_GOAL == BITS_PORTAL_GOAL && is_pathable(cell_value)
+}
+
+/// If a cell has direct vision to the goal then the [FlowField] should be
+/// disregarded as the actor can move in a straight line to the goal
+pub fn has_line_of_sight(cell_value: u8) -> bool {
+	cell_value & BITS_HAS_LOS == BITS_HAS_LOS && is_pathable(cell_value)
+}
+
+/// Check is a cell value is marked as being an impassable wall
+pub fn is_wall(cell_value: u8) -> bool {
+	cell_value & BITS_IMPASSABLE == BITS_IMPASSABLE && !is_pathable(cell_value)
+}
+
+/// From a pathable [FlowField] cell get the directional [Ordinal] of movement
+pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
+	let dir = cell_value & BITS_COST_FILTER;
+	match dir {
+		BITS_NORTH => Ordinal::North,
+		BITS_EAST => Ordinal::East,
+		BITS_SOUTH => Ordinal::South,
+		BITS_WEST => Ordinal::West,
+		BITS_NORTH_EAST => Ordinal::NorthEast,
+		BITS_SOUTH_EAST => Ordinal::SouthEast,
+		BITS_SOUTH_WEST => Ordinal::SouthWest,
+		BITS_NORTH_WEST => Ordinal::NorthWest,
+		BITS_DEFAULT => Ordinal::Zero,
+		_ => Ordinal::Zero, // _ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
 
@@ -505,5 +551,80 @@ mod tests {
 
 		let r_c = flowfield.field[0];
 		assert!(r_c & BITS_NORTH == BITS_NORTH)
+	}
+	// g = goal
+	// X = wall
+	// L = LOS
+	// b = wave blocked
+	//TODO: see note of this diagram in integration field tests
+	// ```txt
+	//  ___ ___ ___ ___ ___ ___ ___ ___ ___ ___
+	// |   |   |   |   |   |   |   |   |   |   |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// |   |   |   |   |   |   |   |   |   |   |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// |   |   |   |   |   |   |   |   |   | b |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | b |   |   |   |   |   |   |   | b | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | b |   |   |   |   |   | b | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | b | X | X | X | b | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | L | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | L | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | g | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | b | X | L | L | L | X | b | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// ```
+	#[test]
+	fn flags_after_build() {
+		let mut costfield = CostField::default();
+		costfield.set_field_cell_value(255, FieldCell::new(3, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(4, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(5, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(2, 9));
+		costfield.set_field_cell_value(255, FieldCell::new(6, 9));
+		let sector = SectorID::new(1, 1);
+		let goal = 84;
+		let portal = None;
+		let route_step = RouteStep::new(&sector, goal, portal);
+		let int_field = IntegrationField::init(&costfield, &route_step);
+
+		let mut flowfield = FlowField::new(&route_step, &int_field);
+		flowfield.build(&int_field);
+
+		let r_c = FieldCell::new(2, 9);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_IMPASSABLE == BITS_IMPASSABLE);
+
+		let r_c = FieldCell::new(4, 8);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_GOAL == BITS_GOAL);
+
+		let r_c = FieldCell::new(4, 7);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_HAS_LOS == BITS_HAS_LOS);
 	}
 }
