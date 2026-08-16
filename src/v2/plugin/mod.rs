@@ -11,13 +11,20 @@ use crate::v2::{
 	flowfields::fields::{flow_field::FlowField, integration_field::IntegrationField},
 };
 
+/// Sets to group plugin logic
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub enum OrderingSet {
+	Calculate,
+}
+
 pub struct FlowFieldTilesPlugin;
 
 impl Plugin for FlowFieldTilesPlugin {
 	fn build(&self, app: &mut App) {
+		app.configure_sets(PostUpdate, OrderingSet::Calculate);
 		app.add_systems(
 			PostUpdate,
-			(process_costfield_update_queue, process_flow_queue),
+			(process_costfield_update_queue, process_flow_queue).in_set(OrderingSet::Calculate),
 		);
 	}
 }
@@ -40,6 +47,16 @@ fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 				flowfield_tiles
 					.flowfield_cache
 					.remove_steps_with_sectors(&sectors);
+				// wipe out any queued steps for flow gen as they might be out of date
+				let mut write_flow_queue = flowfield_tiles.flow_queue.write().unwrap();
+				write_flow_queue.retain(|r| {
+					for a in r {
+						if sectors.contains(a.get_sector()) {
+							return false;
+						}
+					}
+					true
+				});
 			} else {
 				return;
 			}

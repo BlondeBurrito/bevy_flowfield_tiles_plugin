@@ -1,4 +1,6 @@
-//! Generates a single [FlowField] visualisation which uses right-mouse input to set a goal position, causing the visualisation to update to graphically show the flow field lines from a !static! actor position
+//! Generates a single [FlowField] visualisation which uses right-mouse input
+//! to set a goal position, causing the visualisation to update and graphically
+//! show the flowfield lines from a !static! actor position
 //!
 
 use bevy::{
