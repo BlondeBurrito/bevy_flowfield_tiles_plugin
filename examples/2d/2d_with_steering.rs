@@ -5,12 +5,29 @@
 
 use avian2d::prelude::*;
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_flowfield_tiles_plugin::prelude::*;
-use examples_utils::_2d::{
-	actor_steering, check_if_route_exhausted, create_wall_colliders, get_or_request_route,
-	stop_at_destination, Layer, Pathing, FIELD_SPRITE_DIMENSION,
+use bevy_flowfield_tiles_plugin::v2::{
+	bundle::FlowFieldTiles,
+	flowfields::{
+		dimensions::Dimensions,
+		fields::{Field, FieldCell},
+		sectors::{SectorID, sector_cost::SectorCostFields},
+		utilities::FIELD_RESOLUTION,
+	},
+	plugin::FlowFieldTilesPlugin,
 };
-use std::collections::HashMap;
+
+// to reduce code duplication certain constants and systems that make up
+// the steering pipeline are sourced from helper modules
+// NB: the steering systems are very primitive - they do the bare minimum to
+// help showcase bevy_flowfield_tiles_plugin
+#[path = "../helpers/camera.rs"]
+mod camera;
+#[path = "../helpers/cell_icons.rs"]
+mod cell_icons;
+#[path = "../helpers/core.rs"]
+mod core;
+#[path = "../helpers/core2d.rs"]
+mod core2d;
 
 fn main() {
 	App::new()
@@ -19,96 +36,92 @@ fn main() {
 			PhysicsPlugins::default(),
 			// PhysicsDebugPlugin::default(),
 		))
-		.insert_resource(SubstepCount(30))
+		// .insert_resource(SubstepCount(30))
 		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(
 			Startup,
-			(setup_visualisation, setup_navigation, create_wall_colliders),
+			(
+				setup_visualisation,
+				setup_navigation,
+				core2d::create_wall_colliders,
+			),
 		)
-		.add_systems(Update, (user_input, get_or_request_route::<Actor>))
+		.add_systems(PreUpdate, (click_set_target, click_update_cost))
+		.add_systems(Update, core2d::actor_request_route::<core::Actor>)
 		.add_systems(Update, (update_sprite_visuals_based_on_actor,))
 		.add_systems(
-			Update,
+			FixedUpdate,
 			(
-				actor_steering::<Actor>,
-				check_if_route_exhausted::<Actor>,
-				stop_at_destination::<Actor>,
-				click_update_cost,
+				core2d::actor_update_route::<core::Actor>,
+				core2d::actor_steering::<core::Actor>,
+				// check_if_route_exhausted::<core::Actor>,
+				core2d::stop_at_destination::<core::Actor>,
 			),
 		)
 		.run();
 }
 
-/// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
-#[derive(Component)]
-struct SectorLabel(u32, u32);
-
-/// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
-#[derive(Component)]
-struct FieldCellLabel(usize, usize);
-
-/// Labels the actor to enable getting its [Transform] easily
-#[derive(Component)]
-struct Actor;
-
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
-	let map_length = 1920;
-	let map_depth = 1920;
-	let sector_resolution = 640;
-	let actor_size = 16.0;
-	let map_dimensions = MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-	let proj = Projection::Orthographic(OrthographicProjection {
-		scale: 2.0,
-		..OrthographicProjection::default_2d()
-	});
-	cmds.spawn((Camera2d, proj));
-	// let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
+	cmds.spawn(camera::get_camera_2d(2.0));
+	let sprite_dimension = core2d::FIELD_SPRITE_DIMENSION;
+	let origin = (0.0, 0.0);
+	let size = (1920.0, 1920.0);
+	let world_unit_size = core2d::WORLD_UNIT_SIZE;
+	let actor_size = core2d::ACTOR_SIZE;
+	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
 	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let sector_cost_fields = SectorCostFields::from_ron(path, &map_dimensions);
-	let fields = sector_cost_fields.get_baseline();
+		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields_continuous_layout.ron";
+	let sector_cost_fields = SectorCostFields::from_ron(path, &dimensions);
+	let fields = sector_cost_fields.get_scaled_costs();
 	// iterate over each sector field to place the sprites
-	for (sector_id, field) in fields.iter() {
-		// iterate over the dimensions of the field
-		for (i, column) in field.get().iter().enumerate() {
-			for (j, value) in column.iter().enumerate() {
-				// grid origin is always in the top left
-				let sprite_x = FIELD_SPRITE_DIMENSION;
-				let sprite_y = FIELD_SPRITE_DIMENSION;
-				let sector_offset = map_dimensions.get_sector_corner_xy(*sector_id);
-				let x = sector_offset.x + 32.0 + (sprite_x * i as f32);
-				let y = sector_offset.y - 32.0 - (sprite_y * j as f32);
-				// add colliders to impassable cells
-				if *value == 255 {
-					cmds.spawn((
-						Sprite {
-							custom_size: Some(Vec2::new(64.0, 64.0)),
-							image: asset_server.load(get_basic_icon(*value)),
-							..default()
-						},
-						Transform::from_xyz(x, y, 0.0),
-					))
-					.insert(FieldCellLabel(i, j))
-					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()))
-					.insert(Collider::rectangle(
-						FIELD_SPRITE_DIMENSION,
-						FIELD_SPRITE_DIMENSION,
-					))
-					.insert(RigidBody::Static)
-					.insert(CollisionLayers::new([Layer::Terrain], [Layer::Actor]));
-				} else {
-					cmds.spawn((
-						Sprite {
-							image: asset_server.load(get_basic_icon(*value)),
-							..default()
-						},
-						Transform::from_xyz(x, y, 0.0),
-					))
-					.insert(FieldCellLabel(i, j))
-					.insert(SectorLabel(sector_id.get_column(), sector_id.get_row()));
-				}
+	for (sector_id, costfield) in fields.iter() {
+		let sector_top_left = dimensions.get_sector_corner_xy(sector_id);
+
+		for (i, cost) in costfield.get().iter().enumerate() {
+			let y_i = i / FIELD_RESOLUTION;
+			let x_i = i % FIELD_RESOLUTION;
+			// grid origin is always in the top left
+			let x = sector_top_left.x + sprite_dimension / 2.0 + (sprite_dimension * x_i as f32);
+			let y = sector_top_left.y - sprite_dimension / 2.0 - (sprite_dimension * y_i as f32);
+			// add colliders to impassable cells
+			if *cost == 255 {
+				cmds.spawn((
+					Sprite {
+						custom_size: Some(Vec2::new(64.0, 64.0)),
+						image: asset_server.load(cell_icons::get_basic_icon(*cost)),
+						..default()
+					},
+					Transform::from_xyz(x, y, 0.0),
+				))
+				.insert(core::FieldCellLabel(x_i, y_i))
+				.insert(core::SectorLabel(
+					sector_id.get_column(),
+					sector_id.get_row(),
+				))
+				.insert(Collider::rectangle(
+					core2d::FIELD_SPRITE_DIMENSION,
+					core2d::FIELD_SPRITE_DIMENSION,
+				))
+				.insert(RigidBody::Static)
+				.insert(CollisionLayers::new(
+					[core2d::Layer::Terrain],
+					[core2d::Layer::Actor],
+				));
+			} else {
+				cmds.spawn((
+					Sprite {
+						image: asset_server.load(cell_icons::get_basic_icon(*cost)),
+						..default()
+					},
+					Transform::from_xyz(x, y, 0.0),
+				))
+				.insert(core::FieldCellLabel(x_i, y_i))
+				.insert(core::SectorLabel(
+					sector_id.get_column(),
+					sector_id.get_row(),
+				));
 			}
 		}
 	}
@@ -116,20 +129,20 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands) {
 	// create the entity handling the algorithm
-	// let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields.ron";
 	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_cost_fields_continuous_layout.ron";
-	let map_length = 1920;
-	let map_depth = 1920;
-	let sector_resolution = 640;
-	let actor_size = 16.0;
-	cmds.spawn(FlowFieldTilesBundle::from_ron(
-		map_length,
-		map_depth,
-		sector_resolution,
+		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields_continuous_layout.ron";
+	let origin = (0.0, 0.0);
+	let size = (1920.0, 1920.0);
+	let world_unit_size = core2d::WORLD_UNIT_SIZE;
+	let actor_size = core2d::ACTOR_SIZE;
+	cmds.spawn(FlowFieldTiles::from_ron(
+		origin,
+		size,
+		world_unit_size,
 		actor_size,
 		&path,
 	));
+
 	// create the controllable actor in the top right corner
 	cmds.spawn((
 		Sprite {
@@ -142,24 +155,26 @@ fn setup_navigation(mut cmds: Commands) {
 			..default()
 		},
 	))
-	.insert(Actor)
-	.insert(Pathing::default())
+	.insert(core::Actor)
+	.insert(core2d::Pathing::default())
 	.insert(RigidBody::Dynamic)
 	.insert(Collider::circle(1.0))
 	.insert(AngularDamping(1.0))
-	.insert(CollisionLayers::new([Layer::Actor], [Layer::Terrain]));
+	.insert(CollisionLayers::new(
+		[core2d::Layer::Actor],
+		[core2d::Layer::Terrain],
+	));
 }
 
-/// Handle generating a PathRequest via right click
-fn user_input(
+/// Handle user mouse clicks
+fn click_set_target(
 	mouse_button_input: Res<ButtonInput<MouseButton>>,
 	windows: Query<&Window, With<PrimaryWindow>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
-	dimensions_q: Query<&MapDimensions>,
-	mut actor_q: Query<&mut Pathing, With<Actor>>,
+	mut actor_q: Query<&mut core2d::Pathing, With<core::Actor>>,
 ) {
 	if mouse_button_input.just_released(MouseButton::Right) {
-		// get 2d world positionn of cursor
+		// get 2d world position of cursor
 		let (camera, camera_transform) = camera_q.single().unwrap();
 		let window = windows.single().unwrap();
 		let Some(cursor_position) = window.cursor_position() else {
@@ -169,121 +184,27 @@ fn user_input(
 		else {
 			return;
 		};
-		let map_dimensions = dimensions_q.single().unwrap();
-		if map_dimensions
-			.get_sector_and_field_cell_from_xy(world_position)
-			.is_some()
-		{
-			let mut pathing = actor_q.single_mut().unwrap();
-			// update the actor pathing
-			pathing.target_position = Some(world_position);
-			pathing.target_sector = None;
-			pathing.portal_route = None;
-			pathing.has_los = false;
-		} else {
-			error!("Cursor out of bounds");
-		}
-	}
-}
-
-/// Get asset path to sprite icons
-fn get_basic_icon(value: u8) -> String {
-	if value == 255 {
-		String::from("ordinal_icons/impassable.png")
-	} else if value == 1 {
-		String::from("ordinal_icons/goal.png")
-	} else {
-		panic!("Require basic icon")
-	}
-}
-
-/// Whenever the actor has a path assigned attempt to get the current flowfield and update all the map sprites to visualise the directions of flow
-fn update_sprite_visuals_based_on_actor(
-	actor_q: Query<&Pathing, With<Actor>>,
-	flowfield_q: Query<&FlowFieldCache>,
-	costfield_q: Query<&SectorCostFields>,
-	mut field_cell_q: Query<(&mut Sprite, &FieldCellLabel, &SectorLabel)>,
-	asset_server: Res<AssetServer>,
-) {
-	let f_cache = flowfield_q.single().unwrap();
-	let sc_cache = costfield_q.single().unwrap();
-	let pathing = actor_q.single().unwrap();
-	if let Some(route) = &pathing.portal_route {
-		let mut route_map: HashMap<SectorID, FieldCell> = HashMap::new();
-		for (s, g) in route.iter() {
-			route_map.insert(*s, *g);
-		}
-		for (mut sprite, field_cell_label, sector_label) in &mut field_cell_q {
-			// look for the value in the route_map if it's part of the flow, otherwise use the cost field
-			if route_map.contains_key(&SectorID::new(sector_label.0, sector_label.1)) {
-				let goal = route_map
-					.get(&SectorID::new(sector_label.0, sector_label.1))
-					.unwrap();
-				if let Some(flowfield) = f_cache.get_field(
-					SectorID::new(sector_label.0, sector_label.1),
-					pathing.target_sector.unwrap(),
-					*goal,
-				) {
-					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
-						field_cell_label.0,
-						field_cell_label.1,
-					));
-					let icon = get_ord_icon(flow_value);
-					let new_handle: Handle<Image> = asset_server.load(icon);
-					sprite.image = new_handle;
-				}
-			} else {
-				let value = sc_cache
-					.get_baseline()
-					.get(&SectorID::new(sector_label.0, sector_label.1))
-					.unwrap()
-					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
-				// if value == 255 {
-				// 	continue
-				// }
-				let icon = get_basic_icon(value);
-				let new_handle: Handle<Image> = asset_server.load(icon);
-				sprite.image = new_handle;
-			}
-		}
-	}
-}
-/// Get the asset path to ordinal icons
-fn get_ord_icon(value: u8) -> String {
-	if is_goal(value) {
-		String::from("ordinal_icons/goal.png")
-	} else if has_line_of_sight(value) {
-		String::from("ordinal_icons/los.png")
-	} else {
-		//
-		let ordinal = get_ordinal_from_bits(value);
-		match ordinal {
-			Ordinal::North => String::from("ordinal_icons/north.png"),
-			Ordinal::East => String::from("ordinal_icons/east.png"),
-			Ordinal::South => String::from("ordinal_icons/south.png"),
-			Ordinal::West => String::from("ordinal_icons/west.png"),
-			Ordinal::NorthEast => String::from("ordinal_icons/north_east.png"),
-			Ordinal::SouthEast => String::from("ordinal_icons/south_east.png"),
-			Ordinal::SouthWest => String::from("ordinal_icons/south_west.png"),
-			Ordinal::NorthWest => String::from("ordinal_icons/north_west.png"),
-			Ordinal::Zero => String::from("ordinal_icons/impassable.png"),
-		}
+		// set the actor target and abandon any existing pollable task
+		let mut actor_pathing = actor_q.single_mut().unwrap();
+		let existing_route = &mut actor_pathing.pollable_route;
+		// if let Some(poll) = existing_route {
+		// 	let _ = poll.detach();
+		// }
+		*existing_route = None;
+		actor_pathing.target = Some(world_position);
+		actor_pathing.route = None;
 	}
 }
 
 /// Left clicking on a tile/field will flip the value of it in the [CostField]
 ///
-/// If the current cost is `1` then it is updated to `255` and a [Collider] is inserted denoting an impassable field.
-///
-/// If the current cost is `255` then
+/// If the current cost is `1` then it is updated to `255`. If the current cost
+/// is `255` then it is flipped to `1`
 fn click_update_cost(
-	mut cmds: Commands,
-	mut tile_q: Query<(Entity, &SectorLabel, &FieldCellLabel, &mut Sprite)>,
 	input: Res<ButtonInput<MouseButton>>,
 	camera_q: Query<(&Camera, &GlobalTransform)>,
 	windows: Query<&Window, With<PrimaryWindow>>,
-	dimensions_q: Query<(&MapDimensions, &SectorCostFields)>,
-	mut event: MessageWriter<EventUpdateCostfieldsCell>,
+	mut flow_q: Query<&mut FlowFieldTiles>,
 ) {
 	if input.just_released(MouseButton::Left) {
 		let (camera, camera_transform) = camera_q.single().unwrap();
@@ -295,40 +216,48 @@ fn click_update_cost(
 		else {
 			return;
 		};
-		let (map_dimensions, cost_fields) = dimensions_q.single().unwrap();
+		let mut flowfield_tiles = flow_q.single_mut().unwrap();
+		let dimensions = flowfield_tiles.get_dimensions();
+		let costfields = flowfield_tiles.get_sector_cost_fields().clone();
+
 		if let Some((sector_id, field_cell)) =
-			map_dimensions.get_sector_and_field_cell_from_xy(world_position)
+			dimensions.get_sector_and_field_cell_from_xy(world_position)
 		{
-			let cost_field = cost_fields.get_baseline().get(&sector_id).unwrap();
-			let value = cost_field.get_field_cell_value(field_cell);
+			let read_costfields = costfields.read().unwrap();
+			let costfield = read_costfields.get_scaled_costs().get(&sector_id).unwrap();
+			let value = costfield.get_field_cell_value(field_cell);
 			if value == 255 {
-				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 1);
-				event.write(e);
-				// remove collider from tile
-				for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
-					if (sector_label.0, sector_label.1) == sector_id.get()
-						&& (field_label.0, field_label.1) == field_cell.get_column_row()
-					{
-						sprite.color = Color::WHITE;
-						cmds.entity(entity).remove::<Collider>();
-						cmds.entity(entity).remove::<RigidBody>();
-						cmds.entity(entity).remove::<CollisionLayers>();
-					}
-				}
+				flowfield_tiles.add_costfield_update_2d(world_position, 1);
 			} else {
-				let e = EventUpdateCostfieldsCell::new(field_cell, sector_id, 255);
-				event.write(e);
-				// add collider to tile
-				for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
-					if (sector_label.0, sector_label.1) == sector_id.get()
-						&& (field_label.0, field_label.1) == field_cell.get_column_row()
-					{
-						sprite.color = Color::BLACK;
-						cmds.entity(entity).insert((
-							Collider::rectangle(FIELD_SPRITE_DIMENSION, FIELD_SPRITE_DIMENSION),
-							RigidBody::Static,
-							CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
-						));
+				flowfield_tiles.add_costfield_update_2d(world_position, 255);
+			}
+		}
+	}
+}
+
+/// Whenever the actor has a path assigned attempt to get the current flowfield and update all the map sprites to visualise the directions of flow
+fn update_sprite_visuals_based_on_actor(
+	actor_q: Query<&core2d::Pathing, (With<core::Actor>, Changed<core2d::Pathing>)>,
+	flowfield_tiles_q: Query<&FlowFieldTiles>,
+	mut field_cell_q: Query<(&mut Sprite, &core::FieldCellLabel, &core::SectorLabel)>,
+	asset_server: Res<AssetServer>,
+) {
+	for pathing in &actor_q {
+		let flowfield_tiles = flowfield_tiles_q.single().unwrap();
+		if let Some(route) = &pathing.route {
+			if let Some(step) = route.first() {
+				if let Some(flowfield) = flowfield_tiles.read_flowfield(step) {
+					for (mut sprite, field_cell_label, sector_label) in field_cell_q.iter_mut() {
+						let sector = SectorID::new(sector_label.0, sector_label.1);
+						if sector == *step.get_sector() {
+							let flow_value = flowfield.get_field_cell_value(FieldCell::new(
+								field_cell_label.0,
+								field_cell_label.1,
+							));
+							let icon = cell_icons::get_ord_icon(flow_value);
+							let new_handle: Handle<Image> = asset_server.load(icon);
+							sprite.image = new_handle;
+						}
 					}
 				}
 			}

@@ -15,6 +15,11 @@ use bevy_flowfield_tiles_plugin::v2::{
 	plugin::FlowFieldTilesPlugin,
 };
 
+#[path = "../helpers/cell_icons.rs"]
+mod cell_icons;
+#[path = "../helpers/core.rs"]
+mod core;
+
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
@@ -23,14 +28,6 @@ fn main() {
 		.add_systems(Update, (update_sprites, click_update_cost, update_counter))
 		.run();
 }
-
-/// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
-#[derive(Component)]
-struct SectorLabel(i32, i32);
-
-/// Helper component attached to each sprite, allows for the visualisation to be updated, you wouldn't use this in a real simulation
-#[derive(Component)]
-struct FieldCellLabel(usize, usize);
 
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
@@ -60,11 +57,11 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			let y = sector_top_left.y - sprite_dimension / 2.0 - (sprite_dimension * y_i as f32);
 
 			cmds.spawn((
-				Sprite::from_image(asset_server.load(get_basic_icon(*cost))),
+				Sprite::from_image(asset_server.load(cell_icons::get_basic_icon(*cost))),
 				Transform::from_xyz(x, y, 0.0),
 			))
-			.insert(FieldCellLabel(x_i, y_i))
-			.insert(SectorLabel(sector.get_column(), sector.get_row()));
+			.insert(core::FieldCellLabel(x_i, y_i))
+			.insert(core::SectorLabel(sector.get_column(), sector.get_row()));
 		}
 	}
 	// remove read lock so the entity can be created
@@ -75,7 +72,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 /// Redraw sprites when Portals are changed (...very inefficiently)
 fn update_sprites(
 	flowfields_q: Query<&FlowFieldTiles, Changed<FlowFieldTiles>>,
-	mut fieldcell_q: Query<(&mut Sprite, &FieldCellLabel, &SectorLabel)>,
+	mut fieldcell_q: Query<(&mut Sprite, &core::FieldCellLabel, &core::SectorLabel)>,
 	asset_server: Res<AssetServer>,
 ) {
 	for flowfield_tiles in &flowfields_q {
@@ -109,20 +106,9 @@ fn update_sprites(
 					.get(&SectorID::new(sector_label.0, sector_label.1))
 					.unwrap();
 				let c = costfield.get_field_cell_value(FieldCell::new(cell_label.0, cell_label.1));
-				sprite.image = asset_server.load(get_basic_icon(c));
+				sprite.image = asset_server.load(cell_icons::get_basic_icon(c));
 			}
 		}
-	}
-}
-
-/// Get asset path to sprite icons
-fn get_basic_icon(value: u8) -> String {
-	if value == 255 {
-		String::from("ordinal_icons/impassable.png")
-	} else if value == 1 {
-		String::from("ordinal_icons/goal.png")
-	} else {
-		panic!("Require basic icon")
 	}
 }
 

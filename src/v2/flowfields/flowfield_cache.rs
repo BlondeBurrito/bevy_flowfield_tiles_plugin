@@ -16,6 +16,10 @@ pub struct FlowFieldCache {
 }
 
 impl FlowFieldCache {
+	/// Get a reference to the [FlowField] cache map
+	pub fn get_cache(&self) -> &BTreeMap<RouteStep, FlowField> {
+		&self.cache
+	}
 	/// Insert a [FlowField] into the cache
 	pub fn insert(&mut self, route_step: &RouteStep, flowfield: FlowField) {
 		self.cache.insert(*route_step, flowfield);
@@ -24,6 +28,7 @@ impl FlowFieldCache {
 	pub fn remove(&mut self, route_step: &RouteStep) {
 		self.cache.remove(route_step);
 	}
+	//TODO give this a better name to avoid confusion with get_cache
 	/// Get a [FlowField] for a particular [RouteStep] if it exists/has been
 	/// generated
 	pub fn get(&self, route_step: &RouteStep) -> Option<&FlowField> {

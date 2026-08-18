@@ -256,17 +256,18 @@ impl Dimensions {
 			|| position.z > bottom_right.y
 		{
 			error!(
-				"Position is out of bounds of MapDimensions, x {}, z {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?",
+				"Position is out of bounds of Dimensions, x {}, z {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?",
 				position.x, position.z
 			);
 			//TODO use Result instead
 			return None;
 		}
 		// get the vector size from fields origin to position
-		let to_pos = (position.xz() - top_left).abs();
+		let to_pos_x = (position.x - top_left.x).abs();
+		let to_pos_z = (position.z - top_left.y).abs();
 		// the lengths of this vector when divided by the size of a sector reveal the sector ID
-		let col = (to_pos.x / sector_len).floor();
-		let row = (to_pos.y / sector_len).floor();
+		let col = (to_pos_x / sector_len).floor();
+		let row = (to_pos_z / sector_len).floor();
 		Some(SectorID::new(col as i32, row as i32))
 	}
 
@@ -281,7 +282,7 @@ impl Dimensions {
 		let relative_offset = Vec3::new(
 			sector_id.get_column() as f32 * sector_len,
 			0.0,
-			sector_id.get_row() as f32 * -sector_len,
+			sector_id.get_row() as f32 * sector_len,
 		);
 
 		top_left + relative_offset

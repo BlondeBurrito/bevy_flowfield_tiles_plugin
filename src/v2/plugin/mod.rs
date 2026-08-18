@@ -39,6 +39,7 @@ fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 
 		// if a portal update is still in process then come back later
 		if let Some(portal_task) = &mut flowfield_tiles.portal_update_task {
+			// if the update is completed remove data that may be out of date
 			if let Some(sector) = check_ready(portal_task) {
 				flowfield_tiles.portal_update_task = None;
 				// use the sector to identify existing flows for removal

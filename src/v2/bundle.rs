@@ -323,4 +323,8 @@ impl FlowFieldTiles {
 	pub fn read_flowfield(&self, route_step: &RouteStep) -> Option<&FlowField> {
 		self.flowfield_cache.get(route_step)
 	}
+	/// Get a reference to the [FlowFieldCache]
+	pub fn flowfield_cache(&self) -> &FlowFieldCache {
+		&self.flowfield_cache
+	}
 }

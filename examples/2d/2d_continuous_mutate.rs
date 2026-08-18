@@ -1,10 +1,16 @@
-//! Generates a 30x30 world and endlessly spawns actors with randomised destinations
+//! Generates a 30x30 world and endlessly spawns actors with randomised destinations.
+//!
+//! This scenarios uses a completely blank (default) set of CostFields. You can
+//! use your LeftMouseButton to flip Costfield values between 1 and 255
 //!
 
 use bevy::{
 	diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
 	prelude::*,
+	window::PrimaryWindow,
 };
+
+use avian2d::prelude::*;
 use bevy_flowfield_tiles_plugin::v2::{
 	bundle::FlowFieldTiles,
 	flowfields::{
@@ -13,8 +19,6 @@ use bevy_flowfield_tiles_plugin::v2::{
 	},
 	plugin::FlowFieldTilesPlugin,
 };
-
-use avian2d::prelude::*;
 use rand::seq::IndexedRandom;
 
 // to reduce code duplication certain constants and systems that make up
@@ -34,8 +38,8 @@ fn main() {
 	App::new()
 		.add_plugins((
 			DefaultPlugins,
-			FrameTimeDiagnosticsPlugin::default(),
 			PhysicsPlugins::default(),
+			FrameTimeDiagnosticsPlugin::default(),
 			// PhysicsDebugPlugin::default(),
 		))
 		// .insert_resource(SubstepCount(6))
@@ -50,6 +54,7 @@ fn main() {
 				create_counters,
 			),
 		)
+		.add_systems(PreUpdate, click_update_cost)
 		.add_systems(
 			Update,
 			(
@@ -83,9 +88,7 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
 	let actor_size = core2d::ACTOR_SIZE;
 	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
-	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields_continuous_layout.ron";
-	let sector_cost_fields = SectorCostFields::from_ron(path, &dimensions);
+	let sector_cost_fields = SectorCostFields::new(&dimensions);
 	let fields = sector_cost_fields.get_scaled_costs();
 	// iterate over each sector field to place the sprites
 	for (sector_id, costfield) in fields.iter() {
@@ -97,34 +100,19 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			// grid origin is always in the top left
 			let x = sector_top_left.x + sprite_dimension / 2.0 + (sprite_dimension * x_i as f32);
 			let y = sector_top_left.y - sprite_dimension / 2.0 - (sprite_dimension * y_i as f32);
-			// add colliders to impassable cells
-			if *cost == 255 {
-				cmds.spawn((
-					Sprite {
-						custom_size: Some(Vec2::new(64.0, 64.0)),
-						image: asset_server.load(cell_icons::get_basic_icon(*cost)),
-						..default()
-					},
-					Transform::from_xyz(x, y, 0.0),
-				))
-				.insert(Collider::rectangle(
-					core2d::FIELD_SPRITE_DIMENSION,
-					core2d::FIELD_SPRITE_DIMENSION,
-				))
-				.insert(RigidBody::Static)
-				.insert(CollisionLayers::new(
-					[core2d::Layer::Terrain],
-					[core2d::Layer::Actor],
-				));
-			} else {
-				cmds.spawn((
-					Sprite {
-						image: asset_server.load(cell_icons::get_basic_icon(*cost)),
-						..default()
-					},
-					Transform::from_xyz(x, y, 0.0),
-				));
-			}
+
+			cmds.spawn((
+				Sprite {
+					image: asset_server.load(cell_icons::get_basic_icon(*cost)),
+					..default()
+				},
+				Transform::from_xyz(x, y, 0.0),
+			))
+			.insert(core::FieldCellLabel(x_i, y_i))
+			.insert(core::SectorLabel(
+				sector_id.get_column(),
+				sector_id.get_row(),
+			));
 		}
 	}
 }
@@ -132,19 +120,109 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands) {
 	// create the entity handling the algorithm
-	let path =
-		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields_continuous_layout.ron";
 	let origin = (0.0, 0.0);
 	let size = (1920.0, 1920.0);
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
 	let actor_size = core2d::ACTOR_SIZE;
-	cmds.spawn(FlowFieldTiles::from_ron(
+	cmds.spawn(FlowFieldTiles::new(
 		origin,
 		size,
 		world_unit_size,
 		actor_size,
-		&path,
 	));
+}
+
+/// Left clicking on a tile/field will flip the value of it in the [CostField]
+///
+/// If the current cost is `1` then it is updated to `255`. If the current cost
+/// is `255` then it is flipped to `1`
+#[allow(clippy::too_many_arguments)]
+fn click_update_cost(
+	mut cmds: Commands,
+	input: Res<ButtonInput<MouseButton>>,
+	camera_q: Query<(&Camera, &GlobalTransform)>,
+	windows: Query<&Window, With<PrimaryWindow>>,
+	mut flow_q: Query<&mut FlowFieldTiles>,
+	mut tile_q: Query<(
+		Entity,
+		&core::SectorLabel,
+		&core::FieldCellLabel,
+		&mut Sprite,
+	)>,
+	spatial_query: SpatialQuery,
+) {
+	if input.just_released(MouseButton::Left) {
+		let (camera, camera_transform) = camera_q.single().unwrap();
+		let window = windows.single().unwrap();
+		let Some(cursor_position) = window.cursor_position() else {
+			return;
+		};
+		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+		else {
+			return;
+		};
+		let mut flowfield_tiles = flow_q.single_mut().unwrap();
+		let dimensions = flowfield_tiles.get_dimensions();
+		let costfields = flowfield_tiles.get_sector_cost_fields().clone();
+
+		if let Some((sector_id, field_cell)) =
+			dimensions.get_sector_and_field_cell_from_xy(world_position)
+		{
+			let read_costfields = costfields.read().unwrap();
+			let costfield = read_costfields.get_scaled_costs().get(&sector_id).unwrap();
+			let value = costfield.get_field_cell_value(field_cell);
+			if value == 255 {
+				// schedule costfield update
+				flowfield_tiles.add_costfield_update_2d(world_position, 1);
+
+				// remove collider from tile
+				for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
+					if (sector_label.0, sector_label.1) == sector_id.get()
+						&& (field_label.0, field_label.1) == field_cell.get_column_row()
+					{
+						sprite.color = Color::WHITE;
+						cmds.entity(entity).remove::<Collider>();
+						cmds.entity(entity).remove::<RigidBody>();
+						cmds.entity(entity).remove::<CollisionLayers>();
+					}
+				}
+			} else {
+				// block placing if occupied by actor
+				let intersections = spatial_query.shape_intersections(
+					&Collider::rectangle(
+						core2d::FIELD_SPRITE_DIMENSION,
+						core2d::FIELD_SPRITE_DIMENSION,
+					),
+					world_position,
+					Rotation::default().into(),
+					&SpatialQueryFilter::from_mask(core2d::Layer::Actor),
+				);
+				if !intersections.is_empty() {
+					return;
+				}
+
+				// schedule costfield update
+				flowfield_tiles.add_costfield_update_2d(world_position, 255);
+
+				// add collider to tile
+				for (entity, sector_label, field_label, mut sprite) in &mut tile_q {
+					if (sector_label.0, sector_label.1) == sector_id.get()
+						&& (field_label.0, field_label.1) == field_cell.get_column_row()
+					{
+						sprite.color = Color::BLACK;
+						cmds.entity(entity).insert((
+							Collider::rectangle(
+								core2d::FIELD_SPRITE_DIMENSION,
+								core2d::FIELD_SPRITE_DIMENSION,
+							),
+							RigidBody::Static,
+							CollisionLayers::new([core2d::Layer::Terrain], [core2d::Layer::Actor]),
+						));
+					}
+				}
+			}
+		}
+	}
 }
 
 /// Spawn an actor every tick with a random starting position at the top of the
@@ -227,6 +305,7 @@ fn despawn_at_destination(
 		}
 	}
 }
+
 // /// If an impassable tile is placed directly on top of an actor it may achieve
 // /// such a high velocity from the collision that it can "tunnel" through the
 // /// border colliders of the world and be forever spinning through space. If an

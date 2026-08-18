@@ -11,8 +11,8 @@ keywords = ["navigation", "pathfinding", "bevy"]
 categories = ["game-development", "algorithms"]
 exclude = [".github/", "crates/", "assets/", "docs/png/", "justfile"]
 
-[workspace]
-members = ["crates/*"]
+# [workspace]
+# members = ["crates/*"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
@@ -54,7 +54,6 @@ bevy = { workspace = true, default-features = true, features=["wayland", "system
 rand = "0.9"
 avian2d = { version = "0.7", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d examples for collision detection
 # avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
-examples_utils = { path = "crates/examples_utils" }
 
 [dependencies]
 bevy = { workspace = true, features = ["bevy_render", "wayland"] }
@@ -182,11 +181,6 @@ path = "examples/2d/2d_variety_costs.rs"
 required-features = ["heightmap", "2d"]
 
 [[example]]
-name = "2d_complex_movement"
-path = "examples/2d/2d_complex_movement.rs"
-required-features = ["csv", "2d"]
-
-[[example]]
 name = "2d_multi_actor"
 path = "examples/2d/2d_multi_actor.rs"
 required-features = ["ron", "2d"]
@@ -198,7 +192,7 @@ required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_mutate_costfields"
-path = "examples/2d/2d_mutate_costfields.rs"
+path = "examples/2d/2d_continuous_mutate.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
@@ -211,10 +205,10 @@ name = "2d_large_actor"
 path = "examples/2d/2d_large_actor.rs"
 required-features = ["ron", "2d"]
 
-[[example]]
-name = "2d_from_mesh"
-path = "examples/2d/2d_from_mesh.rs"
-required-features = ["2d"]
+# [[example]]
+# name = "2d_from_mesh"
+# path = "examples/2d/2d_from_mesh.rs"
+# required-features = ["2d"]
 
 [[example]]
 name = "3d_actor_movement"
