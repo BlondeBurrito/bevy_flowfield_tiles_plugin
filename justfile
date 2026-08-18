@@ -38,7 +38,6 @@ bench-save-main: build
   cargo bench -q --bench init_bundle --workspace --all-features -- --save-baseline main_init_bundle
   cargo bench -q --bench init_cost_fields --workspace --all-features -- --save-baseline main_init_cost_fields
   cargo bench -q --bench init_portals --workspace --all-features -- --save-baseline main_init_portals
-  cargo bench -q --bench init_portal_graph --workspace --all-features -- --save-baseline main_init_portal_graph
 # compare each benchmark against a saved bench taken from main
 bench-compare: build
   cargo bench -q --bench calc_route --workspace --all-features -- --baseline main_calc_route
@@ -48,7 +47,6 @@ bench-compare: build
   cargo bench -q --bench init_bundle --workspace --all-features -- --baseline main_init_bundle
   cargo bench -q --bench init_cost_fields --workspace --all-features -- --baseline main_init_cost_fields
   cargo bench -q --bench init_portals --workspace --all-features -- --baseline main_init_portals
-  cargo bench -q --bench init_portal_graph --workspace --all-features -- --baseline main_init_portal_graph
 # run a debug build so the compiler can call out overflow errors etc, rather than making assumptions
 debug:
   cargo build --workspace --all-features

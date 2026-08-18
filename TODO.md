@@ -12,3 +12,7 @@
 - verify 2d_large_actor example to make sure wall gaps get closed
 - 2d_continuous_mutate, actors get orphaned, look at tick counting when flow not found for too long
 - 3d model doesnt match ron costfield layout!
+- loads of tests
+- internal docs
+- readme
+- sort out bevy app in calc benchmarks, how to .run() or call .update() frame by frame

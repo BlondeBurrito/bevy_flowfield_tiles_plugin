@@ -124,10 +124,6 @@ harness = false
 name = "init_portals"
 harness = false
 
-[[bench]]
-name = "init_portal_graph"
-harness = false
-
 ###################
 
 [[example]]
