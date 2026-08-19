@@ -1,6 +1,7 @@
-//! When an actor requests a path and the floe fields are net yet ready they are given temporary simpler path based on portal-to-portal pathing
+//! When an actor requests a path and the floe fields are net yet ready they
+//! are given temporary simpler path based on portal-to-portal pathing
 //!
-//! The [RouteCache] stores the high level routes describing a path from sector-to-sector via portals
+//! The [RouteStep] describes the portal location within a particular sector
 //!
 
 use crate::v2::flowfields::{portal::PortalWindow, sectors::SectorID};

@@ -44,12 +44,6 @@ pub struct FlowFieldTiles {
 	/// being updated
 	#[cfg_attr(feature = "serde", serde(skip))]
 	pub portal_update_task: Option<Task<SectorID>>,
-	// /// Portals for all sectors
-	// pub sector_portals: SectorPortals,
-	// /// Graph describing how to get from one sector to another
-	// pub portal_graph: PortalGraph,
-	// /// Cache of overarching portal-portal routes
-	// pub route_cache: RouteCache,
 	/// Store groups of routes that will be used to create [FlowField]
 	pub flow_queue: Arc<RwLock<VecDeque<Vec<RouteStep>>>>,
 	/// Stores [bevy::tasks::AsyncComputeTaskPool] [Task] when a group of
@@ -77,30 +71,6 @@ impl FlowFieldTiles {
 	pub fn get_portals(&self) -> &Arc<RwLock<Portals>> {
 		&self.portals
 	}
-	// /// Get a reference to the [SectorPortals]
-	// pub fn get_sector_portals(&self) -> &SectorPortals {
-	// 	&self.sector_portals
-	// }
-	// /// Get a reference to the [PortalGraph]
-	// pub fn get_portal_graph(&self) -> &PortalGraph {
-	// 	&self.portal_graph
-	// }
-	// /// Get a reference to the [RouteCache]
-	// pub fn get_route_cache(&self) -> &RouteCache {
-	// 	&self.route_cache
-	// }
-	// /// Get a mutable reference to the [RouteCache]
-	// pub fn get_route_cache_mut(&mut self) -> &mut RouteCache {
-	// 	&mut self.route_cache
-	// }
-	// /// Get a reference to the [FlowFieldCache]
-	// pub fn get_flowfield_cache(&self) -> &FlowFieldCache {
-	// 	&self.flow_field_cache
-	// }
-	// /// Get a mutable reference to the [FlowFieldCache]
-	// pub fn get_flowfield_cache_mut(&mut self) -> &mut FlowFieldCache {
-	// 	&mut self.flow_field_cache
-	// }
 	/// Create a new instance of [FlowFieldTiles] based on world dimensions
 	pub fn new(
 		origin: (f32, f32),
@@ -114,14 +84,7 @@ impl FlowFieldTiles {
 		let portals = Arc::new(RwLock::new(Portals::new(&*c)));
 		// unlock now that portals are built
 		drop(c);
-		// let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
-		// // update default portals for cost fields
-		// for sector_id in cost_fields.get_scaled().keys() {
-		// 	portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
-		// }
-		// let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
-		// let route_cache = RouteCache::default();
-		// let cache = FlowFieldCache::default();
+
 		FlowFieldTiles {
 			dimensions,
 			sector_cost_fields: costfields,
@@ -155,22 +118,7 @@ impl FlowFieldTiles {
 		let portals = Arc::new(RwLock::new(Portals::new(&*c)));
 		// unlock now that portals are built
 		drop(c);
-		// let map_dimensions =
-		// 	MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-		// let cost_fields = SectorCostFields::from_ron(path.to_string(), &map_dimensions);
-		// if ((map_length * map_depth) / (sector_resolution * sector_resolution)) as usize
-		// 	!= cost_fields.get_baseline().len()
-		// {
-		// 	panic!("Map size ({}, {}) with resolution {} produces ({}x{}) sectors. Ron file only produces {} sectors", map_length, map_depth, sector_resolution, map_length/sector_resolution, map_depth/sector_resolution, cost_fields.get_baseline().len());
-		// }
-		// let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
-		// // update default portals for cost fields
-		// for sector_id in cost_fields.get_scaled().keys() {
-		// 	portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
-		// }
-		// let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
-		// let route_cache = RouteCache::default();
-		// let cache = FlowFieldCache::default();
+
 		FlowFieldTiles {
 			dimensions,
 			sector_cost_fields: costfields,
@@ -206,17 +154,7 @@ impl FlowFieldTiles {
 		let portals = Arc::new(RwLock::new(Portals::new(&*c)));
 		// unlock now that portals are built
 		drop(c);
-		// let map_dimensions =
-		// 	MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-		// let cost_fields = SectorCostFields::from_heightmap(&map_dimensions, file_path.to_string());
-		// let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
-		// // update default portals for cost fields
-		// for sector_id in cost_fields.get_scaled().keys() {
-		// 	portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
-		// }
-		// let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
-		// let route_cache = RouteCache::default();
-		// let cache = FlowFieldCache::default();
+
 		FlowFieldTiles {
 			dimensions,
 			sector_cost_fields: costfields,
@@ -251,7 +189,11 @@ impl FlowFieldTiles {
 		}
 	}
 
-	/// TODO
+	/// Request a path (if it exists). If the `from` and `to` parameters are valid
+	/// coordinates in [Dimension] space a [Task] will be returned. Polling this
+	/// task will return a high-level list of [RouteStep] describing the portal-to
+	/// -portal route of the path if it exists. Each [RouteStep] can be used with
+	/// the `read_flowfield()` method to obtain a [FlowField] for the step
 	#[cfg(feature = "2d")]
 	pub fn get_route_2d(&self, from: Vec2, to: Vec2) -> Option<Task<Option<Vec<RouteStep>>>> {
 		let Some((source_sector, source_cell)) =
@@ -266,7 +208,11 @@ impl FlowFieldTiles {
 		//
 		self.get_route(source_sector, source_cell, goal_sector, goal_cell)
 	}
-	/// TODO
+	/// Request a path (if it exists). If the `from` and `to` parameters are valid
+	/// coordinates in [Dimension] space a [Task] will be returned. Polling this
+	/// task will return a high-level list of [RouteStep] describing the portal-to
+	/// -portal route of the path if it exists. Each [RouteStep] can be used with
+	/// the `read_flowfield()` method to obtain a [FlowField] for the step
 	#[cfg(feature = "3d")]
 	pub fn get_route_3d(&self, from: Vec3, to: Vec3) -> Option<Task<Option<Vec<RouteStep>>>> {
 		let Some((source_sector, source_cell)) =
