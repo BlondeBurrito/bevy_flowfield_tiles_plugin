@@ -19,7 +19,7 @@ mod core;
 mod core2d;
 
 /// Determines what areas are valid for pathing
-const ACTOR_SIZE: f32 = 96.0;
+const ACTOR_RADIUS: f32 = 96.0;
 
 fn main() {
 	App::new()
@@ -60,8 +60,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let origin = (0.0, 0.0);
 	let size = (1920.0, 1920.0);
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
-	let actor_size = ACTOR_SIZE;
-	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+	let actor_radius = ACTOR_RADIUS;
+	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields.ron";
 	let sector_cost_fields = SectorCostFields::from_ron(path, &dimensions);
 	let fields = sector_cost_fields.get_scaled_costs();
@@ -123,12 +123,12 @@ fn setup_navigation(mut cmds: Commands) {
 	let origin = (0.0, 0.0);
 	let size = (1920.0, 1920.0);
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
-	let actor_size = core2d::ACTOR_SIZE;
+	let actor_radius = core2d::ACTOR_RADIUS;
 	cmds.spawn(FlowFieldTiles::from_ron(
 		origin,
 		size,
 		world_unit_size,
-		actor_size,
+		actor_radius,
 		&path,
 	));
 
@@ -140,7 +140,7 @@ fn setup_navigation(mut cmds: Commands) {
 		},
 		Transform {
 			translation: Vec3::new(886.0, 886.0, 1.0),
-			scale: Vec3::new(ACTOR_SIZE, 16.0, 1.0),
+			scale: Vec3::new(ACTOR_RADIUS, 16.0, 1.0),
 			..default()
 		},
 	))

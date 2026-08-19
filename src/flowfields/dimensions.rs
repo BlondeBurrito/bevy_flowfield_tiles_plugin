@@ -47,7 +47,7 @@ impl Dimensions {
 		origin: (f32, f32),
 		size: (f32, f32),
 		world_unit_size: f32,
-		actor_size: f32,
+		actor_radius: f32,
 	) -> Self {
 		if size.0 <= 0.0 || size.1 <= 0.0 {
 			panic!(
@@ -55,7 +55,7 @@ impl Dimensions {
 				size.0, size.1
 			)
 		}
-		if actor_size <= 0.0 {
+		if actor_radius <= 0.0 {
 			panic!("Actor size cannot be less than zero");
 		}
 		if world_unit_size <= 0.0 {
@@ -70,13 +70,13 @@ impl Dimensions {
 				FIELD_RESOLUTION
 			);
 		}
-		if actor_size >= sector_len {
+		if actor_radius >= sector_len {
 			panic!(
-				"actor_size cannot be bigger than the length of a sector. Sector length {}, actor size {}",
-				sector_len, actor_size
+				"actor_radius cannot be bigger than the length of a sector. Sector length {}, actor size {}",
+				sector_len, actor_radius
 			);
 		}
-		let actor_scale = (actor_size / world_unit_size).ceil() as u32;
+		let actor_scale = (actor_radius / world_unit_size).ceil() as u32;
 		if actor_scale >= 10 {
 			panic!("Actors cannot be larger than an entire sector");
 		}

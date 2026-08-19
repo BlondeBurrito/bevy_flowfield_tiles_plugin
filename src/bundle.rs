@@ -77,9 +77,9 @@ impl FlowFieldTiles {
 		origin: (f32, f32),
 		size: (f32, f32),
 		world_unit_size: f32,
-		actor_size: f32,
+		actor_radius: f32,
 	) -> Self {
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let costfields = Arc::new(RwLock::new(SectorCostFields::new(&dimensions)));
 		let c = costfields.read().unwrap();
 		let portals = Arc::new(RwLock::new(Portals::new(&*c)));
@@ -107,10 +107,10 @@ impl FlowFieldTiles {
 		origin: (f32, f32),
 		size: (f32, f32),
 		world_unit_size: f32,
-		actor_size: f32,
+		actor_radius: f32,
 		cost: u8,
 	) -> Self {
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let costfields = Arc::new(RwLock::new(SectorCostFields::new_with_cost(
 			&dimensions,
 			cost,
@@ -141,10 +141,10 @@ impl FlowFieldTiles {
 		origin: (f32, f32),
 		size: (f32, f32),
 		world_unit_size: f32,
-		actor_size: f32,
+		actor_radius: f32,
 		file_path: &str,
 	) -> Self {
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let costfields = Arc::new(RwLock::new(SectorCostFields::from_ron(
 			file_path.into(),
 			&dimensions,
@@ -178,10 +178,10 @@ impl FlowFieldTiles {
 		origin: (f32, f32),
 		size: (f32, f32),
 		world_unit_size: f32,
-		actor_size: f32,
+		actor_radius: f32,
 		file_path: &str,
 	) -> Self {
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let costfields = Arc::new(RwLock::new(SectorCostFields::from_heightmap(
 			&dimensions,
 			file_path.into(),

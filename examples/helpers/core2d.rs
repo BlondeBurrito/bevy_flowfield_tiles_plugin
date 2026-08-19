@@ -19,7 +19,7 @@ pub const WORLD_SIZE: (f32, f32) = (1920.0, 1920.0);
 pub const WORLD_UNIT_SIZE: f32 = 64.0;
 /// Radius of an actor
 #[allow(dead_code)]
-pub const ACTOR_SIZE: f32 = 16.0;
+pub const ACTOR_RADIUS: f32 = 16.0;
 
 /// Used in CollisionLayers so that actors don't collide with one another, only the terrain
 #[derive(Default)]

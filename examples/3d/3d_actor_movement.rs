@@ -22,7 +22,7 @@ mod core;
 const ACTOR_TIMESTEP: f32 = 0.25;
 
 /// Size of the actor perpendicular to its forward direction
-const ACTOR_SIZE: f32 = 0.5;
+const ACTOR_RADIUS: f32 = 0.5;
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
@@ -87,7 +87,7 @@ fn setup_navigation(
 		(0.0, 0.0),
 		(30.0, 30.0),
 		1.0,
-		ACTOR_SIZE,
+		ACTOR_RADIUS,
 		&path,
 	));
 	// create the controllable actor in the top right corner

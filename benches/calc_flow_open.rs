@@ -12,9 +12,9 @@ fn prepare(
 	origin: (f32, f32),
 	size: (f32, f32),
 	world_unit_size: f32,
-	actor_size: f32,
+	actor_radius: f32,
 ) -> FlowFieldTiles {
-	FlowFieldTiles::new(origin, size, world_unit_size, actor_size)
+	FlowFieldTiles::new(origin, size, world_unit_size, actor_radius)
 }
 
 /// Drive the algorithm and measures the time taken to compute all the required

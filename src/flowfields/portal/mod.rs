@@ -950,8 +950,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_costs = SectorCostFields::new(&dimensions);
 
 		let origin_sector = SectorID::new(0, 0);
@@ -982,8 +982,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let mut sector_costs = SectorCostFields::new(&dimensions);
 		sector_costs.set_field_cost(
 			&SectorID::new(0, 0),
@@ -1016,8 +1016,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_costs = SectorCostFields::new(&dimensions);
 		let mut portals = Portals::default();
 
@@ -1051,8 +1051,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_costs = SectorCostFields::new(&dimensions);
 		let portals = Portals::new(&sector_costs);
 
@@ -1083,8 +1083,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let mut sector_costs = SectorCostFields::new(&dimensions);
 		sector_costs.set_field_cost(
 			&SectorID::new(1, 1),
@@ -1120,8 +1120,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_costs = SectorCostFields::new(&dimensions);
 		let mut portals = Portals::new(&sector_costs);
 
@@ -1159,8 +1159,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (40.0, 30.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let mut sector_costs = SectorCostFields::new(&dimensions);
 		let mut portals = Portals::new(&sector_costs);
 
@@ -1187,8 +1187,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (40.0, 30.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_costs = SectorCostFields::new(&dimensions);
 		let portals = Portals::new(&sector_costs);
 

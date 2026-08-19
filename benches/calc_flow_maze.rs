@@ -26,11 +26,11 @@ fn prepare(
 	origin: (f32, f32),
 	size: (f32, f32),
 	world_unit_size: f32,
-	actor_size: f32,
+	actor_radius: f32,
 ) -> FlowFieldTiles {
 	let path =
 		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/bench_costfields/heightmap_maze.png";
-	FlowFieldTiles::from_heightmap(origin, size, world_unit_size, actor_size, &path)
+	FlowFieldTiles::from_heightmap(origin, size, world_unit_size, actor_radius, &path)
 }
 
 /// Drive the algorithm and measures the time taken to compute all the required

@@ -37,12 +37,12 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let map_depth = 640.0;
 	let sprite_dimension = 64.0;
 	let world_unit_size = sprite_dimension;
-	let actor_size = world_unit_size / 2.0;
+	let actor_radius = world_unit_size / 2.0;
 	cmds.spawn(FlowFieldTiles::from_ron(
 		(0.0, 0.0),
 		(map_length, map_depth),
 		world_unit_size,
-		actor_size,
+		actor_radius,
 		&s_path,
 	));
 	// use the impression of the cost field to just init node images

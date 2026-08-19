@@ -5,8 +5,8 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 /// Create FlowFieldTiles
-fn init_bundle(origin: (f32, f32), size: (f32, f32), world_unit_size: f32, actor_size: f32) {
-	let _ = FlowFieldTiles::new(origin, size, world_unit_size, actor_size);
+fn init_bundle(origin: (f32, f32), size: (f32, f32), world_unit_size: f32, actor_radius: f32) {
+	let _ = FlowFieldTiles::new(origin, size, world_unit_size, actor_radius);
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {

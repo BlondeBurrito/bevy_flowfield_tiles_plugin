@@ -9,9 +9,9 @@ fn prepare_fields(
 	origin: (f32, f32),
 	size: (f32, f32),
 	world_unit_size: f32,
-	actor_size: f32,
+	actor_radius: f32,
 ) -> SectorCostFields {
-	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 	let cost_fields = SectorCostFields::new(&dimensions);
 	cost_fields
 }

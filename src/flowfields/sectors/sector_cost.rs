@@ -449,8 +449,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 1.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 1.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let mut sector_costs = SectorCostFields::new(&dimensions);
 		// create a wall gap that should be filled in by scaling
 		let mutate_sector = SectorID::new(0, 0);
@@ -475,8 +475,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 1.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 1.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let mut sector_costs = SectorCostFields::new(&dimensions);
 		// create a wall gap that should be filled in by scaling
 		let mutate_sector1 = SectorID::new(0, 0);
@@ -502,8 +502,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_costs = SectorCostFields::new(&dimensions);
 
 		let sector = SectorID::new(0, 0);
@@ -547,8 +547,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 0.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let mut sector_costs = SectorCostFields::new(&dimensions);
 
 		let sector = SectorID::new(0, 0);
@@ -590,8 +590,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 1.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 1.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let mut sector_costs = SectorCostFields::new(&dimensions);
 
 		let sector = SectorID::new(0, 0);
@@ -633,8 +633,8 @@ mod tests {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
 		let world_unit_size = 1.0;
-		let actor_size = 1.5;
-		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+		let actor_radius = 1.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let mut sector_costs = SectorCostFields::new(&dimensions);
 
 		let sector = SectorID::new(0, 0);

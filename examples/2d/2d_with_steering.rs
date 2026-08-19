@@ -60,8 +60,8 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let origin = (0.0, 0.0);
 	let size = (1920.0, 1920.0);
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
-	let actor_size = core2d::ACTOR_SIZE;
-	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+	let actor_radius = core2d::ACTOR_RADIUS;
+	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 	let path =
 		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields_continuous_layout.ron";
 	let sector_cost_fields = SectorCostFields::from_ron(path, &dimensions);
@@ -125,12 +125,12 @@ fn setup_navigation(mut cmds: Commands) {
 	let origin = (0.0, 0.0);
 	let size = (1920.0, 1920.0);
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
-	let actor_size = core2d::ACTOR_SIZE;
+	let actor_radius = core2d::ACTOR_RADIUS;
 	cmds.spawn(FlowFieldTiles::from_ron(
 		origin,
 		size,
 		world_unit_size,
-		actor_size,
+		actor_radius,
 		&path,
 	));
 

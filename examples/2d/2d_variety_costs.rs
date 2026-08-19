@@ -60,8 +60,8 @@ fn setup_visualisation(mut cmds: Commands) {
 	let origin = (0.0, 0.0);
 	let size = (1920.0, 1920.0);
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
-	let actor_size = core2d::ACTOR_SIZE;
-	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_size);
+	let actor_radius = core2d::ACTOR_RADIUS;
+	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/heightmap_variety_costs.png";
 	let sector_costs = SectorCostFields::from_heightmap(&dimensions, path);
@@ -116,10 +116,10 @@ fn setup_navigation(mut cmds: Commands) {
 	let origin = (0.0, 0.0);
 	let size = (1920.0, 1920.0);
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
-	let actor_size = core2d::ACTOR_SIZE;
+	let actor_radius = core2d::ACTOR_RADIUS;
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/heightmap_variety_costs.png";
 	let flowfield_tiles =
-		FlowFieldTiles::from_heightmap(origin, size, world_unit_size, actor_size, &path);
+		FlowFieldTiles::from_heightmap(origin, size, world_unit_size, actor_radius, &path);
 	cmds.spawn(flowfield_tiles);
 	// create the controllable actor in the top right corner
 	cmds.spawn((
