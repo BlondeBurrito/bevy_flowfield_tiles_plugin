@@ -4,14 +4,7 @@
 //!
 
 use bevy::{prelude::*, tasks::futures::check_ready, window::PrimaryWindow};
-use bevy_flowfield_tiles_plugin::v2::{
-	bundle::FlowFieldTiles,
-	flowfields::{
-		fields::{Field, FieldCell, cost_field::CostField},
-		utilities::FIELD_RESOLUTION,
-	},
-	plugin::FlowFieldTilesPlugin,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 #[path = "../helpers/camera.rs"]
 mod camera;

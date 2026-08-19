@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::v2::flowfields::{fields::FieldCell, sectors::SectorID};
+use crate::flowfields::{fields::FieldCell, sectors::SectorID};
 
 /// Defines the dimensions of all field arrays
 pub const FIELD_RESOLUTION: usize = 10;

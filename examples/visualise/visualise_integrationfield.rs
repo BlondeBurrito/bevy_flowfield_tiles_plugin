@@ -3,15 +3,7 @@
 //!
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::v2::flowfields::{
-	fields::{
-		Field,
-		cost_field::CostField,
-		integration_field::{INT_FILTER_BITS_COST, IntegrationField},
-	},
-	route_cache::RouteStep,
-	sectors::SectorID,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
 	App::new()

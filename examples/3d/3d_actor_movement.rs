@@ -6,9 +6,7 @@ use bevy::{
 	tasks::{Task, futures::check_ready},
 	window::PrimaryWindow,
 };
-use bevy_flowfield_tiles_plugin::v2::{
-	bundle::FlowFieldTiles, flowfields::route_cache::RouteStep, plugin::FlowFieldTilesPlugin,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 use std::time::Duration;
 
 // to reduce code duplication certain constants and systems that make up

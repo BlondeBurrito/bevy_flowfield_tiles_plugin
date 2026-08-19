@@ -1,11 +1,24 @@
-//! A [FlowField] is a 2D array of 8-bit values. The various bit values
-//! associated with it indicate directions of movement and flags to idenitfy
+//! A [FlowField] is an array of 8-bit values. The various bit values
+//! associated with it indicate directions of movement and flags to identify
 //! what's a goal, what's pathable and others. A steering pipeline/character
 //! controller should read and interpret a [FlowField] to provide movement.
 //!
 
-use crate::prelude::*;
 use bevy::prelude::*;
+
+use crate::flowfields::{
+	fields::{
+		Field, FieldCell,
+		integration_field::{
+			INT_BITS_GOAL, INT_BITS_IMPASSABLE, INT_BITS_LOS, INT_BITS_PORTAL,
+			INT_FILTER_BITS_COST, IntegrationField,
+		},
+	},
+	portal::PortalWindow,
+	route_cache::RouteStep,
+	utilities::{FIELD_RESOLUTION, Ordinal},
+};
+
 /// Bit to indicate a northerly direction
 const BITS_NORTH: u8 = 0b0000_0001;
 /// Bit to indicate an easterly direction
@@ -22,10 +35,8 @@ const BITS_SOUTH_EAST: u8 = 0b0000_0110;
 const BITS_SOUTH_WEST: u8 = 0b0000_1100;
 /// Bit to indicate a north-westerly direction
 const BITS_NORTH_WEST: u8 = 0b0000_1001;
-/// Bit to indicate an impassable field
-const BITS_ZERO: u8 = 0b0000_0000;
 /// Default field cell value of a new [FlowField]
-const BITS_DEFAULT: u8 = 0b0000_1111;
+const BITS_DEFAULT: u8 = 0b0000_0000;
 /// Flags a pathable field cell
 const BITS_PATHABLE: u8 = 0b0001_0000;
 /// Flags a field cell that has line-of-sight to the goal
@@ -34,9 +45,16 @@ const BITS_HAS_LOS: u8 = 0b0010_0000;
 const BITS_GOAL: u8 = 0b0100_0000;
 /// Flags a field cell as being a portal to another sector
 const BITS_PORTAL_GOAL: u8 = 0b1000_0000;
+/// Bit to indicate an impassable cell
+const BITS_IMPASSABLE: u8 = 0b1110_0000;
+/// Helper for filtering a value for flags
+#[allow(dead_code)] // used in tests, might be useful elsewhere
+const BITS_FLAG_FILTER: u8 = 0b1111_0000;
+/// Helper for filtering a value for directional bits
+const BITS_COST_FILTER: u8 = 0b0000_1111;
 
 /// Convert an [Ordinal] to a bit representation
-pub fn convert_ordinal_to_bits_dir(ordinal: Ordinal) -> u8 {
+pub fn convert_ordinal_to_bits_dir(ordinal: &Ordinal) -> u8 {
 	match ordinal {
 		Ordinal::North => BITS_NORTH,
 		Ordinal::East => BITS_EAST,
@@ -46,287 +64,343 @@ pub fn convert_ordinal_to_bits_dir(ordinal: Ordinal) -> u8 {
 		Ordinal::SouthEast => BITS_SOUTH_EAST,
 		Ordinal::SouthWest => BITS_SOUTH_WEST,
 		Ordinal::NorthWest => BITS_NORTH_WEST,
-		Ordinal::Zero => BITS_ZERO,
+		Ordinal::Zero => BITS_IMPASSABLE,
 	}
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Reflect)]
-pub struct FlowField([[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION]);
+pub struct FlowField {
+	/// One dimensional array of bit vectors
+	#[cfg_attr(feature = "serde", serde(with = "serde_big_array::BigArray"))]
+	field: [u8; FIELD_RESOLUTION * FIELD_RESOLUTION],
+}
 
 impl Default for FlowField {
 	fn default() -> Self {
-		FlowField([[BITS_DEFAULT; FIELD_RESOLUTION]; FIELD_RESOLUTION])
+		FlowField {
+			field: [BITS_DEFAULT; FIELD_RESOLUTION * FIELD_RESOLUTION],
+		}
 	}
 }
 
 impl Field<u8> for FlowField {
 	/// Get a reference to the field array
-	fn get(&self) -> &[[u8; FIELD_RESOLUTION]; FIELD_RESOLUTION] {
-		&self.0
+	fn get(&self) -> &[u8; FIELD_RESOLUTION * FIELD_RESOLUTION] {
+		&self.field
 	}
 	/// Retrieve a field cell value
 	fn get_field_cell_value(&self, field_cell: FieldCell) -> u8 {
-		self.0[field_cell.get_column()][field_cell.get_row()]
+		self.field[field_cell.as_1d_index()]
 	}
 	/// Set a field cell to a value
 	fn set_field_cell_value(&mut self, value: u8, field_cell: FieldCell) {
-		self.0[field_cell.get_column()][field_cell.get_row()] = value;
+		self.field[field_cell.as_1d_index()] = value;
 	}
 }
+
 impl FlowField {
-	/// Calculate the [FlowField] from an [IntegrationField], additionally for a sector in a chain of sectors along a path this will peak into the previous sectors [IntegrationField] to apply a directional optimisation to this sector's [FlowField]
-	pub fn calculate(
-		&mut self,
-		goals: &[FieldCell],
-		previous_sector_ord_int: Option<(Ordinal, &IntegrationField)>,
-		integration_field: &IntegrationField,
-	) {
-		if let Some((ord, prev_field)) = previous_sector_ord_int {
-			// peek into the previous sector to create better flows over the portal goals
-			for goal in goals.iter() {
-				// based on the ordinal get up to 3 neighbour int costs
-				let possible_neighbours =
-					lookup_portal_goal_neighbour_costs_in_previous_sector(goal, prev_field, ord);
-				let mut cheapest_value = u16::MAX as u32;
-				let mut cheapest_ord = None;
-				//TODO moving left to right around a wall can cause a bump north
-				//TODO if <=, bottom to top aorund a wall can cause a siddeways bump
-				for n in possible_neighbours.iter() {
-					let n_flags = n.1 & INT_FILTER_BITS_FLAGS;
-					if n_flags & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
-						let n_cost = n.1 & INT_FILTER_BITS_COST;
-						if n_cost < cheapest_value {
-							cheapest_value = n_cost;
-							cheapest_ord = Some(n.0);
+	/// Init [FlowField] with default values and flags set for goal(s), walls and LOS
+	pub fn new(route_step: &RouteStep, int_field: &IntegrationField) -> FlowField {
+		let mut flowfield = FlowField::default();
+		set_starting_flags(&mut flowfield, int_field);
+		if let Some(window) = route_step.portal() {
+			set_portal_direction(&mut flowfield, window);
+			//TODO use RouteStep so that portals can be aligned to point to cheapest
+			//TODO: value in neighbour sector? Requires knowing previous int field
+			//TODO: this would create a hard dependency in flow generation, int
+			//TODO: fields must be available in order before flow can be found
+			//TODO: optimise_portal_direction(&mut flowfield, int_field, prev_int_field, window);
+		}
+
+		flowfield
+	}
+	/// Iterate over each cost in the [IntegrationField] and calculate the flow
+	/// value
+	pub fn build(&mut self, int_field: &IntegrationField) {
+		for (cell_index, flow_value) in self.field.iter_mut().enumerate() {
+			calculate_flow_cell(cell_index, flow_value, int_field);
+		}
+	}
+	/// Indicates that a cell is pathable
+	pub fn is_pathable(&self, field_cell: &FieldCell) -> bool {
+		self.field[field_cell.as_1d_index()] & BITS_PATHABLE == BITS_PATHABLE
+	}
+	/// Indicates that a cell is the target goal
+	pub fn is_goal(&self, field_cell: &FieldCell) -> bool {
+		self.field[field_cell.as_1d_index()] & BITS_GOAL == BITS_GOAL
+			&& self.is_pathable(field_cell)
+	}
+	/// Indicates that a cell is a portal goal
+	pub fn is_portal_goal(&self, field_cell: &FieldCell) -> bool {
+		self.field[field_cell.as_1d_index()] & BITS_PORTAL_GOAL == BITS_PORTAL_GOAL
+			&& self.is_pathable(field_cell)
+	}
+	/// Check if a [FieldCell] has Line-of-Sight to a goal. If so an actor can stop reading [FlowField] and path in a straight line to it
+	pub fn has_los(&self, field_cell: &FieldCell) -> bool {
+		self.field[field_cell.as_1d_index()] & BITS_HAS_LOS == BITS_HAS_LOS
+			&& self.is_pathable(field_cell)
+	}
+	/// Read directional bits of a cell and get the direction vector
+	#[cfg(feature = "2d")]
+	pub fn get_2d_dir(&self, field_cell: &FieldCell) -> Option<Vec2> {
+		let cell_value = self.field[field_cell.as_1d_index()];
+		let bit_dir = cell_value & BITS_COST_FILTER;
+		match bit_dir {
+			BITS_NORTH => Some(Vec2::new(0.0, 1.0)),
+			BITS_EAST => Some(Vec2::new(1.0, 0.0)),
+			BITS_SOUTH => Some(Vec2::new(0.0, -1.0)),
+			BITS_WEST => Some(Vec2::new(-1.0, 0.0)),
+			BITS_NORTH_EAST => Some(Vec2::new(1.0, 1.0)),
+			BITS_SOUTH_EAST => Some(Vec2::new(1.0, -1.0)),
+			BITS_SOUTH_WEST => Some(Vec2::new(-1.0, -1.0)),
+			BITS_NORTH_WEST => Some(Vec2::new(-1.0, 1.0)),
+			BITS_DEFAULT => {
+				warn!("Flow cell has no calculation {}", field_cell);
+				None
+			}
+			_ => {
+				warn!(
+					"First 4 bits of cell are not recognised directions: {}, bits {}",
+					field_cell, bit_dir
+				);
+				None
+			}
+		}
+	}
+	/// Read directional bits of a cell and get the direction vector
+	#[cfg(feature = "3d")]
+	pub fn get_3d_dir(&self, field_cell: &FieldCell) -> Option<Vec3> {
+		let cell_value = self.field[field_cell.as_1d_index()];
+		let bit_dir = cell_value & BITS_COST_FILTER;
+		match bit_dir {
+			BITS_NORTH => Some(Vec3::new(0.0, 0.0, -1.0)),
+			BITS_EAST => Some(Vec3::new(1.0, 0.0, 0.0)),
+			BITS_SOUTH => Some(Vec3::new(0.0, 0.0, 1.0)),
+			BITS_WEST => Some(Vec3::new(-1.0, 0.0, 0.0)),
+			BITS_NORTH_EAST => Some(Vec3::new(1.0, 0.0, -1.0)),
+			BITS_SOUTH_EAST => Some(Vec3::new(1.0, 0.0, 1.0)),
+			BITS_SOUTH_WEST => Some(Vec3::new(-1.0, 0.0, 1.0)),
+			BITS_NORTH_WEST => Some(Vec3::new(-1.0, 0.0, -1.0)),
+			BITS_DEFAULT => {
+				warn!("Flow cell has no calculation {}", field_cell);
+				None
+			}
+			_ => {
+				debug!(
+					"First 4 bits of cell are not recognised directions: {}, bits {}",
+					field_cell, bit_dir
+				);
+				None
+			}
+		}
+	}
+}
+
+/// Interpret flags set in the [IntegrationField] and establish [FlowField] flags for goal(s), impassable walls and Line-of-Sight (LOS)
+fn set_starting_flags(flowfield: &mut FlowField, int_field: &IntegrationField) {
+	for (i, value) in int_field.get().iter().enumerate() {
+		if value & INT_BITS_GOAL == INT_BITS_GOAL {
+			// set goal
+			flowfield.field[i] |= BITS_GOAL;
+			flowfield.field[i] |= BITS_PATHABLE;
+			flowfield.field[i] |= BITS_HAS_LOS;
+		} else if value & INT_BITS_PORTAL == INT_BITS_PORTAL {
+			// set portal goal
+			flowfield.field[i] |= BITS_PORTAL_GOAL;
+			flowfield.field[i] |= BITS_PATHABLE;
+		} else if value & INT_BITS_LOS == INT_BITS_LOS {
+			// set los
+			flowfield.field[i] |= BITS_HAS_LOS;
+			flowfield.field[i] |= BITS_PATHABLE;
+		} else if value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
+			// set impassable
+			flowfield.field[i] |= BITS_IMPASSABLE;
+		}
+	}
+}
+
+/// When building the [FlowField] that has portal based goals identify what
+/// sector boundary they lie upon and set their directional bits to point into
+/// the neighbouring sector
+fn set_portal_direction(flowfield: &mut FlowField, window: &PortalWindow) {
+	// based on window boundary find bit dir
+	let this_boundary = window.get_boundary();
+	let dir_bits = convert_ordinal_to_bits_dir(this_boundary);
+	// walk the window and set the dir bits
+	for cell_index in window.get_all_window_cells().iter() {
+		flowfield.field[*cell_index] |= dir_bits;
+	}
+}
+
+// fn optimise_portal_direction(
+// 	flowfield: &mut FlowField,
+// 	int_field: &IntegrationField,
+// 	prev_int_field: &IntegrationField,
+//  route_step: &RouteStep,
+// ) {
+// }
+
+/// Compare the neighbours of a cell in the [FlowField] and determine their bits
+fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &IntegrationField) {
+	// skip if marked as wall or LOS or goal
+	if *flow_value & BITS_IMPASSABLE == BITS_IMPASSABLE
+		|| *flow_value & BITS_PATHABLE == BITS_PATHABLE
+	{
+		return;
+	}
+	// get up to 8 cells around cell_index
+	// lookup their integrated-cost value and
+	// find the cheapest. That direction defines the flow
+	// dir bit to be set
+	let this_cell = FieldCell::from_index(cell_index);
+	let n_ordinals = Ordinal::get_all_cell_neighbours_with_ordinal(this_cell);
+
+	// if a direction points exactly at a goal just use that
+	let mut goal_dir: Option<Ordinal> = None;
+	// record LOS neighbours separately as they are always better to head towards
+	// make note of direction, and the int cost for comparison
+	let mut best_los_dir: Option<(Ordinal, u32)> = None;
+	// record best direction found
+	let mut best_dir: Option<(Ordinal, u32)> = None;
+
+	// go through all neighbours and find cheapest to set direction bits to
+	for (ordinal, n_cell) in n_ordinals.iter() {
+		let n_int_value = int_field.get_field_cell_value(*n_cell);
+		if n_int_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
+			// cannot point into wall
+			continue;
+		}
+		// if neighbour is diagonal inspect orthogonal to ensure it's a valid
+		// direction. i.e it's not diagonal between two walls
+		match ordinal {
+			Ordinal::NorthEast => {
+				// check N and E for walls
+				if let Some(north_this) = this_cell.get_in_ordinal_direction(&Ordinal::North, 1) {
+					if let Some(east_this) = this_cell.get_in_ordinal_direction(&Ordinal::East, 1) {
+						let north_this_value = int_field.get_field_cell_value(north_this);
+						let east_this_value = int_field.get_field_cell_value(east_this);
+						if north_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+							&& east_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+						{
+							// diagonal through wall, skip
+							continue;
 						}
 					}
 				}
-				if let Some(ord) = cheapest_ord {
-					// point the portal goal towards the best one
-					let ordinal_bits = convert_ordinal_to_bits_dir(ord);
-					let mut value = 0;
-					//TODO toggle LOS if present in int field?
-					value |= BITS_PORTAL_GOAL;
-					value |= ordinal_bits;
-					self.set_field_cell_value(value, *goal);
-				} //TODO this sould never ever be none...
+			}
+			Ordinal::SouthEast => {
+				// check E and S for walls
+				if let Some(south_this) = this_cell.get_in_ordinal_direction(&Ordinal::South, 1) {
+					if let Some(east_this) = this_cell.get_in_ordinal_direction(&Ordinal::East, 1) {
+						let south_this_value = int_field.get_field_cell_value(south_this);
+						let east_this_value = int_field.get_field_cell_value(east_this);
+						if south_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+							&& east_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+						{
+							// diagonal through wall, skip
+							continue;
+						}
+					}
+				}
+			}
+			Ordinal::SouthWest => {
+				// check S and W for walls
+				if let Some(south_this) = this_cell.get_in_ordinal_direction(&Ordinal::South, 1) {
+					if let Some(west_this) = this_cell.get_in_ordinal_direction(&Ordinal::West, 1) {
+						let south_this_value = int_field.get_field_cell_value(south_this);
+						let west_this_value = int_field.get_field_cell_value(west_this);
+						if south_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+							&& west_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+						{
+							// diagonal through wall, skip
+							continue;
+						}
+					}
+				}
+			}
+			Ordinal::NorthWest => {
+				// check W and N for walls
+				if let Some(north_this) = this_cell.get_in_ordinal_direction(&Ordinal::North, 1) {
+					if let Some(west_this) = this_cell.get_in_ordinal_direction(&Ordinal::West, 1) {
+						let north_this_value = int_field.get_field_cell_value(north_this);
+						let west_this_value = int_field.get_field_cell_value(west_this);
+						if north_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+							&& west_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+						{
+							// diagonal through wall, skip
+							continue;
+						}
+					}
+				}
+			}
+			_ => {
+				// carry on as normal
+			}
+		}
+
+		if n_int_value & INT_BITS_GOAL == INT_BITS_GOAL
+			|| n_int_value & INT_BITS_PORTAL == INT_BITS_PORTAL
+		{
+			// can point to goal/portal goal
+			goal_dir = Some(*ordinal);
+			break;
+		}
+
+		if n_int_value & INT_BITS_LOS == INT_BITS_LOS {
+			// can point to LOS, record it if it is the best one
+			if let Some((o, v)) = &mut best_los_dir {
+				if n_int_value & INT_FILTER_BITS_COST < *v {
+					*o = *ordinal;
+					*v = n_int_value & INT_FILTER_BITS_COST;
+				}
+			} else {
+				best_los_dir = Some((*ordinal, n_int_value & INT_FILTER_BITS_COST));
+			}
+			continue;
+		}
+
+		// special case where the int value is the default. This means an
+		// integrated-cost hasn't been calculated for the cell. This can
+		// happen is there's an island, like a ring of walls around clear cells,
+		// or if a wall has bisected a sector completely
+		if n_int_value & INT_FILTER_BITS_COST == 65535 {
+			// in this special case we mark the flow value with the
+			// impassable flag
+			*flow_value |= BITS_IMPASSABLE;
+			break;
+		}
+
+		// if this far then just record best dir
+		if let Some((o, v)) = &mut best_dir {
+			if n_int_value & INT_FILTER_BITS_COST < *v {
+				*v = n_int_value & INT_FILTER_BITS_COST;
+				*o = *ordinal;
 			}
 		} else {
-			// set goal cells as this is the first flowfield i.e the end goal
-			let mut goal_value = 0;
-			goal_value |= BITS_HAS_LOS;
-			goal_value |= BITS_GOAL;
-			goal_value |= BITS_PATHABLE;
-			self.set_field_cell_value(goal_value, goals[0]);
-		}
-
-		for (i, column) in integration_field.get().iter().enumerate() {
-			for (j, _row) in column.iter().enumerate() {
-				let field_cell = FieldCell::new(i, j);
-				if self.get_field_cell_value(field_cell) & BITS_DEFAULT == BITS_DEFAULT {
-					let current_value = integration_field.get_field_cell_value(field_cell);
-					let current_flags = current_value & INT_FILTER_BITS_FLAGS;
-					// mark impassable //TODO maybe skip? waste of time perhaps
-					if current_flags & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
-						self.set_field_cell_value(BITS_ZERO, field_cell);
-					} else if current_flags & INT_BITS_LOS == INT_BITS_LOS {
-						// mark LOS
-						self.set_field_cell_value(BITS_HAS_LOS + BITS_PATHABLE, field_cell);
-					} else if current_flags != INT_BITS_GOAL {
-						//TODO need to chekc for portal flag?
-						// skip goals of zero
-						// store the cheapest node
-						let mut cheapest_value = u16::MAX as u32;
-						let mut cheapest_neighbour = None;
-						let mut neighbours = Ordinal::get_all_cell_neighbours(field_cell);
-
-						// find any diagonal cells which are flanked by impassable cells and so
-						// movement between them should be ignored/blocked, i.e
-						//   X ~ <- ignore diagonal from o
-						//   o X
-						//
-						let remove_diagonals =
-							find_blocked_diagonals(field_cell, integration_field);
-						for diag in remove_diagonals.iter() {
-							neighbours.retain(|&n| n != *diag);
-						}
-
-						for n in neighbours.iter() {
-							let neighbour_cost =
-								integration_field.get_field_cell_value(*n) & INT_FILTER_BITS_COST;
-							if neighbour_cost < cheapest_value {
-								cheapest_value = neighbour_cost;
-								cheapest_neighbour = Some(n);
-							}
-						}
-						if let Some(target) = cheapest_neighbour {
-							let ord = Ordinal::cell_to_cell_direction(*target, field_cell);
-							let bit_ord = convert_ordinal_to_bits_dir(ord);
-							let mut value = 0;
-							value |= bit_ord;
-							value |= BITS_PATHABLE;
-							self.set_field_cell_value(value, field_cell);
-						} else {
-							// warn!(
-							// 	"No cheapest neighbour in flow calc! Origin cell {:?}",
-							// 	field_cell
-							// );
-						} //TODO this should never ever be none... (except maybe as of 0.11, an impassable cell compeltely enclosed will never be reached by the int layer)
-					}
-				}
-			}
+			best_dir = Some((*ordinal, n_int_value & INT_FILTER_BITS_COST));
 		}
 	}
-}
-/// Used by a [FlowField] calculation that needs to peek into the previous sectors [IntegrationField] to align portal goal directional bits to the most optimal integration costs
-fn lookup_portal_goal_neighbour_costs_in_previous_sector(
-	portal_goal: &FieldCell,
-	previous_integration_field: &IntegrationField,
-	sector_ordinal: Ordinal,
-) -> Vec<(Ordinal, u32)> {
-	let mut adjacent_neighbours = Vec::new();
-	match sector_ordinal {
-		Ordinal::North => {
-			// orthogonal adjacent cost
-			let adj_pos = (portal_goal.get_column(), 9);
-			let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-			adjacent_neighbours.push((Ordinal::North, adj_cost));
-			// try and get a cost left
-			if portal_goal.get_column() > 0 {
-				let adj_pos = (portal_goal.get_column() - 1, 9);
-				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
-			}
-			// try and get a cost right
-			if portal_goal.get_column() < FIELD_RESOLUTION - 1 {
-				let adj_pos = (portal_goal.get_column() + 1, 9);
-				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::NorthEast, adj_cost));
-			}
-		}
-		Ordinal::East => {
-			// orthogonal adjacent cost
-			let adj_pos = (0, portal_goal.get_row());
-			let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-			adjacent_neighbours.push((Ordinal::East, adj_cost));
-			// try and get a cost above
-			if portal_goal.get_row() > 0 {
-				let adj_pos = (0, portal_goal.get_row() - 1);
-				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::NorthEast, adj_cost));
-			}
-			// try and get a cost below
-			if portal_goal.get_row() < FIELD_RESOLUTION - 1 {
-				let adj_pos = (0, portal_goal.get_row() + 1);
-				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
-			}
-		}
-		Ordinal::South => {
-			// orthogonal adjacent cost
-			let adj_pos = (portal_goal.get_column(), 0);
-			let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-			adjacent_neighbours.push((Ordinal::South, adj_cost));
-			// try and get a cost left
-			if portal_goal.get_column() > 0 {
-				let adj_pos = (portal_goal.get_column() - 1, 0);
-				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
-			}
-			// try and get a cost right
-			if portal_goal.get_column() < FIELD_RESOLUTION - 1 {
-				let adj_pos = (portal_goal.get_column() + 1, 0);
-				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::SouthEast, adj_cost));
-			}
-		}
-		Ordinal::West => {
-			// orthogonal adjacent cost
-			let adj_pos = (9, portal_goal.get_row());
-			let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-			adjacent_neighbours.push((Ordinal::West, adj_cost));
-			// try and get a cost above
-			if portal_goal.get_row() > 0 {
-				let adj_pos = (9, portal_goal.get_row() - 1);
-				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::NorthWest, adj_cost));
-			}
-			// try and get a cost below
-			if portal_goal.get_row() < FIELD_RESOLUTION - 1 {
-				let adj_pos = (9, portal_goal.get_row() + 1);
-				let adj_cost = previous_integration_field.get()[adj_pos.0][adj_pos.1];
-				adjacent_neighbours.push((Ordinal::SouthWest, adj_cost));
-			}
-		}
-		_ => panic!("Invalid sector ordinal"),
-	}
-	adjacent_neighbours
-}
 
-/// Looks at the orthognal neighbours of a [FieldCell], determines whether any pairs are impassable and if so builds a list of any diagonal [FieldCell] which should be considered as unreachable from the inspected `field_cell`
-fn find_blocked_diagonals(
-	field_cell: FieldCell,
-	integration_field: &IntegrationField,
-) -> Vec<FieldCell> {
-	let mut diagonals = Vec::new();
-	if let Some(north) = Ordinal::get_cell_neighbour(field_cell, Ordinal::North) {
-		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
-			if integration_field.get_field_cell_value(north) & INT_BITS_IMPASSABLE
-				== INT_BITS_IMPASSABLE
-				&& integration_field.get_field_cell_value(east) & INT_BITS_IMPASSABLE
-					== INT_BITS_IMPASSABLE
-			{
-				if let Some(north_east) =
-					Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthEast)
-				{
-					diagonals.push(north_east);
-				}
-			}
-		}
-		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
-			if integration_field.get_field_cell_value(north) & INT_BITS_IMPASSABLE
-				== INT_BITS_IMPASSABLE
-				&& integration_field.get_field_cell_value(west) & INT_BITS_IMPASSABLE
-					== INT_BITS_IMPASSABLE
-			{
-				if let Some(north_west) =
-					Ordinal::get_cell_neighbour(field_cell, Ordinal::NorthWest)
-				{
-					diagonals.push(north_west);
-				}
-			}
-		}
+	// set the bit direction based on best available
+	if let Some(dir) = goal_dir {
+		let bits = convert_ordinal_to_bits_dir(&dir);
+		*flow_value |= bits;
+		*flow_value |= BITS_PATHABLE;
+	} else if let Some((dir, _)) = best_los_dir {
+		let bits = convert_ordinal_to_bits_dir(&dir);
+		*flow_value |= bits;
+		*flow_value |= BITS_PATHABLE;
+	} else if let Some((dir, _)) = best_dir {
+		let bits = convert_ordinal_to_bits_dir(&dir);
+		*flow_value |= bits;
+		*flow_value |= BITS_PATHABLE;
+	} else {
+		// special case where a cell is entirely encased on walls. It will
+		// have no integrated-cost calculation, nothing will point towards
+		// it and it can't point at anything. Treat it as wall
+		*flow_value |= BITS_IMPASSABLE;
 	}
-	if let Some(south) = Ordinal::get_cell_neighbour(field_cell, Ordinal::South) {
-		if let Some(east) = Ordinal::get_cell_neighbour(field_cell, Ordinal::East) {
-			if integration_field.get_field_cell_value(south) & INT_BITS_IMPASSABLE
-				== INT_BITS_IMPASSABLE
-				&& integration_field.get_field_cell_value(east) & INT_BITS_IMPASSABLE
-					== INT_BITS_IMPASSABLE
-			{
-				if let Some(south_east) =
-					Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthEast)
-				{
-					diagonals.push(south_east);
-				}
-			}
-		}
-		if let Some(west) = Ordinal::get_cell_neighbour(field_cell, Ordinal::West) {
-			if integration_field.get_field_cell_value(south) & INT_BITS_IMPASSABLE
-				== INT_BITS_IMPASSABLE
-				&& integration_field.get_field_cell_value(west) & INT_BITS_IMPASSABLE
-					== INT_BITS_IMPASSABLE
-			{
-				if let Some(south_west) =
-					Ordinal::get_cell_neighbour(field_cell, Ordinal::SouthWest)
-				{
-					diagonals.push(south_west);
-				}
-			}
-		}
-	}
-	diagonals
 }
 
 /// Indicates that a cell is pathable
@@ -336,24 +410,28 @@ pub fn is_pathable(cell_value: u8) -> bool {
 
 /// Indicates that a cell is the target goal
 pub fn is_goal(cell_value: u8) -> bool {
-	cell_value & BITS_GOAL == BITS_GOAL
+	cell_value & BITS_GOAL == BITS_GOAL && is_pathable(cell_value)
 }
 
 /// Indicates that a cell is a portal goal
 pub fn is_portal_goal(cell_value: u8) -> bool {
-	cell_value & BITS_PORTAL_GOAL == BITS_PORTAL_GOAL
+	cell_value & BITS_PORTAL_GOAL == BITS_PORTAL_GOAL && is_pathable(cell_value)
 }
 
 /// If a cell has direct vision to the goal then the [FlowField] should be
-/// disregarded as the actor can move in a stright line to the goal
+/// disregarded as the actor can move in a straight line to the goal
 pub fn has_line_of_sight(cell_value: u8) -> bool {
-	// let flag_filter = 0b1111_0000;
-	cell_value & BITS_HAS_LOS == BITS_HAS_LOS
+	cell_value & BITS_HAS_LOS == BITS_HAS_LOS && is_pathable(cell_value)
 }
+
+/// Check is a cell value is marked as being an impassable wall
+pub fn is_wall(cell_value: u8) -> bool {
+	cell_value & BITS_IMPASSABLE == BITS_IMPASSABLE && !is_pathable(cell_value)
+}
+
 /// From a pathable [FlowField] cell get the directional [Ordinal] of movement
 pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
-	let dir_filter = 0b0000_1111;
-	let dir = cell_value & dir_filter;
+	let dir = cell_value & BITS_COST_FILTER;
 	match dir {
 		BITS_NORTH => Ordinal::North,
 		BITS_EAST => Ordinal::East,
@@ -363,59 +441,16 @@ pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
 		BITS_SOUTH_EAST => Ordinal::SouthEast,
 		BITS_SOUTH_WEST => Ordinal::SouthWest,
 		BITS_NORTH_WEST => Ordinal::NorthWest,
-		BITS_ZERO => Ordinal::Zero,
+		BITS_DEFAULT => Ordinal::Zero,
 		_ => Ordinal::Zero, // _ => panic!("First 4 bits of cell are not recognised directions"),
-	}
-}
-/// Reading the directional bits of a [FlowField] field cell obtain a unit
-/// vector in 2d space of the direction
-pub fn get_2d_direction_unit_vector_from_bits(cell_value: u8) -> Vec2 {
-	let dir_filter = 0b0000_1111;
-	let dir = cell_value & dir_filter;
-	match dir {
-		BITS_NORTH => Vec2::new(0.0, 1.0),
-		BITS_EAST => Vec2::new(1.0, 0.0),
-		BITS_SOUTH => Vec2::new(0.0, -1.0),
-		BITS_WEST => Vec2::new(-1.0, 0.0),
-		BITS_NORTH_EAST => Vec2::new(1.0, 1.0),
-		BITS_SOUTH_EAST => Vec2::new(1.0, -1.0),
-		BITS_SOUTH_WEST => Vec2::new(-1.0, -1.0),
-		BITS_NORTH_WEST => Vec2::new(-1.0, 1.0),
-		BITS_ZERO => {
-			warn!("Got direction of impassable cell, an actor may be stuck");
-			Vec2::new(0.0, 0.0)
-		}
-		_ => {
-			debug!(
-				"First 4 bits of cell are not recognised directions: {}",
-				dir
-			);
-			Vec2::new(0.0, 0.0)
-		}
-	}
-}
-/// Reading the directional bits of a [FlowField] field cell obtain a unit
-/// vector in 3d space of the direction across the x-z plane
-pub fn get_3d_direction_unit_vector_from_bits(cell_value: u8) -> Vec3 {
-	let dir_filter = 0b0000_1111;
-	let dir = cell_value & dir_filter;
-	match dir {
-		BITS_NORTH => Vec3::new(0.0, 0.0, -1.0),
-		BITS_EAST => Vec3::new(1.0, 0.0, 0.0),
-		BITS_SOUTH => Vec3::new(0.0, 0.0, 1.0),
-		BITS_WEST => Vec3::new(-1.0, 0.0, 0.0),
-		BITS_NORTH_EAST => Vec3::new(1.0, 0.0, -1.0),
-		BITS_SOUTH_EAST => Vec3::new(1.0, 0.0, 1.0),
-		BITS_SOUTH_WEST => Vec3::new(-1.0, 0.0, 1.0),
-		BITS_NORTH_WEST => Vec3::new(-1.0, 0.0, -1.0),
-		BITS_ZERO => Vec3::new(0.0, 0.0, 0.0),
-		_ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
 
 // #[rustfmt::skip]
 #[cfg(test)]
 mod tests {
+	use crate::flowfields::{fields::cost_field::CostField, sectors::SectorID};
+
 	use super::*;
 	#[test]
 	fn default_init() {
@@ -423,108 +458,174 @@ mod tests {
 		let v = flow_field.get_field_cell_value(FieldCell::new(0, 0));
 		assert_eq!(BITS_DEFAULT, v);
 	}
-	/// Flowfield of a single sector, all far southern cells are goals, verify direct paths from top to bottom
+
+	// g = goal
+	// X = wall
+	// L = LOS
+	// b = wave blocked
+	//TODO: see note of this diagram in integration field tests
+	// ```txt
+	//  ___ ___ ___ ___ ___ ___ ___ ___ ___ ___
+	// |   |   |   |   |   |   |   |   |   |   |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// |   |   |   |   |   |   |   |   |   |   |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// |   |   |   |   |   |   |   |   |   | b |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | b |   |   |   |   |   |   |   | b | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | b |   |   |   |   |   | b | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | b | X | X | X | b | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | L | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | L | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | g | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | b | X | L | L | L | X | b | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// ```
 	#[test]
-	fn calculate_flow_target_south() {
-		let cost_field = CostField::default();
-		// int field pair pointing towards goal in orthognal south direction
-		let ordinal_to_previous_sector = Ordinal::South;
-		let goals = vec![
-			FieldCell::new(0, 9),
-			FieldCell::new(1, 9),
-			FieldCell::new(2, 9),
-			FieldCell::new(3, 9),
-			FieldCell::new(4, 9),
-			FieldCell::new(5, 9),
-			FieldCell::new(6, 9),
-			FieldCell::new(7, 9),
-			FieldCell::new(8, 9),
-			FieldCell::new(9, 9),
-		];
-		let mut previous_int_field = IntegrationField::default();
-		// assume these sectors have no LOS therefore the portal goals are corners
-		for g in goals.iter() {
-			previous_int_field.add_los_corner(*g);
-			// assign a bogus cost to the portals
-			previous_int_field.set_field_cell_value(9, *g);
-		}
-		previous_int_field.calculate_field(&cost_field);
-		let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
+	fn starting_flags() {
+		let mut costfield = CostField::default();
+		costfield.set_field_cell_value(255, FieldCell::new(3, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(4, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(5, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(2, 9));
+		costfield.set_field_cell_value(255, FieldCell::new(6, 9));
+		let sector = SectorID::new(1, 1);
+		let goal = 84;
+		let portal = None;
+		let route_step = RouteStep::new(&sector, goal, portal);
+		let int_field = IntegrationField::init(&costfield, &route_step);
 
-		let mut integration_field = IntegrationField::default();
-		// assume these sectors have no LOS therefore the portal goals are corners
-		for g in goals.iter() {
-			integration_field.add_los_corner(*g);
-			// assign a bogus cost to the portals
-			integration_field.set_field_cell_value(9, *g);
-		}
-		integration_field.calculate_field(&cost_field);
+		let mut flowfield = FlowField::default();
+		set_starting_flags(&mut flowfield, &int_field);
 
-		let mut flow_field = FlowField::default();
-		flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
+		let r_c = FieldCell::new(2, 9);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_IMPASSABLE == BITS_IMPASSABLE);
 
-		for column in flow_field.get().iter() {
-			for row_value in column.iter() {
-				if *row_value != BITS_PATHABLE + BITS_SOUTH
-					&& *row_value != BITS_PORTAL_GOAL + BITS_SOUTH
-				{
-					println!("Flow field: {:?}", flow_field.get());
-					panic!("Some FlowField default bits have not been replaced");
-				}
-			}
-		}
+		let r_c = FieldCell::new(4, 8);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_GOAL == BITS_GOAL);
+
+		let r_c = FieldCell::new(4, 7);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_HAS_LOS == BITS_HAS_LOS);
 	}
-	/// Flowfield of a single sector, all far western cells are goals, verify direct paths from right to left
+
 	#[test]
-	fn calculate_flow_target_west() {
-		let cost_field = CostField::default();
-		// int field pair pointing towards goal in orthognal west direction
-		let ordinal_to_previous_sector = Ordinal::West;
-		let goals = vec![
+	fn portal_dir_north() {
+		let costfield = CostField::default();
+		let sector = SectorID::new(1, 1);
+		let goal = 0;
+		let portal = Some(PortalWindow::new(
 			FieldCell::new(0, 0),
-			FieldCell::new(0, 1),
-			FieldCell::new(0, 2),
-			FieldCell::new(0, 3),
-			FieldCell::new(0, 4),
-			FieldCell::new(0, 5),
-			FieldCell::new(0, 6),
-			FieldCell::new(0, 7),
-			FieldCell::new(0, 8),
-			FieldCell::new(0, 9),
-		];
-		let mut previous_int_field = IntegrationField::default();
-		// assume these sectors have no LOS therefore the portal goals are corners
-		for g in goals.iter() {
-			previous_int_field.add_los_corner(*g);
-			// assign a bogus cost to the portals
-			previous_int_field.set_field_cell_value(9, *g);
-		}
-		previous_int_field.calculate_field(&cost_field);
-		let previous_sector_ord_int = Some((ordinal_to_previous_sector, &previous_int_field));
+			FieldCell::new(0, 0),
+			Ordinal::North,
+		));
+		let route_step = RouteStep::new(&sector, goal, portal);
+		let int_field = IntegrationField::init(&costfield, &route_step);
 
-		let mut integration_field = IntegrationField::default();
-		// assume these sectors have no LOS therefore the portal goals are corners
-		for g in goals.iter() {
-			integration_field.add_los_corner(*g);
-			// assign a bogus cost to the portals
-			integration_field.set_field_cell_value(9, *g);
-		}
-		integration_field.calculate_field(&cost_field);
+		let flowfield = FlowField::new(&route_step, &int_field);
 
-		let mut flow_field = FlowField::default();
-		flow_field.calculate(&goals, previous_sector_ord_int, &integration_field);
-
-		for column in flow_field.get().iter() {
-			for row_value in column.iter() {
-				if *row_value != BITS_PATHABLE + BITS_WEST
-					&& *row_value != BITS_PORTAL_GOAL + BITS_WEST
-				{
-					println!("Flow field: {:?}", flow_field.get());
-					panic!("Some FlowField default bits have not been replaced");
-				}
-			}
-		}
+		let r_c = flowfield.field[0];
+		assert!(r_c & BITS_NORTH == BITS_NORTH)
 	}
-	//TODO test blocked diag
-	//TODO
+	// g = goal
+	// X = wall
+	// L = LOS
+	// b = wave blocked
+	//TODO: see note of this diagram in integration field tests
+	// ```txt
+	//  ___ ___ ___ ___ ___ ___ ___ ___ ___ ___
+	// |   |   |   |   |   |   |   |   |   |   |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// |   |   |   |   |   |   |   |   |   |   |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// |   |   |   |   |   |   |   |   |   | b |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | b |   |   |   |   |   |   |   | b | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | b |   |   |   |   |   | b | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | b | X | X | X | b | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | L | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | L | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | L | L | L | g | L | L | L | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// | L | b | X | L | L | L | X | b | L | L |
+	// |___|___|___|___|___|___|___|___|___|___|
+	// ```
+	#[test]
+	fn flags_after_build() {
+		let mut costfield = CostField::default();
+		costfield.set_field_cell_value(255, FieldCell::new(3, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(4, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(5, 5));
+		costfield.set_field_cell_value(255, FieldCell::new(2, 9));
+		costfield.set_field_cell_value(255, FieldCell::new(6, 9));
+		let sector = SectorID::new(1, 1);
+		let goal = 84;
+		let portal = None;
+		let route_step = RouteStep::new(&sector, goal, portal);
+		let int_field = IntegrationField::init(&costfield, &route_step);
+
+		let mut flowfield = FlowField::new(&route_step, &int_field);
+		flowfield.build(&int_field);
+
+		let r_c = FieldCell::new(2, 9);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_IMPASSABLE == BITS_IMPASSABLE);
+
+		let r_c = FieldCell::new(4, 8);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_GOAL == BITS_GOAL);
+
+		let r_c = FieldCell::new(4, 7);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_HAS_LOS == BITS_HAS_LOS);
+	}
 }

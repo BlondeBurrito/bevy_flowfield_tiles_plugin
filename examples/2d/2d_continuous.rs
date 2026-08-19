@@ -5,14 +5,7 @@ use bevy::{
 	diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
 	prelude::*,
 };
-use bevy_flowfield_tiles_plugin::v2::{
-	bundle::FlowFieldTiles,
-	flowfields::{
-		dimensions::Dimensions, fields::Field, sectors::sector_cost::SectorCostFields,
-		utilities::FIELD_RESOLUTION,
-	},
-	plugin::FlowFieldTilesPlugin,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 use avian2d::prelude::*;
 use rand::seq::IndexedRandom;

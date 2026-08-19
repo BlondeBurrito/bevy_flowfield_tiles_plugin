@@ -6,27 +6,31 @@ use bevy::{
 	prelude::*,
 	tasks::{Task, futures::check_ready},
 };
-use bevy_flowfield_tiles_plugin::v2::{bundle::FlowFieldTiles, flowfields::route_cache::RouteStep};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 /// Dimension of square sprites making up the world
+#[allow(dead_code)]
 pub const FIELD_SPRITE_DIMENSION: f32 = 64.0;
 /// Pixel size of the world
+#[allow(dead_code)]
 pub const WORLD_SIZE: (f32, f32) = (1920.0, 1920.0);
 /// Size of a unit of space
+#[allow(dead_code)]
 pub const WORLD_UNIT_SIZE: f32 = 64.0;
 /// Radius of an actor
+#[allow(dead_code)]
 pub const ACTOR_SIZE: f32 = 16.0;
 
 /// Used in CollisionLayers so that actors don't collide with one another, only the terrain
 #[derive(Default)]
-#[allow(clippy::missing_docs_in_private_items)]
+#[allow(clippy::missing_docs_in_private_items, dead_code)]
 pub enum Layer {
 	Actor,
 	#[default]
 	Terrain,
 }
 
-// weird bug when using #derive where it thinks the crate bevy_xpbd_3d is being used >(
+// Determine collision interaction
 #[cfg(not(tarpaulin_include))]
 impl PhysicsLayer for Layer {
 	fn to_bits(&self) -> u32 {
@@ -42,6 +46,7 @@ impl PhysicsLayer for Layer {
 }
 
 /// Create collider entities around the world
+#[allow(dead_code)]
 #[cfg(not(tarpaulin_include))]
 pub fn create_wall_colliders(mut cmds: Commands) {
 	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 1.0);
@@ -105,6 +110,7 @@ pub struct Pathing {
 }
 
 /// Request a route if an actor of `T` has a target set
+#[allow(dead_code)]
 pub fn actor_request_route<T: Component>(
 	mut actor_q: Query<(&Transform, &mut Pathing), With<T>>,
 	flow_q: Query<&FlowFieldTiles>,
@@ -129,6 +135,7 @@ pub fn actor_request_route<T: Component>(
 
 /// There is a delay between the actor sending a path request and a route
 /// becoming available. This checks to see if the route is available
+#[allow(dead_code)]
 pub fn actor_update_route<T: Component>(mut actor_q: Query<&mut Pathing, With<T>>) {
 	for mut pathing in &mut actor_q {
 		if let Some(mut poll) = pathing.pollable_route.as_mut() {
@@ -142,10 +149,12 @@ pub fn actor_update_route<T: Component>(mut actor_q: Query<&mut Pathing, With<T>
 }
 
 /// Actor speed
+#[allow(dead_code)]
 const SPEED: f32 = 20000.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
+#[allow(dead_code)]
 #[cfg(not(tarpaulin_include))]
 pub fn actor_steering<T: Component>(
 	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<T>>,
@@ -198,6 +207,7 @@ pub fn actor_steering<T: Component>(
 }
 
 /// Stop an actor once it has reached its goal
+#[allow(dead_code)]
 pub fn stop_at_destination<T: Component>(
 	mut actors: Query<(&mut LinearVelocity, &mut Pathing, &Transform), With<T>>,
 ) {

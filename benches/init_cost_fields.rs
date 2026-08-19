@@ -1,9 +1,7 @@
 //! Measure initialising a large set of CostFields
 //!
 
-use bevy_flowfield_tiles_plugin::v2::flowfields::{
-	dimensions::Dimensions, sectors::sector_cost::SectorCostFields,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 /// Create a set of CostFields

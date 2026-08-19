@@ -4,7 +4,7 @@
 //! The [RouteStep] describes the portal location within a particular sector
 //!
 
-use crate::v2::flowfields::{portal::PortalWindow, sectors::SectorID};
+use crate::flowfields::{portal::PortalWindow, sectors::SectorID};
 
 /// Describes and keys into a pathable segment of FlowFields
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

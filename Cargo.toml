@@ -70,14 +70,13 @@ workspace = true
 [features]
 serde = ["dep:serde", "dep:serde-big-array"]
 ron = ["serde", "dep:ron"]
-csv = ["serde", "dep:csv"]
 2d = []
 3d = []
 heightmap = ["dep:photon-rs"]
 # multithread = []
 
 [package.metadata.docs.rs]
-features = ["serde", "ron", "csv", "2d", "3d", "heightmap"]
+features = ["serde", "ron", "2d", "3d", "heightmap"]
 
 [profile.dev]
 opt-level = 1

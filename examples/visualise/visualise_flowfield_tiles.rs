@@ -8,19 +8,7 @@
 use std::collections::BTreeMap;
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::v2::{
-	bundle::FlowFieldTiles,
-	flowfields::{
-		fields::{
-			Field, FieldCell,
-			flow_field::{FlowField, get_ordinal_from_bits, has_line_of_sight, is_goal, is_wall},
-			integration_field::IntegrationField,
-		},
-		route_cache::RouteStep,
-		sectors::SectorID,
-		utilities::{FIELD_RESOLUTION, Ordinal},
-	},
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
 	App::new()

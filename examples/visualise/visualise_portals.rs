@@ -5,15 +5,7 @@
 //!
 
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_flowfield_tiles_plugin::v2::{
-	bundle::FlowFieldTiles,
-	flowfields::{
-		fields::{Field, FieldCell},
-		sectors::SectorID,
-		utilities::FIELD_RESOLUTION,
-	},
-	plugin::FlowFieldTilesPlugin,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 #[path = "../helpers/cell_icons.rs"]
 mod cell_icons;

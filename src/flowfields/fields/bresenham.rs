@@ -1,4 +1,6 @@
-use crate::flowfields2::fields::FieldCell;
+//! Bresenham's line algorithm is for determining points on n-dimensional raster. Given a line across a grid of squares this algorithm tells you which squares lie on the line
+
+use crate::flowfields::fields::FieldCell;
 
 /// When finding a shallow raster representation of a line we step through the x-dimension and increment y based on an error bound which indicates which cells lie on the line
 pub fn walk_bresenham_shallow(col_0: i32, row_0: i32, col_1: i32, row_1: i32) -> Vec<FieldCell> {

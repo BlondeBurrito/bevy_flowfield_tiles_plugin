@@ -1,9 +1,7 @@
 //! Measure calculating Portals
 //!
 
-use bevy_flowfield_tiles_plugin::v2::flowfields::{
-	dimensions::Dimensions, portal::Portals, sectors::sector_cost::SectorCostFields,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 /// Create the required CostFields before benchmarking

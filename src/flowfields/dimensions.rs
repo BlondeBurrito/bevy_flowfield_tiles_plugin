@@ -3,8 +3,8 @@
 
 use bevy::prelude::*;
 
-use crate::v2::flowfields::utilities::{FIELD_RESOLUTION, Ordinal};
-use crate::v2::flowfields::{fields::FieldCell, sectors::SectorID};
+use crate::flowfields::utilities::{FIELD_RESOLUTION, Ordinal};
+use crate::flowfields::{fields::FieldCell, sectors::SectorID};
 
 /// The dimensions and scaling of the world
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

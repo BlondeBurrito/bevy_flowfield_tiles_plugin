@@ -8,17 +8,7 @@
 use std::collections::BTreeMap;
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::v2::{
-	bundle::FlowFieldTiles,
-	flowfields::{
-		fields::{
-			Field, FieldCell,
-			integration_field::{INT_BITS_LOS, INT_FILTER_BITS_COST, IntegrationField},
-		},
-		sectors::SectorID,
-		utilities::FIELD_RESOLUTION,
-	},
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
 	App::new()

@@ -5,9 +5,7 @@
 //!
 
 use bevy::prelude::*;
-use bevy_flowfield_tiles_plugin::v2::flowfields::{
-	dimensions::Dimensions, fields::Field, sectors::sector_cost::SectorCostFields,
-};
+use bevy_flowfield_tiles_plugin::prelude::*;
 
 fn main() {
 	App::new()

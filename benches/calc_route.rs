@@ -4,7 +4,7 @@
 //!
 
 use bevy::{app::App, math::Vec2};
-use bevy_flowfield_tiles_plugin::v2::{bundle::FlowFieldTiles, plugin::FlowFieldTilesPlugin};
+use bevy_flowfield_tiles_plugin::prelude::*;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 /// Create FlowFieldTiles
