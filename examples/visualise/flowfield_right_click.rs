@@ -113,12 +113,12 @@ fn click_set_target(
 /// becoming available. This checks to see if the route is available
 fn actor_update_route(mut actor_q: Query<&mut core2d::Pathing, With<core::Actor>>) {
 	let mut pathing = actor_q.single_mut().unwrap();
-	if let Some(mut poll) = pathing.pollable_route.as_mut() {
-		if let Some(route) = check_ready(&mut poll) {
-			// task finished
-			pathing.pollable_route = None;
-			pathing.route = route;
-		}
+	if let Some(mut poll) = pathing.pollable_route.as_mut()
+		&& let Some(route) = check_ready(&mut poll)
+	{
+		// task finished
+		pathing.pollable_route = None;
+		pathing.route = route;
 	}
 }
 
@@ -131,17 +131,15 @@ fn update_sprite_visuals_based_on_actor(
 ) {
 	for pathing in &actor_q {
 		let flowfield_tiles = flowfield_tiles_q.single().unwrap();
-		if let Some(route) = &pathing.route {
-			if let Some(flowfield) = flowfield_tiles.read_flowfield(&route[0]) {
-				for (mut sprite, field_cell_label) in field_cell_q.iter_mut() {
-					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
-						field_cell_label.0,
-						field_cell_label.1,
-					));
-					let icon = cell_icons::get_ord_icon(flow_value);
-					let new_handle: Handle<Image> = asset_server.load(icon);
-					sprite.image = new_handle;
-				}
+		if let Some(route) = &pathing.route
+			&& let Some(flowfield) = flowfield_tiles.read_flowfield(&route[0])
+		{
+			for (mut sprite, field_cell_label) in field_cell_q.iter_mut() {
+				let flow_value = flowfield
+					.get_field_cell_value(FieldCell::new(field_cell_label.0, field_cell_label.1));
+				let icon = cell_icons::get_ord_icon(flow_value);
+				let new_handle: Handle<Image> = asset_server.load(icon);
+				sprite.image = new_handle;
 			}
 		}
 	}

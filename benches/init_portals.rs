@@ -12,8 +12,7 @@ fn prepare_fields(
 	actor_radius: f32,
 ) -> SectorCostFields {
 	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
-	let cost_fields = SectorCostFields::new(&dimensions);
-	cost_fields
+	SectorCostFields::new(&dimensions)
 }
 
 /// Create a set of CostFields

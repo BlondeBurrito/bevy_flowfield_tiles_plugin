@@ -344,7 +344,7 @@ impl Dimensions {
 			(self.get_depth() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as i32 - 1;
 		match ordinal {
 			Ordinal::North => {
-				if sector_id.get_row() - 1 >= 0 {
+				if sector_id.get_row() > 0 {
 					Some(SectorID::new(
 						sector_id.get_column(),
 						sector_id.get_row() - 1,
@@ -354,7 +354,7 @@ impl Dimensions {
 				}
 			}
 			Ordinal::East => {
-				if sector_id.get_column() + 1 <= sector_column_limit {
+				if sector_id.get_column() < sector_column_limit {
 					Some(SectorID::new(
 						sector_id.get_column() + 1,
 						sector_id.get_row(),
@@ -364,7 +364,7 @@ impl Dimensions {
 				}
 			}
 			Ordinal::South => {
-				if sector_id.get_row() + 1 <= sector_row_limit {
+				if sector_id.get_row() < sector_row_limit {
 					Some(SectorID::new(
 						sector_id.get_column(),
 						sector_id.get_row() + 1,
@@ -374,7 +374,7 @@ impl Dimensions {
 				}
 			}
 			Ordinal::West => {
-				if sector_id.get_column() - 1 >= 0 {
+				if sector_id.get_column() > 0 {
 					Some(SectorID::new(
 						sector_id.get_column() - 1,
 						sector_id.get_row(),
@@ -384,8 +384,8 @@ impl Dimensions {
 				}
 			}
 			Ordinal::NorthEast => {
-				if sector_id.get_row() - 1 >= 0 {
-					if sector_id.get_column() + 1 <= sector_column_limit {
+				if sector_id.get_row() > 0 {
+					if sector_id.get_column() < sector_column_limit {
 						Some(SectorID::new(
 							sector_id.get_column() + 1,
 							sector_id.get_row() - 1,
@@ -398,8 +398,8 @@ impl Dimensions {
 				}
 			}
 			Ordinal::SouthEast => {
-				if sector_id.get_row() + 1 <= sector_row_limit {
-					if sector_id.get_column() + 1 <= sector_column_limit {
+				if sector_id.get_row() < sector_row_limit {
+					if sector_id.get_column() < sector_column_limit {
 						Some(SectorID::new(
 							sector_id.get_column() + 1,
 							sector_id.get_row() + 1,
@@ -412,8 +412,8 @@ impl Dimensions {
 				}
 			}
 			Ordinal::SouthWest => {
-				if sector_id.get_row() + 1 <= sector_row_limit {
-					if sector_id.get_column() - 1 >= 0 {
+				if sector_id.get_row() < sector_row_limit {
+					if sector_id.get_column() > 0 {
 						Some(SectorID::new(
 							sector_id.get_column() - 1,
 							sector_id.get_row() + 1,
@@ -426,8 +426,8 @@ impl Dimensions {
 				}
 			}
 			Ordinal::NorthWest => {
-				if sector_id.get_row() - 1 >= 0 {
-					if sector_id.get_column() - 1 >= 0 {
+				if sector_id.get_row() > 0 {
+					if sector_id.get_column() > 0 {
 						Some(SectorID::new(
 							sector_id.get_column() - 1,
 							sector_id.get_row() - 1,

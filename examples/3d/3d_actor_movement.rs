@@ -147,15 +147,16 @@ fn actor_request_route(
 ) {
 	// get the actor position
 	for (actor_tform, mut actor_pathing) in &mut actor_q {
-		if let Some(target) = actor_pathing.target {
-			if actor_pathing.route.is_none() && actor_pathing.pollable_route.is_none() {
-				// ask for a route
-				for flowfield_tiles in &flow_q {
-					let task = flowfield_tiles.get_route_3d(actor_tform.translation, target);
-					if let Some(t) = task {
-						actor_pathing.pollable_route = Some(t);
-						actor_pathing.route = None;
-					}
+		if let Some(target) = actor_pathing.target
+			&& actor_pathing.route.is_none()
+			&& actor_pathing.pollable_route.is_none()
+		{
+			// ask for a route
+			for flowfield_tiles in &flow_q {
+				let task = flowfield_tiles.get_route_3d(actor_tform.translation, target);
+				if let Some(t) = task {
+					actor_pathing.pollable_route = Some(t);
+					actor_pathing.route = None;
 				}
 			}
 		}
@@ -166,12 +167,12 @@ fn actor_request_route(
 /// becoming available. This checks to see if the route is available
 fn actor_update_route(mut actor_q: Query<&mut Pathing, With<core::Actor>>) {
 	for mut pathing in &mut actor_q {
-		if let Some(mut poll) = pathing.pollable_route.as_mut() {
-			if let Some(route) = check_ready(&mut poll) {
-				// task finished
-				pathing.pollable_route = None;
-				pathing.route = route;
-			}
+		if let Some(mut poll) = pathing.pollable_route.as_mut()
+			&& let Some(route) = check_ready(&mut poll)
+		{
+			// task finished
+			pathing.pollable_route = None;
+			pathing.route = route;
 		}
 	}
 }
@@ -246,13 +247,13 @@ fn stop_at_destination(
 ) {
 	for (mut vel, mut path, tform) in &mut actors {
 		let position = tform.translation;
-		if let Some(target) = path.target {
-			if (target - position).length_squared() < 0.5 {
-				vel.0 *= 0.0;
-				path.target = None;
-				path.pollable_route = None;
-				path.route = None;
-			}
+		if let Some(target) = path.target
+			&& (target - position).length_squared() < 0.5
+		{
+			vel.0 *= 0.0;
+			path.target = None;
+			path.pollable_route = None;
+			path.route = None;
 		}
 	}
 }

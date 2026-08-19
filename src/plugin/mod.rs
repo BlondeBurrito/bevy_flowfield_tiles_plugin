@@ -69,10 +69,10 @@ fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 				//
 				// increment arc
 				let costfields = flowfield_tiles.get_sector_cost_fields_mut().clone();
-				let dimensions = flowfield_tiles.get_dimensions().clone();
+				let dimensions = *flowfield_tiles.get_dimensions();
 				// clone so ownership can be moved inside the async pool
-				let sector = item.sector().clone();
-				let field_cell = item.cell().clone();
+				let sector = *item.sector();
+				let field_cell = *item.cell();
 				let cost = item.cost();
 
 				// let the update be handled in the background so as not to block the main
@@ -104,7 +104,7 @@ fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 				let task = thread_pool.spawn(async move {
 					let costfields = costfields.read().unwrap();
 					let mut portals = portals.write().unwrap();
-					portals.update_portals(&sector, &*costfields);
+					portals.update_portals(&sector, &costfields);
 					sector
 				});
 				// store the task so it can be polled/checked for completion
@@ -125,14 +125,14 @@ fn process_flow_queue(mut query: Query<&mut FlowFieldTiles>) {
 			return;
 		}
 		// if an existing flow generation has finished add it to the cache
-		if let Some(mut poll) = flowfield_tiles.flow_gen_task.as_mut() {
-			if let Some(fields) = check_ready(&mut poll) {
-				for (step, flowfield) in fields {
-					flowfield_tiles.flowfield_cache.insert(&step, flowfield);
-				}
-				flowfield_tiles.flow_gen_task = None;
-				return;
+		if let Some(mut poll) = flowfield_tiles.flow_gen_task.as_mut()
+			&& let Some(fields) = check_ready(&mut poll)
+		{
+			for (step, flowfield) in fields {
+				flowfield_tiles.flowfield_cache.insert(&step, flowfield);
 			}
+			flowfield_tiles.flow_gen_task = None;
+			return;
 		}
 
 		// add groups of routes to the queue

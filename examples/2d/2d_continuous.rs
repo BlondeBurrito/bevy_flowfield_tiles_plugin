@@ -67,7 +67,7 @@ fn main() {
 		.run();
 }
 
-//// Spawn sprites to represent the world
+/// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	cmds.spawn(camera::get_camera_2d(2.0));
 	let sprite_dimension = core2d::FIELD_SPRITE_DIMENSION;
@@ -358,10 +358,10 @@ fn update_fps_counter(
 	mut query: Query<&mut TextSpan, With<FpsCounter>>,
 ) {
 	for mut text in &mut query {
-		if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
-			if let Some(val) = fps.smoothed() {
-				**text = format!("{val:.2}");
-			}
+		if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS)
+			&& let Some(val) = fps.smoothed()
+		{
+			**text = format!("{val:.2}");
 		}
 	}
 }

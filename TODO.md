@@ -16,3 +16,4 @@
 - internal docs
 - readme
 - sort out bevy app in calc benchmarks, how to .run() or call .update() frame by frame
+- verify large actor example

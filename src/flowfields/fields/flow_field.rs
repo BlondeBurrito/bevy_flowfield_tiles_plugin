@@ -276,61 +276,61 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 		match ordinal {
 			Ordinal::NorthEast => {
 				// check N and E for walls
-				if let Some(north_this) = this_cell.get_in_ordinal_direction(&Ordinal::North, 1) {
-					if let Some(east_this) = this_cell.get_in_ordinal_direction(&Ordinal::East, 1) {
-						let north_this_value = int_field.get_field_cell_value(north_this);
-						let east_this_value = int_field.get_field_cell_value(east_this);
-						if north_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-							&& east_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-						{
-							// diagonal through wall, skip
-							continue;
-						}
+				if let Some(north_this) = this_cell.get_in_ordinal_direction(&Ordinal::North, 1)
+					&& let Some(east_this) = this_cell.get_in_ordinal_direction(&Ordinal::East, 1)
+				{
+					let north_this_value = int_field.get_field_cell_value(north_this);
+					let east_this_value = int_field.get_field_cell_value(east_this);
+					if north_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+						&& east_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+					{
+						// diagonal through wall, skip
+						continue;
 					}
 				}
 			}
 			Ordinal::SouthEast => {
 				// check E and S for walls
-				if let Some(south_this) = this_cell.get_in_ordinal_direction(&Ordinal::South, 1) {
-					if let Some(east_this) = this_cell.get_in_ordinal_direction(&Ordinal::East, 1) {
-						let south_this_value = int_field.get_field_cell_value(south_this);
-						let east_this_value = int_field.get_field_cell_value(east_this);
-						if south_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-							&& east_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-						{
-							// diagonal through wall, skip
-							continue;
-						}
+				if let Some(south_this) = this_cell.get_in_ordinal_direction(&Ordinal::South, 1)
+					&& let Some(east_this) = this_cell.get_in_ordinal_direction(&Ordinal::East, 1)
+				{
+					let south_this_value = int_field.get_field_cell_value(south_this);
+					let east_this_value = int_field.get_field_cell_value(east_this);
+					if south_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+						&& east_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+					{
+						// diagonal through wall, skip
+						continue;
 					}
 				}
 			}
 			Ordinal::SouthWest => {
 				// check S and W for walls
-				if let Some(south_this) = this_cell.get_in_ordinal_direction(&Ordinal::South, 1) {
-					if let Some(west_this) = this_cell.get_in_ordinal_direction(&Ordinal::West, 1) {
-						let south_this_value = int_field.get_field_cell_value(south_this);
-						let west_this_value = int_field.get_field_cell_value(west_this);
-						if south_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-							&& west_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-						{
-							// diagonal through wall, skip
-							continue;
-						}
+				if let Some(south_this) = this_cell.get_in_ordinal_direction(&Ordinal::South, 1)
+					&& let Some(west_this) = this_cell.get_in_ordinal_direction(&Ordinal::West, 1)
+				{
+					let south_this_value = int_field.get_field_cell_value(south_this);
+					let west_this_value = int_field.get_field_cell_value(west_this);
+					if south_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+						&& west_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+					{
+						// diagonal through wall, skip
+						continue;
 					}
 				}
 			}
 			Ordinal::NorthWest => {
 				// check W and N for walls
-				if let Some(north_this) = this_cell.get_in_ordinal_direction(&Ordinal::North, 1) {
-					if let Some(west_this) = this_cell.get_in_ordinal_direction(&Ordinal::West, 1) {
-						let north_this_value = int_field.get_field_cell_value(north_this);
-						let west_this_value = int_field.get_field_cell_value(west_this);
-						if north_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-							&& west_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
-						{
-							// diagonal through wall, skip
-							continue;
-						}
+				if let Some(north_this) = this_cell.get_in_ordinal_direction(&Ordinal::North, 1)
+					&& let Some(west_this) = this_cell.get_in_ordinal_direction(&Ordinal::West, 1)
+				{
+					let north_this_value = int_field.get_field_cell_value(north_this);
+					let west_this_value = int_field.get_field_cell_value(west_this);
+					if north_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+						&& west_this_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE
+					{
+						// diagonal through wall, skip
+						continue;
 					}
 				}
 			}

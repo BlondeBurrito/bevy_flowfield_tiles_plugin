@@ -27,10 +27,10 @@ fn calc(flowfield_tiles: FlowFieldTiles) {
 	// poll until route is ready
 	let mut route_ready = false;
 	while !route_ready {
-		if let Some(task) = &op_task {
-			if task.is_finished() {
-				route_ready = true;
-			}
+		if let Some(task) = &op_task
+			&& task.is_finished()
+		{
+			route_ready = true;
 		}
 	}
 }

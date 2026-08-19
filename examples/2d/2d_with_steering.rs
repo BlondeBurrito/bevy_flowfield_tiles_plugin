@@ -235,21 +235,20 @@ fn update_sprite_visuals_based_on_actor(
 ) {
 	for pathing in &actor_q {
 		let flowfield_tiles = flowfield_tiles_q.single().unwrap();
-		if let Some(route) = &pathing.route {
-			if let Some(step) = route.first() {
-				if let Some(flowfield) = flowfield_tiles.read_flowfield(step) {
-					for (mut sprite, field_cell_label, sector_label) in field_cell_q.iter_mut() {
-						let sector = SectorID::new(sector_label.0, sector_label.1);
-						if sector == *step.get_sector() {
-							let flow_value = flowfield.get_field_cell_value(FieldCell::new(
-								field_cell_label.0,
-								field_cell_label.1,
-							));
-							let icon = cell_icons::get_ord_icon(flow_value);
-							let new_handle: Handle<Image> = asset_server.load(icon);
-							sprite.image = new_handle;
-						}
-					}
+		if let Some(route) = &pathing.route
+			&& let Some(step) = route.first()
+			&& let Some(flowfield) = flowfield_tiles.read_flowfield(step)
+		{
+			for (mut sprite, field_cell_label, sector_label) in field_cell_q.iter_mut() {
+				let sector = SectorID::new(sector_label.0, sector_label.1);
+				if sector == *step.get_sector() {
+					let flow_value = flowfield.get_field_cell_value(FieldCell::new(
+						field_cell_label.0,
+						field_cell_label.1,
+					));
+					let icon = cell_icons::get_ord_icon(flow_value);
+					let new_handle: Handle<Image> = asset_server.load(icon);
+					sprite.image = new_handle;
 				}
 			}
 		}

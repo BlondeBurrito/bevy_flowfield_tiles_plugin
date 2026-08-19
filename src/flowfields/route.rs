@@ -10,6 +10,7 @@ use crate::flowfields::{portal::PortalWindow, sectors::SectorID};
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RouteStep {
+	/// The sector the step refers to
 	sector: SectorID,
 	/// Goal [FieldCell] as an index
 	goal: usize,

@@ -7,7 +7,7 @@ use bevy::prelude::*;
 #[allow(dead_code)]
 pub fn get_camera_2d(scale: f32) -> (Camera2d, Projection) {
 	let proj = Projection::Orthographic(OrthographicProjection {
-		scale: scale,
+		scale,
 		..OrthographicProjection::default_2d()
 	});
 	(Camera2d, proj)

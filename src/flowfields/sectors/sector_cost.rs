@@ -370,7 +370,7 @@ fn create_graph_for_sector(
 	for n in 0..FIELD_RESOLUTION * FIELD_RESOLUTION {
 		// using n as the index into the `field` of CostField
 		// we can use FieldCell to easy find its neighbours
-		let origin = FieldCell::from_index(n as usize);
+		let origin = FieldCell::from_index(n);
 		let origin_cost = sector_costs.get_field_cell_value(origin);
 		// if origin has cost 255 then it won't have any edges
 		if origin_cost == 255 {

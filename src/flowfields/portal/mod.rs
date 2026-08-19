@@ -35,7 +35,9 @@ use crate::flowfields::{
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Default, Debug, Clone, Reflect, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub struct PortalWindow {
+	/// Where the window starts
 	start: FieldCell,
+	/// Where the window ends
 	end: FieldCell,
 	/// The side of the sector the window sits on. This is required to distinguish
 	/// between portals where `start == end` and it sits in a corner
@@ -98,9 +100,13 @@ impl PortalWindow {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Default, Debug, Clone, Reflect)]
 pub struct Windows {
+	/// Windows along sector boundary
 	north: Vec<PortalWindow>,
+	/// Windows along sector boundary
 	east: Vec<PortalWindow>,
+	/// Windows along sector boundary
 	south: Vec<PortalWindow>,
+	/// Windows along sector boundary
 	west: Vec<PortalWindow>,
 }
 impl Windows {
@@ -161,7 +167,9 @@ impl Windows {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Default, Debug, Clone, Reflect, Ord, PartialOrd, Eq, Copy, PartialEq)]
 pub struct PortalNode {
+	/// The sector the node refers to
 	sector: SectorID,
+	/// The location of the portal
 	window: PortalWindow,
 }
 
@@ -169,9 +177,12 @@ pub struct PortalNode {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Default, Debug, Clone, Reflect)]
 pub struct Portals {
+	/// Records all [PortalWindow] across sectors
 	portals: BTreeMap<SectorID, Windows>,
+	/// Lookup between [PortalNode] and graph type
 	#[reflect(ignore)] //TODO
 	nodes: BTreeMap<PortalNode, NodeIndex<u32>>,
+	/// Describes which [PortalNode]s can reach each other
 	#[reflect(ignore)] //TODO
 	graph: StableGraph<i32, i32, Undirected, u32>,
 }
@@ -284,13 +295,15 @@ impl Portals {
 			let cost_graph = sector_costs.get_graphs().get(source_sector).unwrap();
 			let start = source_cell.as_1d_index() as u16;
 			let end = goal_cell.as_1d_index() as u16;
-			if let Some(_) = petgraph::algo::astar(
+			if petgraph::algo::astar(
 				cost_graph,
 				start.into(),
 				|f| f == end.into(),
 				|e| *e.weight(),
 				|_| 0,
-			) {
+			)
+			.is_some()
+			{
 				return Some(vec![RouteStep::new(
 					source_sector,
 					goal_cell.as_1d_index(),
@@ -314,13 +327,15 @@ impl Portals {
 			// search for a cell route in the costs graph
 			let start = source_cell.as_1d_index() as u16;
 			let end = midpoint.as_1d_index() as u16;
-			if let Some(_) = petgraph::algo::astar(
+			if petgraph::algo::astar(
 				cost_graph,
 				start.into(),
 				|f| f == end.into(),
 				|e| *e.weight(),
 				|_| 0,
-			) {
+			)
+			.is_some()
+			{
 				// lookup the graph node of the portal that's reachable and record it
 				let portal_node = PortalNode {
 					sector: *source_sector,
@@ -341,13 +356,15 @@ impl Portals {
 			// search for a cell route in the costs graph
 			let start = midpoint.as_1d_index() as u16;
 			let end = goal_cell.as_1d_index() as u16;
-			if let Some(_) = petgraph::algo::astar(
+			if petgraph::algo::astar(
 				cost_graph,
 				start.into(),
 				|f| f == end.into(),
 				|e| *e.weight(),
 				|_| 0,
-			) {
+			)
+			.is_some()
+			{
 				// lookup the graph node of the portal that's reachable and record it
 				let portal_node = PortalNode {
 					sector: *goal_sector,
@@ -464,6 +481,7 @@ fn generate_sector_portals(
 	}
 }
 
+/// Walk along the [Ordinal] boundary of a sector determine where portal windows are
 fn walk_sector_boundary(
 	origin_sector: &SectorID,
 	origin_field: &CostField,
@@ -634,13 +652,13 @@ fn generate_sector_external_edges(
 					window: *adjacent_portal_window,
 				};
 				// extract the graph indices
-				if let Some(this_node_index) = nodes.get(&this_portal_node) {
-					if let Some(adjacent_node_index) = nodes.get(&adjacent_portal_node) {
-						// edges are undirected, only add if one doesn't exist
-						if !portal_graph.contains_edge(*this_node_index, *adjacent_node_index) {
-							// create the undirected edge from this to adjacent
-							portal_graph.add_edge(*this_node_index, *adjacent_node_index, 1);
-						}
+				if let Some(this_node_index) = nodes.get(&this_portal_node)
+					&& let Some(adjacent_node_index) = nodes.get(&adjacent_portal_node)
+				{
+					// edges are undirected, only add if one doesn't exist
+					if !portal_graph.contains_edge(*this_node_index, *adjacent_node_index) {
+						// create the undirected edge from this to adjacent
+						portal_graph.add_edge(*this_node_index, *adjacent_node_index, 1);
 					}
 				}
 			}
@@ -1026,13 +1044,13 @@ mod tests {
 		// check for PortalWindow existence on boundaries
 		let sector1 = SectorID::new(0, 0);
 		let s1_north = &portals.portals.get(&sector1).unwrap().north;
-		assert!(0 == s1_north.len());
+		assert!(s1_north.is_empty());
 		let s1_east = &portals.portals.get(&sector1).unwrap().east;
 		assert!(1 == s1_east.len());
 		let s1_south = &portals.portals.get(&sector1).unwrap().south;
 		assert!(1 == s1_south.len());
 		let s1_west = &portals.portals.get(&sector1).unwrap().west;
-		assert!(0 == s1_west.len());
+		assert!(s1_west.is_empty());
 	}
 
 	//  ____________ ____________
@@ -1127,9 +1145,12 @@ mod tests {
 
 		let nodes = &mut portals.nodes;
 		let portal_graph = &mut portals.graph;
-		for sector in &[SectorID::new(0, 0)] {
-			remove_sector_nodes_and_windows(sector, &mut portals.portals, nodes, portal_graph);
-		}
+		remove_sector_nodes_and_windows(
+			&SectorID::new(0, 0),
+			&mut portals.portals,
+			nodes,
+			portal_graph,
+		);
 
 		assert!(6 == portals.graph.node_count());
 		assert!(5 == portals.graph.edge_count());

@@ -117,16 +117,16 @@ pub fn actor_request_route<T: Component>(
 ) {
 	// get the actor position
 	for (actor_tform, mut actor_pathing) in &mut actor_q {
-		if let Some(target) = actor_pathing.target {
-			if actor_pathing.route.is_none() && actor_pathing.pollable_route.is_none() {
-				// ask for a route
-				for flowfield_tiles in &flow_q {
-					let task =
-						flowfield_tiles.get_route_2d(actor_tform.translation.truncate(), target);
-					if let Some(t) = task {
-						actor_pathing.pollable_route = Some(t);
-						actor_pathing.route = None;
-					}
+		if let Some(target) = actor_pathing.target
+			&& actor_pathing.route.is_none()
+			&& actor_pathing.pollable_route.is_none()
+		{
+			// ask for a route
+			for flowfield_tiles in &flow_q {
+				let task = flowfield_tiles.get_route_2d(actor_tform.translation.truncate(), target);
+				if let Some(t) = task {
+					actor_pathing.pollable_route = Some(t);
+					actor_pathing.route = None;
 				}
 			}
 		}
@@ -138,12 +138,12 @@ pub fn actor_request_route<T: Component>(
 #[allow(dead_code)]
 pub fn actor_update_route<T: Component>(mut actor_q: Query<&mut Pathing, With<T>>) {
 	for mut pathing in &mut actor_q {
-		if let Some(mut poll) = pathing.pollable_route.as_mut() {
-			if let Some(route) = check_ready(&mut poll) {
-				// task finished
-				pathing.pollable_route = None;
-				pathing.route = route;
-			}
+		if let Some(mut poll) = pathing.pollable_route.as_mut()
+			&& let Some(route) = check_ready(&mut poll)
+		{
+			// task finished
+			pathing.pollable_route = None;
+			pathing.route = route;
 		}
 	}
 }
@@ -213,14 +213,14 @@ pub fn stop_at_destination<T: Component>(
 ) {
 	for (mut vel, mut path, tform) in &mut actors {
 		let position = tform.translation.truncate();
-		if let Some(target) = path.target {
-			if (target - position).length_squared() < 36.0 {
-				// within 6 pixels of target
-				vel.0 *= 0.0;
-				path.target = None;
-				path.pollable_route = None;
-				path.route = None;
-			}
+		if let Some(target) = path.target
+			&& (target - position).length_squared() < 36.0
+		{
+			// within 6 pixels of target
+			vel.0 *= 0.0;
+			path.target = None;
+			path.pollable_route = None;
+			path.route = None;
 		}
 	}
 }

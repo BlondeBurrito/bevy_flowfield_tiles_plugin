@@ -13,7 +13,9 @@ use crate::flowfields::utilities::Ordinal;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash, Reflect)]
 pub struct SectorID {
+	/// Column
 	column: i32,
+	/// Row
 	row: i32,
 }
 

@@ -38,13 +38,13 @@ fn setup(mut cmds: Commands) {
 		&source_cell,
 		&goal_sector,
 		&goal_cell,
-		&*read_costfields,
+		&read_costfields,
 	) {
 		for step in route.iter() {
 			// create integrationfields for each step
 			let sector = step.get_sector();
-			let costfield = &*read_costfields.get_scaled_costs().get(sector).unwrap();
-			let mut intfield = IntegrationField::init(&costfield, &step);
+			let costfield = &read_costfields.get_scaled_costs().get(sector).unwrap();
+			let mut intfield = IntegrationField::init(costfield, step);
 			intfield.build(costfield);
 			intfields.insert(*sector, intfield);
 		}

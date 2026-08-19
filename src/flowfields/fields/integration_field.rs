@@ -126,6 +126,7 @@ impl IntegrationField {
 		}
 		field
 	}
+	/// Mark the goal in the field
 	fn set_goal_value(&mut self, route_step: &RouteStep) {
 		if let Some(window) = route_step.portal() {
 			// mark the portal window cells are goals
@@ -325,7 +326,7 @@ fn extend_los_corner(
 	wavefront_cost: u32,
 ) {
 	// find the sector edge where line of sight should be blocked based on the corner
-	let end = check_los_corner_propagation(&corner, goal);
+	let end = check_los_corner_propagation(corner, goal);
 	// from the corner to the boundary cell of LOS being blocked use the bresenham line algorithm to find all cells between the two cell points and mark them as being wavefront blocked so that further LOS propagation won't flow behind impassable cells
 	let blocked_cells = corner.get_cells_between_points(&end);
 	for (i, blocked) in blocked_cells.iter().enumerate() {
@@ -339,46 +340,46 @@ fn extend_los_corner(
 			let previous = &blocked_cells[i - 1];
 			match Ordinal::cell_to_cell_direction(*blocked, *previous) {
 				Ordinal::NorthEast => {
-					if let Some(south) = Ordinal::get_cell_neighbour(*blocked, Ordinal::South) {
-						if let Some(west) = Ordinal::get_cell_neighbour(*blocked, Ordinal::West) {
-							let s_v = field.get_field_cell_value(south) & INT_BITS_IMPASSABLE;
-							let w_v = field.get_field_cell_value(west) & INT_BITS_IMPASSABLE;
-							if s_v == INT_BITS_IMPASSABLE && w_v == INT_BITS_IMPASSABLE {
-								break;
-							}
+					if let Some(south) = Ordinal::get_cell_neighbour(*blocked, Ordinal::South)
+						&& let Some(west) = Ordinal::get_cell_neighbour(*blocked, Ordinal::West)
+					{
+						let s_v = field.get_field_cell_value(south) & INT_BITS_IMPASSABLE;
+						let w_v = field.get_field_cell_value(west) & INT_BITS_IMPASSABLE;
+						if s_v == INT_BITS_IMPASSABLE && w_v == INT_BITS_IMPASSABLE {
+							break;
 						}
 					}
 				}
 				Ordinal::SouthEast => {
-					if let Some(north) = Ordinal::get_cell_neighbour(*blocked, Ordinal::North) {
-						if let Some(west) = Ordinal::get_cell_neighbour(*blocked, Ordinal::West) {
-							let n_v = field.get_field_cell_value(north) & INT_BITS_IMPASSABLE;
-							let w_v = field.get_field_cell_value(west) & INT_BITS_IMPASSABLE;
-							if n_v == INT_BITS_IMPASSABLE && w_v == INT_BITS_IMPASSABLE {
-								break;
-							}
+					if let Some(north) = Ordinal::get_cell_neighbour(*blocked, Ordinal::North)
+						&& let Some(west) = Ordinal::get_cell_neighbour(*blocked, Ordinal::West)
+					{
+						let n_v = field.get_field_cell_value(north) & INT_BITS_IMPASSABLE;
+						let w_v = field.get_field_cell_value(west) & INT_BITS_IMPASSABLE;
+						if n_v == INT_BITS_IMPASSABLE && w_v == INT_BITS_IMPASSABLE {
+							break;
 						}
 					}
 				}
 				Ordinal::SouthWest => {
-					if let Some(north) = Ordinal::get_cell_neighbour(*blocked, Ordinal::North) {
-						if let Some(east) = Ordinal::get_cell_neighbour(*blocked, Ordinal::East) {
-							let n_v = field.get_field_cell_value(north) & INT_BITS_IMPASSABLE;
-							let e_v = field.get_field_cell_value(east) & INT_BITS_IMPASSABLE;
-							if n_v == INT_BITS_IMPASSABLE && e_v == INT_BITS_IMPASSABLE {
-								break;
-							}
+					if let Some(north) = Ordinal::get_cell_neighbour(*blocked, Ordinal::North)
+						&& let Some(east) = Ordinal::get_cell_neighbour(*blocked, Ordinal::East)
+					{
+						let n_v = field.get_field_cell_value(north) & INT_BITS_IMPASSABLE;
+						let e_v = field.get_field_cell_value(east) & INT_BITS_IMPASSABLE;
+						if n_v == INT_BITS_IMPASSABLE && e_v == INT_BITS_IMPASSABLE {
+							break;
 						}
 					}
 				}
 				Ordinal::NorthWest => {
-					if let Some(south) = Ordinal::get_cell_neighbour(*blocked, Ordinal::South) {
-						if let Some(east) = Ordinal::get_cell_neighbour(*blocked, Ordinal::East) {
-							let s_v = field.get_field_cell_value(south) & INT_BITS_IMPASSABLE;
-							let e_v = field.get_field_cell_value(east) & INT_BITS_IMPASSABLE;
-							if s_v == INT_BITS_IMPASSABLE && e_v == INT_BITS_IMPASSABLE {
-								break;
-							}
+					if let Some(south) = Ordinal::get_cell_neighbour(*blocked, Ordinal::South)
+						&& let Some(east) = Ordinal::get_cell_neighbour(*blocked, Ordinal::East)
+					{
+						let s_v = field.get_field_cell_value(south) & INT_BITS_IMPASSABLE;
+						let e_v = field.get_field_cell_value(east) & INT_BITS_IMPASSABLE;
+						if s_v == INT_BITS_IMPASSABLE && e_v == INT_BITS_IMPASSABLE {
+							break;
 						}
 					}
 				}

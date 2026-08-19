@@ -82,7 +82,7 @@ impl FlowFieldTiles {
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let costfields = Arc::new(RwLock::new(SectorCostFields::new(&dimensions)));
 		let c = costfields.read().unwrap();
-		let portals = Arc::new(RwLock::new(Portals::new(&*c)));
+		let portals = Arc::new(RwLock::new(Portals::new(&c)));
 		// unlock now that portals are built
 		drop(c);
 
@@ -113,7 +113,7 @@ impl FlowFieldTiles {
 			cost,
 		)));
 		let c = costfields.read().unwrap();
-		let portals = Arc::new(RwLock::new(Portals::new(&*c)));
+		let portals = Arc::new(RwLock::new(Portals::new(&c)));
 		// unlock now that portals are built
 		drop(c);
 
@@ -144,7 +144,7 @@ impl FlowFieldTiles {
 			&dimensions,
 		)));
 		let c = costfields.read().unwrap();
-		let portals = Arc::new(RwLock::new(Portals::new(&*c)));
+		let portals = Arc::new(RwLock::new(Portals::new(&c)));
 		// unlock now that portals are built
 		drop(c);
 
@@ -178,7 +178,7 @@ impl FlowFieldTiles {
 			file_path.into(),
 		)));
 		let c = costfields.read().unwrap();
-		let portals = Arc::new(RwLock::new(Portals::new(&*c)));
+		let portals = Arc::new(RwLock::new(Portals::new(&c)));
 		// unlock now that portals are built
 		drop(c);
 
@@ -220,15 +220,9 @@ impl FlowFieldTiles {
 	/// the `read_flowfield()` method to obtain a [FlowField] for the step
 	#[cfg(feature = "2d")]
 	pub fn get_route_2d(&self, from: Vec2, to: Vec2) -> Option<Task<Option<Vec<RouteStep>>>> {
-		let Some((source_sector, source_cell)) =
-			self.dimensions.get_sector_and_field_cell_from_xy(from)
-		else {
-			return None;
-		};
-		let Some((goal_sector, goal_cell)) = self.dimensions.get_sector_and_field_cell_from_xy(to)
-		else {
-			return None;
-		};
+		let (source_sector, source_cell) =
+			self.dimensions.get_sector_and_field_cell_from_xy(from)?;
+		let (goal_sector, goal_cell) = self.dimensions.get_sector_and_field_cell_from_xy(to)?;
 		//
 		self.get_route(source_sector, source_cell, goal_sector, goal_cell)
 	}
@@ -239,15 +233,9 @@ impl FlowFieldTiles {
 	/// the `read_flowfield()` method to obtain a [FlowField] for the step
 	#[cfg(feature = "3d")]
 	pub fn get_route_3d(&self, from: Vec3, to: Vec3) -> Option<Task<Option<Vec<RouteStep>>>> {
-		let Some((source_sector, source_cell)) =
-			self.dimensions.get_sector_and_field_cell_from_xyz(from)
-		else {
-			return None;
-		};
-		let Some((goal_sector, goal_cell)) = self.dimensions.get_sector_and_field_cell_from_xyz(to)
-		else {
-			return None;
-		};
+		let (source_sector, source_cell) =
+			self.dimensions.get_sector_and_field_cell_from_xyz(from)?;
+		let (goal_sector, goal_cell) = self.dimensions.get_sector_and_field_cell_from_xyz(to)?;
 		self.get_route(source_sector, source_cell, goal_sector, goal_cell)
 	}
 	/// From a source and goal attempt to retrieve a series of [RouteStep]
@@ -272,7 +260,7 @@ impl FlowFieldTiles {
 				&source_cell,
 				&goal_sector,
 				&goal_cell,
-				&*read_costfields,
+				&read_costfields,
 			);
 
 			if let Some(p) = path {

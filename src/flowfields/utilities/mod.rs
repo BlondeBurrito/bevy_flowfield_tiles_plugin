@@ -247,7 +247,7 @@ impl Ordinal {
 			Ordinal::NorthEast => {
 				// care: moving diagonally allows for several different sector deltas
 				let (col, row) = field_cell.get_column_row();
-				if col + steps <= FIELD_RESOLUTION - 1 && steps <= row {
+				if col + steps < FIELD_RESOLUTION && steps <= row {
 					// diag stays in sector
 					(
 						SectorID::new(0, 0),
@@ -285,7 +285,7 @@ impl Ordinal {
 			Ordinal::SouthEast => {
 				// care: moving diagonally allows for several different sector deltas
 				let (col, row) = field_cell.get_column_row();
-				if col + steps <= FIELD_RESOLUTION - 1 && row + steps <= FIELD_RESOLUTION - 1 {
+				if col + steps < FIELD_RESOLUTION && row + steps < FIELD_RESOLUTION {
 					// diag stays in sector
 					(
 						SectorID::new(0, 0),
@@ -324,7 +324,7 @@ impl Ordinal {
 			Ordinal::SouthWest => {
 				// care: moving diagonally allows for several different sector deltas
 				let (col, row) = field_cell.get_column_row();
-				if steps <= col && row + steps <= FIELD_RESOLUTION - 1 {
+				if steps <= col && row + steps < FIELD_RESOLUTION {
 					// diag stays in sector
 					(
 						SectorID::new(0, 0),
@@ -820,8 +820,8 @@ impl Ordinal {
 	}
 	/// For two sectors next to each other it can be useful to find the [Ordinal] from the `source` to the `target`. If they are not adjacent None is returned
 	pub fn sector_to_sector_direction(target: SectorID, source: SectorID) -> Option<Self> {
-		let i32_target = (target.get_column() as i32, target.get_row() as i32);
-		let i32_source = (source.get_column() as i32, source.get_row() as i32);
+		let i32_target = (target.get_column(), target.get_row());
+		let i32_source = (source.get_column(), source.get_row());
 
 		let direction = (i32_target.0 - i32_source.0, i32_target.1 - i32_source.1);
 		match direction {

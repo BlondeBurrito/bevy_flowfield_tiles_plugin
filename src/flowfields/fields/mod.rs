@@ -27,7 +27,9 @@ pub trait Field<T> {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash, Reflect)]
 pub struct FieldCell {
+	/// Column
 	column: usize,
+	/// Row
 	row: usize,
 }
 
@@ -75,11 +77,8 @@ impl FieldCell {
 		let (column, row) = match ordinal {
 			Ordinal::North => {
 				let this_row = self.row;
-				if let Some(n) = this_row.checked_sub(steps) {
-					(self.column, n)
-				} else {
-					return None;
-				}
+				let n = this_row.checked_sub(steps)?;
+				(self.column, n)
 			}
 			Ordinal::East => {
 				let this_col = self.column;
@@ -101,22 +100,16 @@ impl FieldCell {
 			}
 			Ordinal::West => {
 				let this_col = self.column;
-				if let Some(n) = this_col.checked_sub(steps) {
-					(n, self.row)
-				} else {
-					return None;
-				}
+				let n = this_col.checked_sub(steps)?;
+				(n, self.row)
 			}
 			Ordinal::NorthEast => {
 				let this_row = self.row;
-				if let Some(n_row) = this_row.checked_sub(steps) {
-					let this_col = self.column;
-					let n_col = this_col + steps;
-					if n_col < FIELD_RESOLUTION {
-						(n_col, n_row)
-					} else {
-						return None;
-					}
+				let n_row = this_row.checked_sub(steps)?;
+				let this_col = self.column;
+				let n_col = this_col + steps;
+				if n_col < FIELD_RESOLUTION {
+					(n_col, n_row)
 				} else {
 					return None;
 				}
@@ -141,27 +134,18 @@ impl FieldCell {
 				let n_row = this_row + steps;
 				if n_row < FIELD_RESOLUTION {
 					let this_col = self.column;
-					if let Some(n_col) = this_col.checked_sub(steps) {
-						(n_col, n_row)
-					} else {
-						return None;
-					}
+					let n_col = this_col.checked_sub(steps)?;
+					(n_col, n_row)
 				} else {
 					return None;
 				}
 			}
 			Ordinal::NorthWest => {
 				let this_row = self.row;
-				if let Some(n_row) = this_row.checked_sub(steps) {
-					let this_col = self.column;
-					if let Some(n_col) = this_col.checked_sub(steps) {
-						(n_col, n_row)
-					} else {
-						return None;
-					}
-				} else {
-					return None;
-				}
+				let n_row = this_row.checked_sub(steps)?;
+				let this_col = self.column;
+				let n_col = this_col.checked_sub(steps)?;
+				(n_col, n_row)
 			}
 			_ => panic!("{} should never be used for FieldCell stepping", ordinal),
 		};
