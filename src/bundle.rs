@@ -30,13 +30,14 @@ use crate::flowfields::{
 pub struct FlowFieldTiles {
 	/// Size of the world
 	pub dimensions: Dimensions,
-	/// [CostField]s of all sectors
+	/// [crate::flowfields::fields::cost_field::CostField]s of all sectors
 	pub sector_cost_fields: Arc<RwLock<SectorCostFields>>,
 	/// Portals and graph describing sector-to-sector connectivity
 	pub portals: Arc<RwLock<Portals>>,
 	/// A list of updates to be applied to [SectorCostFields]
 	pub costfield_update_queue: VecDeque<CostFieldUpdateItem>,
-	/// Stores [bevy::tasks::AsyncComputeTaskPool] [Task] when a [CostField] is
+	/// Stores [bevy::tasks::AsyncComputeTaskPool] [Task] when a
+	///  [crate::flowfields::fields::cost_field::CostFieldCostField] is
 	/// being updated
 	#[cfg_attr(feature = "serde", serde(skip))]
 	pub costfield_update_task: Option<Task<SectorID>>,
@@ -101,7 +102,7 @@ impl FlowFieldTiles {
 		}
 	}
 	/// Create a new instance of [FlowFieldTiles] with a starting `cost` across
-	/// all [CostFields]
+	/// all [crate::flowfields::fields::cost_field::CostFieldCostField]s
 	pub fn new_with_cost(
 		origin: (f32, f32),
 		size: (f32, f32),
@@ -134,7 +135,7 @@ impl FlowFieldTiles {
 			flowfield_cache: FlowFieldCache::default(),
 		}
 	}
-	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
+	/// Create a new instance of [FlowFieldTiles] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
 	#[cfg(feature = "ron")]
 	pub fn from_ron(
 		origin: (f32, f32),
@@ -169,7 +170,8 @@ impl FlowFieldTiles {
 		}
 	}
 	/// From a greyscale heightmap image initialise a bundle where the
-	/// [CostField]s are derived from the pixel values of the image
+	/// [crate::flowfields::fields::cost_field::CostField]s are derived from the
+	/// pixel values of the image
 	#[cfg(not(tarpaulin_include))]
 	#[cfg(feature = "heightmap")]
 	pub fn from_heightmap(
@@ -224,7 +226,7 @@ impl FlowFieldTiles {
 	}
 
 	/// Request a path (if it exists). If the `from` and `to` parameters are valid
-	/// coordinates in [Dimension] space a [Task] will be returned. Polling this
+	/// coordinates in [Dimensions] space a [Task] will be returned. Polling this
 	/// task will return a high-level list of [RouteStep] describing the portal-to
 	/// -portal route of the path if it exists. Each [RouteStep] can be used with
 	/// the `read_flowfield()` method to obtain a [FlowField] for the step
@@ -243,7 +245,7 @@ impl FlowFieldTiles {
 		self.get_route(source_sector, source_cell, goal_sector, goal_cell)
 	}
 	/// Request a path (if it exists). If the `from` and `to` parameters are valid
-	/// coordinates in [Dimension] space a [Task] will be returned. Polling this
+	/// coordinates in [Dimensions] space a [Task] will be returned. Polling this
 	/// task will return a high-level list of [RouteStep] describing the portal-to
 	/// -portal route of the path if it exists. Each [RouteStep] can be used with
 	/// the `read_flowfield()` method to obtain a [FlowField] for the step

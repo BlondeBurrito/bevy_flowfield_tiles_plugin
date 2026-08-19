@@ -60,7 +60,7 @@
 //!
 //! To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) all generated fields are stored in a `FlowFieldCache` map. This cache is indexed based on sector-portal metadata.
 //!
-//! For every sector-to-portal part of a route a `FlowField` is built and stored in the cache. Actors can poll this cache to get the true flow direction to their goal. A Character Controller/Steering Pipeline is responsible for interpreting the values of the `FlowField` to produce movement - the repository of this plugin contains a series of examples that show a "bare-minimum" implementation of a pipeline for reading [FlowField]s. In reality every game has its own controller/movement requirements so it's out of scope to provide a generic/agnostic Steering Pipeline. The real point of this plugin is to encapsulate the data structures and logic to make a `FlowField` which an Actor can then read through it's own implementation.
+//! For every sector-to-portal part of a route a `FlowField` is built and stored in the cache. Actors can poll this cache to get the true flow direction to their goal. A Character Controller/Steering Pipeline is responsible for interpreting the values of the `FlowField` to produce movement - the repository of this plugin contains a series of examples that show a "bare-minimum" implementation of a pipeline for reading [fields::flow_field::FlowField]s. In reality every game has its own controller/movement requirements so it's out of scope to provide a generic/agnostic Steering Pipeline. The real point of this plugin is to encapsulate the data structures and logic to make a `FlowField` which an Actor can then read through it's own implementation.
 //!
 
 pub mod dimensions;

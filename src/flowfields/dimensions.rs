@@ -42,7 +42,7 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-	/// Create a new instance of [MapDimensions].
+	/// Create a new instance of [Dimensions].
 	pub fn new(
 		origin: (f32, f32),
 		size: (f32, f32),
@@ -143,7 +143,7 @@ impl Dimensions {
 			|| position.y < bottom_right.y
 		{
 			error!(
-				"Position is out of bounds of MapDimensions, x {}, y {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?",
+				"Position is out of bounds of Dimensions, x {}, y {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?",
 				position.x, position.y
 			);
 			//TODO use Result instead

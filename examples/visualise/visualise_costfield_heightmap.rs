@@ -17,8 +17,8 @@ fn main() {
 fn setup(mut cmds: Commands) {
 	// setup the field
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/heightmap.png";
-	let map_dimensions = Dimensions::new((0.0, 0.0), (960.0, 960.0), 32.0, 1.0);
-	let sector_costfields = SectorCostFields::from_heightmap(&map_dimensions, path);
+	let dimensions = Dimensions::new((0.0, 0.0), (960.0, 960.0), 32.0, 1.0);
+	let sector_costfields = SectorCostFields::from_heightmap(&dimensions, path);
 	// create a UI grid
 	cmds.spawn(Camera2d);
 	cmds.spawn((
