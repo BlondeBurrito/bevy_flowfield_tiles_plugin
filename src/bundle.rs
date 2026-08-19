@@ -1,5 +1,5 @@
-//! Defines a bundle which can be spawned as/inserted into an entity which
-//! movable actors can query for pathing data
+//! Defines the [FlowFieldTiles] component which can be spawned as/inserted
+//! into an entity which movable actors can query for pathing data
 //!
 
 use std::{
@@ -93,9 +93,6 @@ impl FlowFieldTiles {
 			costfield_update_queue: VecDeque::new(),
 			costfield_update_task: None,
 			portal_update_task: None,
-			// sector_portals: portals,
-			// portal_graph: graph,
-			// route_cache,
 			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
 			flow_gen_task: None,
 			flowfield_cache: FlowFieldCache::default(),
@@ -127,9 +124,6 @@ impl FlowFieldTiles {
 			costfield_update_queue: VecDeque::new(),
 			costfield_update_task: None,
 			portal_update_task: None,
-			// sector_portals: portals,
-			// portal_graph: graph,
-			// route_cache,
 			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
 			flow_gen_task: None,
 			flowfield_cache: FlowFieldCache::default(),
@@ -161,9 +155,6 @@ impl FlowFieldTiles {
 			costfield_update_queue: VecDeque::new(),
 			costfield_update_task: None,
 			portal_update_task: None,
-			// sector_portals: portals,
-			// portal_graph: graph,
-			// route_cache,
 			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
 			flow_gen_task: None,
 			flowfield_cache: FlowFieldCache::default(),
@@ -198,9 +189,6 @@ impl FlowFieldTiles {
 			costfield_update_queue: VecDeque::new(),
 			costfield_update_task: None,
 			portal_update_task: None,
-			// sector_portals: portals,
-			// portal_graph: graph,
-			// route_cache,
 			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
 			flow_gen_task: None,
 			flowfield_cache: FlowFieldCache::default(),
