@@ -17,7 +17,7 @@ use crate::flowfields::{
 	fields::{FieldCell, flow_field::FlowField},
 	flowfield_cache::FlowFieldCache,
 	portal::Portals,
-	route_cache::RouteStep,
+	route::RouteStep,
 	sectors::{
 		SectorID,
 		sector_cost::{CostFieldUpdateItem, SectorCostFields},

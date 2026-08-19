@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::flowfields::{fields::flow_field::FlowField, route_cache::RouteStep, sectors::SectorID};
+use crate::flowfields::{fields::flow_field::FlowField, route::RouteStep, sectors::SectorID};
 
 /// Stores generated flowfields that actors can read
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

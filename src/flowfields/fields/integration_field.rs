@@ -34,7 +34,7 @@ use bevy::reflect::Reflect;
 
 use crate::flowfields::{
 	fields::{Field, FieldCell, cost_field::CostField},
-	route_cache::RouteStep,
+	route::RouteStep,
 	utilities::{FIELD_RESOLUTION, Ordinal},
 };
 

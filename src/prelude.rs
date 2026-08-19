@@ -7,7 +7,7 @@ pub use crate::flowfields::{
 	fields::{cost_field::*, flow_field::*, integration_field::*, *},
 	flowfield_cache::*,
 	portal::*,
-	route_cache::*,
+	route::*,
 	sectors::{sector_cost::*, *},
 	utilities::*,
 	*,
