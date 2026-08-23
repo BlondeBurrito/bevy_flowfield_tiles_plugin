@@ -185,8 +185,7 @@ fn spawn_actors(mut cmds: Commands) {
 	.insert(core::Actor)
 	.insert(core2d::Pathing {
 		target: Some(Vec2::new(target_x, target_y)),
-		pollable_route: None,
-		route: None,
+		..default()
 	})
 	.insert(RigidBody::Dynamic)
 	.insert(Collider::circle(1.0))

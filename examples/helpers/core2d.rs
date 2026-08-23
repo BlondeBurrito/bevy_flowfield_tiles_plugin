@@ -107,6 +107,7 @@ pub struct Pathing {
 	pub target: Option<Vec2>,
 	pub pollable_route: Option<Task<Option<Vec<RouteStep>>>>,
 	pub route: Option<Vec<RouteStep>>,
+	pub request_ticks: u32,
 }
 
 /// Request a route if an actor of `T` has a target set
@@ -191,7 +192,16 @@ pub fn actor_steering<T: Component>(
 							}
 						}
 					} else {
-						//TODO count ticks to re-request entire route?
+						// if a costfield has been changed then the RouteStep may no longer
+						// be valid, meaning no FlowField will be generated for it.
+						// count ticks and if too many remove route so a new request
+						// will be sent
+						pathing.request_ticks += 1;
+						if pathing.request_ticks > 300 {
+							pathing.request_ticks = 0;
+							pathing.pollable_route = None;
+							pathing.route = None;
+						}
 					}
 				} else {
 					// actor is not in the sector denoted by the RouteStep

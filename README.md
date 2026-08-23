@@ -388,6 +388,11 @@ pub struct Pathing {
 	pollable_route: Option<Task<Option<Vec<RouteStep>>>>,
 	/// The generated route that can be used to retrieve the FlowFields
 	route: Option<Vec<RouteStep>>,
+	/// If CostFields have changed since an actor got their RouteSteps, then it is possible
+	/// that a RouteStep could be out of date. I.e there's no longer a FlowField for it.
+	/// If so an actor, failing to get a FlowField, can count ticks and if X number pass they
+	/// should begin re-requesting a route
+	request_ticks: u32,
 }
 ```
 
@@ -506,6 +511,17 @@ fn actor_steering(
 								velocity.0 = dir * SPEED * time_step.delta_secs();
 							}
 						}
+					} else {
+						// if a costfield has been changed then the RouteStep may no longer
+						// be valid, meaning no FlowField will be generated for it.
+						// count ticks and if too many remove route so a new request
+						// will be sent
+						pathing.request_ticks += 1;
+						if pathing.request_ticks > 300 {
+							pathing.request_ticks = 0;
+							pathing.pollable_route = None;
+							pathing.route = None;
+						}
 					}
 				} else {
 					// actor is not in the sector denoted by the RouteStep,
@@ -537,7 +553,7 @@ If you're combining this with a Physics simulation you'll need to ensure that yo
 
 # Features
 
-* `serde` - enables serlialisation on some data types
+* `serde` - enables serialization on some data types
 * `ron` - enables reading `CostField` from files. NB: fixed-size arrays in `.ron` are written as tuples
 * `2d` - enables interface methods when working with Flowfields in a 2d world, additionally allows using a list of Bevy 2d meshes to initialise the Flowfields
 * `3d` - enables interface methods when working with FlowFields in a 3d world
