@@ -22,7 +22,7 @@ fn init_portals(costfields: SectorCostFields) {
 
 pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut group = c.benchmark_group("data_initialisation");
-	group.significance_level(0.05).sample_size(100);
+	group.significance_level(0.05).sample_size(20);
 	let cost_fields = prepare_fields((0.0, 0.0), (1000.0, 1000.0), 1.0, 0.5);
 	group.bench_function("init_portals", |b| {
 		b.iter(|| init_portals(black_box(cost_fields.clone())))

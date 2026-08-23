@@ -1338,282 +1338,277 @@ mod tests {
 		let result = ordinal.step_cell_in_direction(&source_cell, steps);
 		assert_eq!((actual_delta, actual_cell), result);
 	}
-}
 
-// // #[rustfmt::skip]
-// #[cfg(test)]
-// mod tests {
-// 	use super::*;
-// 	#[test]
-// 	fn ordinal_field_cell_neighbours() {
-// 		let cell_id = FieldCell::new(0, 0);
-// 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
-// 		let actual = vec![FieldCell::new(1, 0), FieldCell::new(0, 1)];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn ordinal_field_cell_neighbours2() {
-// 		let cell_id = FieldCell::new(9, 9);
-// 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
-// 		let actual = vec![FieldCell::new(9, 8), FieldCell::new(8, 9)];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn ordinal_field_cell_neighbours3() {
-// 		let cell_id = FieldCell::new(4, 4);
-// 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
-// 		let actual = vec![
-// 			FieldCell::new(4, 3),
-// 			FieldCell::new(5, 4),
-// 			FieldCell::new(4, 5),
-// 			FieldCell::new(3, 4),
-// 		];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn ordinal_field_cell_neighbours4() {
-// 		let cell_id = FieldCell::new(5, 0);
-// 		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
-// 		let actual = vec![
-// 			FieldCell::new(6, 0),
-// 			FieldCell::new(5, 1),
-// 			FieldCell::new(4, 0),
-// 		];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn ordinal_sector_neighbours() {
-// 		let sector_id = SectorID::new(0, 0);
-// 		let map_x_dimension = 300;
-// 		let map_z_dimension = 550;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_neighbours(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![SectorID::new(1, 0), SectorID::new(0, 1)];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn ordinal_sector_neighbours2() {
-// 		let sector_id = SectorID::new(29, 54);
-// 		let map_x_dimension = 300;
-// 		let map_z_dimension = 550;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_neighbours(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![SectorID::new(29, 53), SectorID::new(28, 54)];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn ordinal_sector_neighbours3() {
-// 		let sector_id = SectorID::new(14, 31);
-// 		let map_x_dimension = 300;
-// 		let map_z_dimension = 550;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_neighbours(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![
-// 			SectorID::new(14, 30),
-// 			SectorID::new(15, 31),
-// 			SectorID::new(14, 32),
-// 			SectorID::new(13, 31),
-// 		];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn ordinal_sector_neighbours4() {
-// 		let sector_id = SectorID::new(0, 13);
-// 		let map_x_dimension = 300;
-// 		let map_z_dimension = 550;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_neighbours(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![
-// 			SectorID::new(0, 12),
-// 			SectorID::new(1, 13),
-// 			SectorID::new(0, 14),
-// 		];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn get_northern_ordinals() {
-// 		let sector_id = SectorID::new(3, 0);
-// 		let map_x_dimension = 200;
-// 		let map_z_dimension = 200;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_portal_ordinals(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![Ordinal::East, Ordinal::South, Ordinal::West];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn get_eastern_ordinals() {
-// 		let sector_id = SectorID::new(19, 5);
-// 		let map_x_dimension = 200;
-// 		let map_z_dimension = 200;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_portal_ordinals(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![Ordinal::North, Ordinal::South, Ordinal::West];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn get_southern_ordinals() {
-// 		let sector_id = SectorID::new(4, 19);
-// 		let map_x_dimension = 200;
-// 		let map_z_dimension = 200;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_portal_ordinals(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::West];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn get_western_ordinals() {
-// 		let sector_id = SectorID::new(0, 5);
-// 		let map_x_dimension = 200;
-// 		let map_z_dimension = 200;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_portal_ordinals(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn get_centre_ordinals() {
-// 		let sector_id = SectorID::new(4, 5);
-// 		let map_x_dimension = 200;
-// 		let map_z_dimension = 200;
-// 		let sector_resolution = 10;
-// 		let result = Ordinal::get_sector_portal_ordinals(
-// 			&sector_id,
-// 			map_x_dimension,
-// 			map_z_dimension,
-// 			sector_resolution,
-// 		);
-// 		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn cell_to_cell_north() {
-// 		let target = FieldCell::new(6, 2);
-// 		let source = FieldCell::new(6, 3);
-// 		let result = Ordinal::cell_to_cell_direction(target, source);
-// 		let actual = Ordinal::North;
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn cell_to_cell_north_east() {
-// 		let target = FieldCell::new(7, 2);
-// 		let source = FieldCell::new(6, 3);
-// 		let result = Ordinal::cell_to_cell_direction(target, source);
-// 		let actual = Ordinal::NorthEast;
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn cell_to_cell_east() {
-// 		let target = FieldCell::new(6, 7);
-// 		let source = FieldCell::new(5, 7);
-// 		let result = Ordinal::cell_to_cell_direction(target, source);
-// 		let actual = Ordinal::East;
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn cell_to_cell_south_east() {
-// 		let target = FieldCell::new(5, 5);
-// 		let source = FieldCell::new(4, 4);
-// 		let result = Ordinal::cell_to_cell_direction(target, source);
-// 		let actual = Ordinal::SouthEast;
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn cell_to_cell_south() {
-// 		let target = FieldCell::new(3, 1);
-// 		let source = FieldCell::new(3, 0);
-// 		let result = Ordinal::cell_to_cell_direction(target, source);
-// 		let actual = Ordinal::South;
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn cell_to_cell_south_west() {
-// 		let target = FieldCell::new(6, 9);
-// 		let source = FieldCell::new(7, 8);
-// 		let result = Ordinal::cell_to_cell_direction(target, source);
-// 		let actual = Ordinal::SouthWest;
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn cell_to_cell_west() {
-// 		let target = FieldCell::new(5, 7);
-// 		let source = FieldCell::new(6, 7);
-// 		let result = Ordinal::cell_to_cell_direction(target, source);
-// 		let actual = Ordinal::West;
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn cell_to_cell_north_west() {
-// 		let target = FieldCell::new(0, 0);
-// 		let source = FieldCell::new(1, 1);
-// 		let result = Ordinal::cell_to_cell_direction(target, source);
-// 		let actual = Ordinal::NorthWest;
-// 		assert_eq!(actual, result);
-// 	}
-// 	#[test]
-// 	fn neighbours_with_ordinal1() {
-// 		let field = FieldCell::new(3, 4);
-// 		let result = Ordinal::get_all_cell_neighbours_with_ordinal(field);
-// 		let actual = vec![
-// 			(Ordinal::North, FieldCell::new(3, 3)),
-// 			(Ordinal::East, FieldCell::new(4, 4)),
-// 			(Ordinal::South, FieldCell::new(3, 5)),
-// 			(Ordinal::West, FieldCell::new(2, 4)),
-// 			(Ordinal::NorthEast, FieldCell::new(4, 3)),
-// 			(Ordinal::SouthEast, FieldCell::new(4, 5)),
-// 			(Ordinal::SouthWest, FieldCell::new(2, 5)),
-// 			(Ordinal::NorthWest, FieldCell::new(2, 3)),
-// 		];
-// 		assert_eq!(actual, result)
-// 	}
-// 	#[test]
-// 	fn neighbours_with_ordinal2() {
-// 		let field = FieldCell::new(0, 0);
-// 		let result = Ordinal::get_all_cell_neighbours_with_ordinal(field);
-// 		let actual = vec![
-// 			(Ordinal::East, FieldCell::new(1, 0)),
-// 			(Ordinal::South, FieldCell::new(0, 1)),
-// 			(Ordinal::SouthEast, FieldCell::new(1, 1)),
-// 		];
-// 		assert_eq!(actual, result)
-// 	}
-// }
+	#[test]
+	fn ordinal_field_cell_neighbours() {
+		let cell_id = FieldCell::new(0, 0);
+		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
+		let actual = vec![FieldCell::new(1, 0), FieldCell::new(0, 1)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_field_cell_neighbours2() {
+		let cell_id = FieldCell::new(9, 9);
+		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
+		let actual = vec![FieldCell::new(9, 8), FieldCell::new(8, 9)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_field_cell_neighbours3() {
+		let cell_id = FieldCell::new(4, 4);
+		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
+		let actual = vec![
+			FieldCell::new(4, 3),
+			FieldCell::new(5, 4),
+			FieldCell::new(4, 5),
+			FieldCell::new(3, 4),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_field_cell_neighbours4() {
+		let cell_id = FieldCell::new(5, 0);
+		let result = Ordinal::get_orthogonal_cell_neighbours(cell_id);
+		let actual = vec![
+			FieldCell::new(6, 0),
+			FieldCell::new(5, 1),
+			FieldCell::new(4, 0),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_sector_neighbours() {
+		let sector_id = SectorID::new(0, 0);
+		let map_x_dimension = 300.0;
+		let map_z_dimension = 550.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_neighbours(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![SectorID::new(1, 0), SectorID::new(0, 1)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_sector_neighbours2() {
+		let sector_id = SectorID::new(29, 54);
+		let map_x_dimension = 300.0;
+		let map_z_dimension = 550.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_neighbours(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![SectorID::new(29, 53), SectorID::new(28, 54)];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_sector_neighbours3() {
+		let sector_id = SectorID::new(14, 31);
+		let map_x_dimension = 300.0;
+		let map_z_dimension = 550.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_neighbours(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![
+			SectorID::new(14, 30),
+			SectorID::new(15, 31),
+			SectorID::new(14, 32),
+			SectorID::new(13, 31),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn ordinal_sector_neighbours4() {
+		let sector_id = SectorID::new(0, 13);
+		let map_x_dimension = 300.0;
+		let map_z_dimension = 550.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_neighbours(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![
+			SectorID::new(0, 12),
+			SectorID::new(1, 13),
+			SectorID::new(0, 14),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_northern_ordinals() {
+		let sector_id = SectorID::new(3, 0);
+		let map_x_dimension = 200.0;
+		let map_z_dimension = 200.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![Ordinal::East, Ordinal::South, Ordinal::West];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_eastern_ordinals() {
+		let sector_id = SectorID::new(19, 5);
+		let map_x_dimension = 200.0;
+		let map_z_dimension = 200.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![Ordinal::North, Ordinal::South, Ordinal::West];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_southern_ordinals() {
+		let sector_id = SectorID::new(4, 19);
+		let map_x_dimension = 200.0;
+		let map_z_dimension = 200.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::West];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_western_ordinals() {
+		let sector_id = SectorID::new(0, 5);
+		let map_x_dimension = 200.0;
+		let map_z_dimension = 200.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_centre_ordinals() {
+		let sector_id = SectorID::new(4, 5);
+		let map_x_dimension = 200.0;
+		let map_z_dimension = 200.0;
+		let world_unit_size = 1.0;
+		let result = Ordinal::get_sector_portal_ordinals(
+			&sector_id,
+			map_x_dimension,
+			map_z_dimension,
+			world_unit_size,
+		);
+		let actual = vec![Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn cell_to_cell_north() {
+		let target = FieldCell::new(6, 2);
+		let source = FieldCell::new(6, 3);
+		let result = Ordinal::cell_to_cell_direction(target, source);
+		let actual = Ordinal::North;
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn cell_to_cell_north_east() {
+		let target = FieldCell::new(7, 2);
+		let source = FieldCell::new(6, 3);
+		let result = Ordinal::cell_to_cell_direction(target, source);
+		let actual = Ordinal::NorthEast;
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn cell_to_cell_east() {
+		let target = FieldCell::new(6, 7);
+		let source = FieldCell::new(5, 7);
+		let result = Ordinal::cell_to_cell_direction(target, source);
+		let actual = Ordinal::East;
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn cell_to_cell_south_east() {
+		let target = FieldCell::new(5, 5);
+		let source = FieldCell::new(4, 4);
+		let result = Ordinal::cell_to_cell_direction(target, source);
+		let actual = Ordinal::SouthEast;
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn cell_to_cell_south() {
+		let target = FieldCell::new(3, 1);
+		let source = FieldCell::new(3, 0);
+		let result = Ordinal::cell_to_cell_direction(target, source);
+		let actual = Ordinal::South;
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn cell_to_cell_south_west() {
+		let target = FieldCell::new(6, 9);
+		let source = FieldCell::new(7, 8);
+		let result = Ordinal::cell_to_cell_direction(target, source);
+		let actual = Ordinal::SouthWest;
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn cell_to_cell_west() {
+		let target = FieldCell::new(5, 7);
+		let source = FieldCell::new(6, 7);
+		let result = Ordinal::cell_to_cell_direction(target, source);
+		let actual = Ordinal::West;
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn cell_to_cell_north_west() {
+		let target = FieldCell::new(0, 0);
+		let source = FieldCell::new(1, 1);
+		let result = Ordinal::cell_to_cell_direction(target, source);
+		let actual = Ordinal::NorthWest;
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn neighbours_with_ordinal1() {
+		let field = FieldCell::new(3, 4);
+		let result = Ordinal::get_all_cell_neighbours_with_ordinal(field);
+		let actual = vec![
+			(Ordinal::North, FieldCell::new(3, 3)),
+			(Ordinal::East, FieldCell::new(4, 4)),
+			(Ordinal::South, FieldCell::new(3, 5)),
+			(Ordinal::West, FieldCell::new(2, 4)),
+			(Ordinal::NorthEast, FieldCell::new(4, 3)),
+			(Ordinal::SouthEast, FieldCell::new(4, 5)),
+			(Ordinal::SouthWest, FieldCell::new(2, 5)),
+			(Ordinal::NorthWest, FieldCell::new(2, 3)),
+		];
+		assert_eq!(actual, result)
+	}
+	#[test]
+	fn neighbours_with_ordinal2() {
+		let field = FieldCell::new(0, 0);
+		let result = Ordinal::get_all_cell_neighbours_with_ordinal(field);
+		let actual = vec![
+			(Ordinal::East, FieldCell::new(1, 0)),
+			(Ordinal::South, FieldCell::new(0, 1)),
+			(Ordinal::SouthEast, FieldCell::new(1, 1)),
+		];
+		assert_eq!(actual, result)
+	}
+}

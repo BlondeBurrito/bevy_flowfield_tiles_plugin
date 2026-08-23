@@ -8,7 +8,6 @@ use bevy::{
 use bevy_flowfield_tiles_plugin::prelude::*;
 
 use avian2d::prelude::*;
-use rand::seq::IndexedRandom;
 
 // to reduce code duplication certain constants and systems that make up
 // the steering pipeline are sourced from helper modules
@@ -67,12 +66,17 @@ fn main() {
 		.run();
 }
 
+/// Size of the world in pixels, must be a factor of ACTOR_SIZE
+const WORLD_SIZE: (f32, f32) = (1920.0, 1920.0);
+/// Side length of a sector in pixels
+const SECTOR_LEN: f32 = core2d::WORLD_UNIT_SIZE * FIELD_RESOLUTION as f32;
+
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	cmds.spawn(camera::get_camera_2d(2.0));
 	let sprite_dimension = core2d::FIELD_SPRITE_DIMENSION;
 	let origin = (0.0, 0.0);
-	let size = (1920.0, 1920.0);
+	let size = WORLD_SIZE;
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
 	let actor_radius = core2d::ACTOR_RADIUS;
 	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
@@ -128,7 +132,7 @@ fn setup_navigation(mut cmds: Commands) {
 	let path =
 		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields_continuous_layout.ron";
 	let origin = (0.0, 0.0);
-	let size = (1920.0, 1920.0);
+	let size = WORLD_SIZE;
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
 	let actor_radius = core2d::ACTOR_RADIUS;
 	cmds.spawn(FlowFieldTiles::from_ron(
@@ -143,43 +147,29 @@ fn setup_navigation(mut cmds: Commands) {
 /// Spawn an actor every tick with a random starting position at the top of the
 /// map and a random destination at the bottom
 fn spawn_actors(mut cmds: Commands) {
+	let sector_column_max = (WORLD_SIZE.0 / SECTOR_LEN) as usize;
+	let sector_row_max = (WORLD_SIZE.1 / SECTOR_LEN) as usize;
 	// pick a start
-	let starting_sectors = [(0, 0), (1, 0), (2, 0)];
-	let starting_field_cells = [
-		(0, 0),
-		(1, 0),
-		(2, 0),
-		(3, 0),
-		(4, 0),
-		(5, 0),
-		(6, 0),
-		(7, 0),
-		(8, 0),
-		(9, 0),
-	];
-	let starting_sector = starting_sectors.choose(&mut rand::rng()).unwrap();
-	let starting_field = starting_field_cells.choose(&mut rand::rng()).unwrap();
-	let start_y = 928.0;
-	let start_x = ((-928 + starting_sector.0 * 640) + (starting_field.0 * 64)) as f32;
+	let starting_sector_column = rand::random_range(0..sector_column_max);
+	let starting_cell_column = rand::random_range(0..10);
+	let starting_sector = (starting_sector_column, 0);
+	let starting_field = (starting_cell_column, 0);
+	let start_y = (WORLD_SIZE.1 / 2.0) - core2d::WORLD_UNIT_SIZE / 2.0;
+	let start_x = (-WORLD_SIZE.0 / 2.0)
+		+ core2d::WORLD_UNIT_SIZE / 2.0
+		+ (starting_sector.0 as f32 * SECTOR_LEN)
+		+ (starting_field.0 as f32 * core2d::WORLD_UNIT_SIZE);
 
 	// pick an end
-	let target_sectors = [(0, 2), (1, 2), (2, 2)];
-	let target_field_cells = [
-		(0, 9),
-		(1, 9),
-		(2, 9),
-		(3, 9),
-		(4, 9),
-		(5, 9),
-		(6, 9),
-		(7, 9),
-		(8, 9),
-		(9, 9),
-	];
-	let target_sector = target_sectors.choose(&mut rand::rng()).unwrap();
-	let target_field_cell = target_field_cells.choose(&mut rand::rng()).unwrap();
-	let target_y = -928.0;
-	let target_x = ((-928 + target_sector.0 * 640) + (target_field_cell.0 * 64)) as f32;
+	let target_sector_column = rand::random_range(0..sector_column_max);
+	let target_cell_column = rand::random_range(0..10);
+	let target_sector = (target_sector_column, sector_row_max - 1);
+	let target_field_cell = (target_cell_column, 9);
+	let target_y = (-WORLD_SIZE.1 / 2.0) + core2d::WORLD_UNIT_SIZE / 2.0;
+	let target_x = ((-WORLD_SIZE.0 / 2.0)
+		+ core2d::WORLD_UNIT_SIZE / 2.0
+		+ (target_sector.0 as f32 * SECTOR_LEN))
+		+ (target_field_cell.0 as f32 * core2d::WORLD_UNIT_SIZE);
 
 	cmds.spawn((
 		Sprite {

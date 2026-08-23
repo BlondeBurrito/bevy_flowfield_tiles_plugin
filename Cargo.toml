@@ -49,7 +49,7 @@ exclude.workspace = true
 publish = true
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = { version = "0.5", features = ["async_futures"] }
 bevy = { workspace = true, default-features = true, features=["wayland", "system_font_discovery"]}
 rand = "0.9"
 avian2d = { version = "0.7", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d examples for collision detection
@@ -116,7 +116,7 @@ name = "init_bundle"
 harness = false
 
 [[bench]]
-name = "init_cost_fields"
+name = "init_costfields"
 harness = false
 
 [[bench]]
@@ -186,7 +186,7 @@ path = "examples/2d/2d_multi_actor_controls.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
-name = "2d_mutate_costfields"
+name = "2d_continuous_mutate"
 path = "examples/2d/2d_continuous_mutate.rs"
 required-features = ["ron", "2d"]
 

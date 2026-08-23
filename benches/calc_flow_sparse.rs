@@ -3,7 +3,7 @@
 //! World is 100 sectors by 100 sectors
 //!
 
-use bevy::{prelude::*, tasks::futures::check_ready};
+use bevy::prelude::*;
 use bevy_flowfield_tiles_plugin::prelude::*;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
@@ -13,69 +13,72 @@ fn prepare(
 	size: (f32, f32),
 	world_unit_size: f32,
 	actor_radius: f32,
-) -> FlowFieldTiles {
-	let path =
+) -> (FlowFieldTiles, Vec<RouteStep>) {
+	let file =
 		env!("CARGO_MANIFEST_DIR").to_string() + "/assets/bench_costfields/heightmap_sparse.png";
-	FlowFieldTiles::from_heightmap(origin, size, world_unit_size, actor_radius, &path)
-}
+	let flowfield_tiles =
+		FlowFieldTiles::from_heightmap(origin, size, world_unit_size, actor_radius, &file);
 
-/// Drive the algorithm and measures the time taken to compute all the required
-/// FlowFields
-fn flow_sparse(flowfield_tiles: FlowFieldTiles) {
 	let from = Vec2::new(499.5, 499.5);
 	let to = Vec2::new(-499.5, -499.5);
 
-	let op_task = flowfield_tiles.get_route_2d(from, to);
+	let dimensions = flowfield_tiles.dimensions;
+	let Some((source_sector, source_cell)) = dimensions.get_sector_and_field_cell_from_xy(from)
+	else {
+		panic!("");
+	};
+	let Some((goal_sector, goal_cell)) = dimensions.get_sector_and_field_cell_from_xy(to) else {
+		panic!("");
+	};
 
-	// poll until route is ready
-	let mut route_ready = false;
-	while !route_ready {
-		if let Some(task) = &op_task
-			&& task.is_finished()
-		{
-			route_ready = true;
-		}
-	}
+	let sector_costs = flowfield_tiles.sector_cost_fields.clone();
+	let read_costfields = sector_costs.read().unwrap();
 
-	// verify all flows are computed
-	let steps = check_ready(&mut op_task.unwrap()).unwrap().unwrap();
-	let mut are_flows_ready = false;
-	while !are_flows_ready {
-		let req_flows = steps.len();
-		let mut found_flows = 0;
-		for step in steps.iter() {
-			if flowfield_tiles.read_flowfield(step).is_some() {
-				found_flows += 1;
-			}
-		}
-		if found_flows == req_flows {
-			are_flows_ready = true;
-		}
+	let portals = flowfield_tiles.portals.clone();
+	let portals_read = portals.read().unwrap();
+
+	let Some(path) = portals_read.find_path(
+		&source_sector,
+		&source_cell,
+		&goal_sector,
+		&goal_cell,
+		&read_costfields,
+	) else {
+		panic!("");
+	};
+	(flowfield_tiles, path)
+}
+
+/// Build the fields
+fn calc(flowfield_tiles: &FlowFieldTiles, path: &Vec<RouteStep>) {
+	let sector_costs = flowfield_tiles.sector_cost_fields.clone();
+	let read_costfields = sector_costs.read().unwrap();
+
+	for step in path.iter().rev() {
+		let sector = step.get_sector();
+		let scaled_costfields = read_costfields.get_scaled_costs();
+		let scaled_costfield = scaled_costfields.get(sector).unwrap();
+
+		let mut integrationfield = IntegrationField::init(scaled_costfield, step);
+		integrationfield.build(scaled_costfield);
+
+		let mut flowfield = FlowField::new(step, &integrationfield);
+		flowfield.build(&integrationfield);
 	}
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-	// require plugin to drive algorithm
-	let mut app = App::new();
-	app.add_plugins(FlowFieldTilesPlugin);
-	//TODO
 	let mut group = c.benchmark_group("algorithm_use");
-	group.significance_level(0.05).sample_size(100);
-	// let flowfield_tiles = prepare(
-	// 	black_box((0.0, 0.0)),
-	// 	black_box((1000.0, 1000.0)),
-	// 	black_box(1.0),
-	// 	black_box(0.5),
-	// );
+	group.significance_level(0.05).sample_size(10);
+	let (flowfield_tiles, path) = prepare(
+		black_box((0.0, 0.0)),
+		black_box((1000.0, 1000.0)),
+		black_box(1.0),
+		black_box(0.5),
+	);
 	group.bench_function("calc_flow_sparse", |b| {
 		b.iter(|| {
-			let flowfield_tiles = prepare(
-				black_box((0.0, 0.0)),
-				black_box((1000.0, 1000.0)),
-				black_box(1.0),
-				black_box(0.5),
-			);
-			flow_sparse(flowfield_tiles)
+			calc(&flowfield_tiles, &path);
 		})
 	});
 	group.finish();

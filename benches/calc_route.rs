@@ -3,7 +3,7 @@
 //! World is 100 sectors by 100 sectors
 //!
 
-use bevy::{app::App, math::Vec2};
+use bevy::prelude::*;
 use bevy_flowfield_tiles_plugin::prelude::*;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
@@ -17,46 +17,49 @@ fn prepare(
 	FlowFieldTiles::new(origin, size, world_unit_size, actor_radius)
 }
 
-/// Drive the algorithm to create a portal-portal route
-fn calc(flowfield_tiles: FlowFieldTiles) {
+fn calc(flowfield_tiles: &FlowFieldTiles) {
 	let from = Vec2::new(499.5, 499.5);
 	let to = Vec2::new(-499.5, -499.5);
 
-	let op_task = flowfield_tiles.get_route_2d(from, to);
+	let dimensions = flowfield_tiles.dimensions;
+	let Some((source_sector, source_cell)) = dimensions.get_sector_and_field_cell_from_xy(from)
+	else {
+		panic!("");
+	};
+	let Some((goal_sector, goal_cell)) = dimensions.get_sector_and_field_cell_from_xy(to) else {
+		panic!("");
+	};
 
-	// poll until route is ready
-	let mut route_ready = false;
-	while !route_ready {
-		if let Some(task) = &op_task
-			&& task.is_finished()
-		{
-			route_ready = true;
-		}
-	}
+	let sector_costs = flowfield_tiles.sector_cost_fields.clone();
+	let read_costfields = sector_costs.read().unwrap();
+
+	let portals = flowfield_tiles.portals.clone();
+	let portals_read = portals.read().unwrap();
+
+	let Some(_) = portals_read.find_path(
+		&source_sector,
+		&source_cell,
+		&goal_sector,
+		&goal_cell,
+		&read_costfields,
+	) else {
+		panic!("");
+	};
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-	// require plugin to drive algorithm
-	let mut app = App::new();
-	app.add_plugins(FlowFieldTilesPlugin);
-	//TODO
 	let mut group = c.benchmark_group("algorithm_use");
-	group.significance_level(0.05).sample_size(100);
-	// let flowfield_tiles = prepare(
-	// 	black_box((0.0, 0.0)),
-	// 	black_box((1000.0, 1000.0)),
-	// 	black_box(1.0),
-	// 	black_box(0.5),
-	// );
+	group.significance_level(0.05).sample_size(10);
 	group.bench_function("calc_route", |b| {
+		let flowfield_tiles = prepare(
+			black_box((0.0, 0.0)),
+			black_box((1000.0, 1000.0)),
+			black_box(1.0),
+			black_box(0.5),
+		);
+
 		b.iter(|| {
-			let flowfield_tiles = prepare(
-				black_box((0.0, 0.0)),
-				black_box((1000.0, 1000.0)),
-				black_box(1.0),
-				black_box(0.5),
-			);
-			calc(black_box(flowfield_tiles))
+			calc(&flowfield_tiles);
 		})
 	});
 	group.finish();

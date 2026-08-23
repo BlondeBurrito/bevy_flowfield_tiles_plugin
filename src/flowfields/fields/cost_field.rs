@@ -120,4 +120,19 @@ mod tests {
 		let result = field.get_field_cell_value(cell);
 		assert_eq!(actual, result);
 	}
+
+	#[test]
+	fn custom_cost() {
+		let costfield = CostField::new_with_cost(7);
+		let value = costfield.get_field_cell_value(FieldCell::from_index(4));
+		assert!(value == 7);
+	}
+
+	#[test]
+	fn ron() {
+		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/costfield_impassable.ron";
+		let costfield = CostField::from_ron(path);
+		let value = costfield.get_field_cell_value(FieldCell::new(5, 1));
+		assert!(value == 255);
+	}
 }

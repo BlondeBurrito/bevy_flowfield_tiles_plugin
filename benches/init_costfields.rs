@@ -12,8 +12,8 @@ fn init_cost_fields(origin: (f32, f32), size: (f32, f32), world_unit_size: f32, 
 
 pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut group = c.benchmark_group("data_initialisation");
-	group.significance_level(0.05).sample_size(100);
-	group.bench_function("init_sector_cost_fields", |b| {
+	group.significance_level(0.05).sample_size(50);
+	group.bench_function("init_costfields", |b| {
 		b.iter(|| {
 			init_cost_fields(
 				black_box((0.0, 0.0)),

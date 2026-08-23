@@ -30,6 +30,7 @@ impl Plugin for FlowFieldTilesPlugin {
 }
 
 /// Process the queue of [CostField] updates and schedule portal recalculation
+#[cfg(not(tarpaulin_include))]
 fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 	for mut flowfield_tiles in &mut query {
 		// if flowfields are currently being generated then skip until they are done
@@ -115,6 +116,7 @@ fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 }
 
 /// Process the queue of routes and generate [FlowField]s
+#[cfg(not(tarpaulin_include))]
 fn process_flow_queue(mut query: Query<&mut FlowFieldTiles>) {
 	for mut flowfield_tiles in &mut query {
 		// only proceed with generating flows if no updates are currently active for
@@ -147,7 +149,8 @@ fn process_flow_queue(mut query: Query<&mut FlowFieldTiles>) {
 			// if a route is waiting process it
 			let mut generated = vec![];
 			if let Some(route) = write_queue.pop_front() {
-				for step in route.iter() {
+				// reverse iter so starting at goal and calculate fields towards source
+				for step in route.iter().rev() {
 					let sector = step.get_sector();
 					let scaled_costfields = read_costfields.get_scaled_costs();
 					let scaled_costfield = scaled_costfields.get(sector).unwrap();

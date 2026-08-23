@@ -99,7 +99,7 @@ impl FlowFieldTiles {
 		}
 	}
 	/// Create a new instance of [FlowFieldTiles] with a starting `cost` across
-	/// all [crate::flowfields::fields::cost_field::CostFieldCostField]s
+	/// all [crate::flowfields::fields::cost_field::CostField]s
 	pub fn new_with_cost(
 		origin: (f32, f32),
 		size: (f32, f32),

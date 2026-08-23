@@ -446,3 +446,500 @@ impl Dimensions {
 		}
 	}
 }
+
+// #[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn cell_col_count() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+
+		let actual = 30;
+		let result = dimensions.get_total_field_cell_columns();
+		assert!(actual == result);
+	}
+	#[test]
+	fn cell_row_count() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+
+		let actual = 30;
+		let result = dimensions.get_total_field_cell_rows();
+		assert!(actual == result);
+	}
+	#[test]
+	fn sector_col_count() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+
+		let actual = 3;
+		let result = dimensions.get_sector_column_count();
+		assert!(actual == result);
+	}
+	#[test]
+	fn sector_row_count() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+
+		let actual = 3;
+		let result = dimensions.get_sector_row_count();
+		assert!(actual == result);
+	}
+
+	#[test]
+	fn sector_costfields_top_left_sector_id_from_xyz() {
+		let origin = (0.0, 0.0);
+		let size = (20.0, 20.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec3::new(-5.0, 0.0, -5.0);
+		let result = dimensions.get_sector_id_from_xyz(position).unwrap();
+		let actual: SectorID = SectorID::new(0, 0);
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn sector_costfields_top_right_sector_id_from_xyz() {
+		let origin = (0.0, 0.0);
+		let size = (20.0, 20.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec3::new(5.0, 0.0, -5.0);
+		let result = dimensions.get_sector_id_from_xyz(position).unwrap();
+		let actual: SectorID = SectorID::new(1, 0);
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn sector_costfields_bottom_right_sector_id_from_xyz() {
+		let origin = (0.0, 0.0);
+		let size = (20.0, 20.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec3::new(5.0, 0.0, 5.0);
+		let result = dimensions.get_sector_id_from_xyz(position).unwrap();
+		let actual: SectorID = SectorID::new(1, 1);
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn sector_costfields_bottom_left_sector_id_from_xyz() {
+		let origin = (0.0, 0.0);
+		let size = (20.0, 20.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec3::new(-5.0, 0.0, 5.0);
+		let result = dimensions.get_sector_id_from_xyz(position).unwrap();
+		let actual: SectorID = SectorID::new(0, 1);
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn sector_fieldcell_id_from_xyz() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec3::new(0.0, 0.0, 0.0);
+		let result = dimensions
+			.get_sector_and_field_cell_from_xyz(position)
+			.unwrap();
+		let actual = FieldCell::new(5, 5);
+		assert_eq!(actual, result.1);
+	}
+	#[test]
+	fn sector_fieldcell_id_from_xyz_small() {
+		let origin = (0.0, 0.0);
+		let size = (50.0, 100.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec3::new(0.0, 0.0, 0.0);
+		let result = dimensions
+			.get_sector_and_field_cell_from_xyz(position)
+			.unwrap();
+		let actual_sector = SectorID::new(2, 5);
+		let actual_field = FieldCell::new(5, 0);
+		assert_eq!(actual_sector, result.0);
+		assert_eq!(actual_field, result.1);
+	}
+	#[test]
+	fn sector_fieldcell_id_from_xyz_single() {
+		let origin = (0.0, 0.0);
+		let size = (10.0, 10.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec3::new(0.0, 0.0, 0.0);
+		let result = dimensions
+			.get_sector_and_field_cell_from_xyz(position)
+			.unwrap();
+		let actual_sector = SectorID::new(0, 0);
+		let actual_field = FieldCell::new(5, 5);
+		assert_eq!(actual_sector, result.0);
+		assert_eq!(actual_field, result.1);
+	}
+	#[test]
+	fn sector_from_xy_none() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec2::new(-1500.0, 0.0);
+		let result = dimensions.get_sector_id_from_xy(position);
+
+		assert!(result.is_none());
+	}
+	#[test]
+	fn sector_from_xy() {
+		let origin = (0.0, 0.0);
+		let size = (1280.0, 1280.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec2::new(530.0, 75.0);
+		let result = dimensions.get_sector_id_from_xy(position);
+		let actual = SectorID::new(1, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_xyz_corner_zero() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(0, 0);
+		let result = dimensions.get_sector_corner_xyz(sector_id);
+		let actual = Vec3::new(-15.0, 0.0, -15.0);
+		assert_eq!(actual, result)
+	}
+	#[test]
+	fn sector_xyz_corner_centre() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_corner_xyz(sector_id);
+		let actual = Vec3::new(-5.0, 0.0, -5.0);
+		assert_eq!(actual, result)
+	}
+	#[test]
+	fn get_northern_sector_neighbours() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(4, 0);
+		let result = dimensions.get_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			SectorID::new(5, 0),
+			SectorID::new(4, 1),
+			SectorID::new(3, 0),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_eastern_sector_neighbours() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(19, 3);
+		let result = dimensions.get_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			SectorID::new(19, 2),
+			SectorID::new(19, 4),
+			SectorID::new(18, 3),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_southern_sector_neighbours() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(5, 19);
+		let result = dimensions.get_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			SectorID::new(5, 18),
+			SectorID::new(6, 19),
+			SectorID::new(4, 19),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_western_sector_neighbours() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(0, 5);
+		let result = dimensions.get_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			SectorID::new(0, 4),
+			SectorID::new(1, 5),
+			SectorID::new(0, 6),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_centre_sector_neighbours() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(5, 7);
+		let result = dimensions.get_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			SectorID::new(5, 6),
+			SectorID::new(6, 7),
+			SectorID::new(5, 8),
+			SectorID::new(4, 7),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_northern_sector_neighbours_with_direction() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(4, 0);
+		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			(Ordinal::East, SectorID::new(5, 0)),
+			(Ordinal::South, SectorID::new(4, 1)),
+			(Ordinal::West, SectorID::new(3, 0)),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_eastern_sector_neighbours_with_direction() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(19, 3);
+		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			(Ordinal::North, SectorID::new(19, 2)),
+			(Ordinal::South, SectorID::new(19, 4)),
+			(Ordinal::West, SectorID::new(18, 3)),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_southern_sector_neighbours_with_direction() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(5, 19);
+		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			(Ordinal::North, SectorID::new(5, 18)),
+			(Ordinal::East, SectorID::new(6, 19)),
+			(Ordinal::West, SectorID::new(4, 19)),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_western_sector_neighbours_with_direction() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(0, 5);
+		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			(Ordinal::North, SectorID::new(0, 4)),
+			(Ordinal::East, SectorID::new(1, 5)),
+			(Ordinal::South, SectorID::new(0, 6)),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_centre_sector_neighbours_with_direction() {
+		let origin = (0.0, 0.0);
+		let size = (200.0, 200.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(5, 7);
+		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let actual = vec![
+			(Ordinal::North, SectorID::new(5, 6)),
+			(Ordinal::East, SectorID::new(6, 7)),
+			(Ordinal::South, SectorID::new(5, 8)),
+			(Ordinal::West, SectorID::new(4, 7)),
+		];
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn sector_id_ordinal_north() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
+		let actual = SectorID::new(1, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_east() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::East, &sector_id);
+		let actual = SectorID::new(2, 1);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_south() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::South, &sector_id);
+		let actual = SectorID::new(1, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_west() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::West, &sector_id);
+		let actual = SectorID::new(0, 1);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_northeast() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::NorthEast, &sector_id);
+		let actual = SectorID::new(2, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_southeast() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::SouthEast, &sector_id);
+		let actual = SectorID::new(2, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_southwest() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::SouthWest, &sector_id);
+		let actual = SectorID::new(0, 2);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_northwest() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 1);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::NorthWest, &sector_id);
+		let actual = SectorID::new(0, 0);
+		assert_eq!(actual, result.unwrap());
+	}
+	#[test]
+	fn sector_id_ordinal_oob() {
+		let origin = (0.0, 0.0);
+		let size = (300.0, 300.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(1, 0);
+		let result = dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
+		assert!(result.is_none())
+	}
+	#[test]
+	fn get_xy() {
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(2, 1);
+		let field_id = FieldCell::new(6, 2);
+		let actual = Vec2::new(704.0, 192.0);
+		let result = dimensions
+			.get_xy_from_field_sector(sector_id, field_id)
+			.unwrap();
+		assert_eq!(actual, result);
+	}
+	#[test]
+	fn get_xyz() {
+		let origin = (0.0, 0.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(2, 1);
+		let field_id = FieldCell::new(6, 2);
+		let actual = Vec3::new(11.0, 0.0, -3.0);
+		let result = dimensions
+			.get_xyz_from_field_sector(sector_id, field_id)
+			.unwrap();
+		assert_eq!(actual, result);
+	}
+}

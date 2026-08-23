@@ -258,9 +258,6 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 
 	// if a direction points exactly at a goal just use that
 	let mut goal_dir: Option<Ordinal> = None;
-	// record LOS neighbours separately as they are always better to head towards
-	// make note of direction, and the int cost for comparison
-	let mut best_los_dir: Option<(Ordinal, u32)> = None;
 	// record best direction found
 	let mut best_dir: Option<(Ordinal, u32)> = None;
 
@@ -347,22 +344,9 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 			break;
 		}
 
-		if n_int_value & INT_BITS_LOS == INT_BITS_LOS {
-			// can point to LOS, record it if it is the best one
-			if let Some((o, v)) = &mut best_los_dir {
-				if n_int_value & INT_FILTER_BITS_COST < *v {
-					*o = *ordinal;
-					*v = n_int_value & INT_FILTER_BITS_COST;
-				}
-			} else {
-				best_los_dir = Some((*ordinal, n_int_value & INT_FILTER_BITS_COST));
-			}
-			continue;
-		}
-
 		// special case where the int value is the default. This means an
 		// integrated-cost hasn't been calculated for the cell. This can
-		// happen is there's an island, like a ring of walls around clear cells,
+		// happen if there's an island, like a ring of walls around clear cells,
 		// or if a wall has bisected a sector completely
 		if n_int_value & INT_FILTER_BITS_COST == 65535 {
 			// in this special case we mark the flow value with the
@@ -384,10 +368,6 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 
 	// set the bit direction based on best available
 	if let Some(dir) = goal_dir {
-		let bits = convert_ordinal_to_bits_dir(&dir);
-		*flow_value |= bits;
-		*flow_value |= BITS_PATHABLE;
-	} else if let Some((dir, _)) = best_los_dir {
 		let bits = convert_ordinal_to_bits_dir(&dir);
 		*flow_value |= bits;
 		*flow_value |= BITS_PATHABLE;

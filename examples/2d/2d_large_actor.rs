@@ -123,7 +123,7 @@ fn setup_navigation(mut cmds: Commands) {
 	let origin = (0.0, 0.0);
 	let size = (1920.0, 1920.0);
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
-	let actor_radius = core2d::ACTOR_RADIUS;
+	let actor_radius = ACTOR_RADIUS;
 	cmds.spawn(FlowFieldTiles::from_ron(
 		origin,
 		size,

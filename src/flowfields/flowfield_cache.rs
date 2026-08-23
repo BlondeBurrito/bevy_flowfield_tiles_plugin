@@ -45,3 +45,33 @@ impl FlowFieldCache {
 		}
 	}
 }
+
+// #[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn removal() {
+		let mut cache = FlowFieldCache {
+			cache: BTreeMap::from([
+				(
+					RouteStep::new(&SectorID::new(0, 0), 1, None),
+					FlowField::default(),
+				),
+				(
+					RouteStep::new(&SectorID::new(0, 1), 32, None),
+					FlowField::default(),
+				),
+				(
+					RouteStep::new(&SectorID::new(1, 1), 18, None),
+					FlowField::default(),
+				),
+			]),
+		};
+		let sectors_to_remove = &[SectorID::new(0, 0), SectorID::new(0, 1)];
+		cache.remove_steps_with_sectors(sectors_to_remove);
+
+		assert!(cache.cache.len() == 1);
+	}
+}

@@ -38,7 +38,7 @@ fn main() {
 				core2d::create_wall_colliders,
 			),
 		)
-		.add_systems(PreUpdate, (click_set_target, click_update_cost))
+		.add_systems(PreUpdate, click_set_target)
 		.add_systems(Update, core2d::actor_request_route::<core::Actor>)
 		.add_systems(Update, (update_sprite_visuals_based_on_actor,))
 		.add_systems(
@@ -187,44 +187,44 @@ fn click_set_target(
 	}
 }
 
-/// Left clicking on a tile/field will flip the value of it in the [CostField]
-///
-/// If the current cost is `1` then it is updated to `255`. If the current cost
-/// is `255` then it is flipped to `1`
-fn click_update_cost(
-	input: Res<ButtonInput<MouseButton>>,
-	camera_q: Query<(&Camera, &GlobalTransform)>,
-	windows: Query<&Window, With<PrimaryWindow>>,
-	mut flow_q: Query<&mut FlowFieldTiles>,
-) {
-	if input.just_released(MouseButton::Left) {
-		let (camera, camera_transform) = camera_q.single().unwrap();
-		let window = windows.single().unwrap();
-		let Some(cursor_position) = window.cursor_position() else {
-			return;
-		};
-		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
-		else {
-			return;
-		};
-		let mut flowfield_tiles = flow_q.single_mut().unwrap();
-		let dimensions = flowfield_tiles.get_dimensions();
-		let costfields = flowfield_tiles.get_sector_cost_fields().clone();
+// /// Left clicking on a tile/field will flip the value of it in the [CostField]
+// ///
+// /// If the current cost is `1` then it is updated to `255`. If the current cost
+// /// is `255` then it is flipped to `1`
+// fn click_update_cost(
+// 	input: Res<ButtonInput<MouseButton>>,
+// 	camera_q: Query<(&Camera, &GlobalTransform)>,
+// 	windows: Query<&Window, With<PrimaryWindow>>,
+// 	mut flow_q: Query<&mut FlowFieldTiles>,
+// ) {
+// 	if input.just_released(MouseButton::Left) {
+// 		let (camera, camera_transform) = camera_q.single().unwrap();
+// 		let window = windows.single().unwrap();
+// 		let Some(cursor_position) = window.cursor_position() else {
+// 			return;
+// 		};
+// 		let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+// 		else {
+// 			return;
+// 		};
+// 		let mut flowfield_tiles = flow_q.single_mut().unwrap();
+// 		let dimensions = flowfield_tiles.get_dimensions();
+// 		let costfields = flowfield_tiles.get_sector_cost_fields().clone();
 
-		if let Some((sector_id, field_cell)) =
-			dimensions.get_sector_and_field_cell_from_xy(world_position)
-		{
-			let read_costfields = costfields.read().unwrap();
-			let costfield = read_costfields.get_scaled_costs().get(&sector_id).unwrap();
-			let value = costfield.get_field_cell_value(field_cell);
-			if value == 255 {
-				flowfield_tiles.add_costfield_update_2d(world_position, 1);
-			} else {
-				flowfield_tiles.add_costfield_update_2d(world_position, 255);
-			}
-		}
-	}
-}
+// 		if let Some((sector_id, field_cell)) =
+// 			dimensions.get_sector_and_field_cell_from_xy(world_position)
+// 		{
+// 			let read_costfields = costfields.read().unwrap();
+// 			let costfield = read_costfields.get_scaled_costs().get(&sector_id).unwrap();
+// 			let value = costfield.get_field_cell_value(field_cell);
+// 			if value == 255 {
+// 				flowfield_tiles.add_costfield_update_2d(world_position, 1);
+// 			} else {
+// 				flowfield_tiles.add_costfield_update_2d(world_position, 255);
+// 			}
+// 		}
+// 	}
+// }
 
 /// Whenever the actor has a path assigned attempt to get the current flowfield and update all the map sprites to visualise the directions of flow
 fn update_sprite_visuals_based_on_actor(

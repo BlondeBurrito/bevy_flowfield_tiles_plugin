@@ -163,6 +163,7 @@ pub fn actor_steering<T: Component>(
 ) {
 	let flowfield_tiles = flow_q.single().unwrap();
 	for (mut velocity, tform, mut pathing) in actor_q.iter_mut() {
+		// only proceed for actors with a route
 		if let Some(steps) = &mut pathing.route {
 			if let Some(step) = steps.first() {
 				// get actor position in terms of sector and cell
@@ -175,6 +176,9 @@ pub fn actor_steering<T: Component>(
 					continue;
 				};
 				if *step.get_sector() == sector {
+					// attempt to get the FlowField, the field is built inside of
+					// an AsyncTaskPool so it may take a moment for it to become
+					// available
 					if let Some(field) = flowfield_tiles.read_flowfield(step) {
 						if field.has_los(&cell) {
 							// has LOS can move straight to goal
