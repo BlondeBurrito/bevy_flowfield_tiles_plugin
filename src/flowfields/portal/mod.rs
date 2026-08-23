@@ -1,5 +1,6 @@
 //! A Portal indicates a pathable area from one Sector to another.
 //!
+//! Example, Portals exist in pairs on either side of a sector boundary
 //! ```txt
 //!  ____________ ____________ ____________ ____________
 //! |            |            |            |            |
@@ -320,6 +321,7 @@ impl Portals {
 
 		// find which source portals are accessible from the source_cell
 		let source_portals = self.portals.get(source_sector).unwrap().get_all();
+		// record nodes and the cost to reach it
 		let mut source_nodes = vec![];
 		for window in source_portals.iter() {
 			let midpoint = window.get_midpoint();
@@ -349,6 +351,8 @@ impl Portals {
 
 		// find which portals in the goal sector can reach the target_cell
 		let target_portals = self.portals.get(goal_sector).unwrap().get_all();
+		// record nodes and the cost to reach it, we use this cost to help fine tune
+		// the best portal in the goal sector
 		let mut target_nodes = vec![];
 		for window in target_portals.iter() {
 			let midpoint = window.get_midpoint();
@@ -356,22 +360,20 @@ impl Portals {
 			// search for a cell route in the costs graph
 			let start = midpoint.as_1d_index() as u16;
 			let end = goal_cell.as_1d_index() as u16;
-			if petgraph::algo::astar(
+			if let Some((total_cost, _)) = petgraph::algo::astar(
 				cost_graph,
 				start.into(),
 				|f| f == end.into(),
 				|e| *e.weight(),
 				|_| 0,
-			)
-			.is_some()
-			{
+			) {
 				// lookup the graph node of the portal that's reachable and record it
 				let portal_node = PortalNode {
 					sector: *goal_sector,
 					window: *window,
 				};
 				if let Some(graph_node) = self.nodes.get(&portal_node) {
-					target_nodes.push(graph_node);
+					target_nodes.push((graph_node, total_cost as i32));
 				}
 			}
 		}
@@ -382,7 +384,7 @@ impl Portals {
 		// make a record of the best path if it exists
 		let mut best_path: Option<(i32, Vec<PortalNode>)> = None;
 		for start in source_nodes {
-			for end in target_nodes.iter() {
+			for (end, cost_from_portal) in target_nodes.iter() {
 				if let Some((cost, steps)) = petgraph::algo::astar(
 					portal_graph,
 					*start,
@@ -391,8 +393,8 @@ impl Portals {
 					|_| 0,
 				) {
 					if let Some((best_cost, best_route)) = best_path.as_mut() {
-						if cost < *best_cost {
-							*best_cost = cost;
+						if (cost + cost_from_portal) < *best_cost {
+							*best_cost = cost + cost_from_portal;
 
 							let mut p_node_route = vec![];
 							for s in steps {
@@ -413,7 +415,7 @@ impl Portals {
 								}
 							}
 						}
-						best_path = Some((cost, p_node_route));
+						best_path = Some((cost + cost_from_portal, p_node_route));
 					}
 				}
 			}
