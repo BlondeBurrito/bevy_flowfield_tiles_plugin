@@ -17,6 +17,7 @@ fn prepare(
 	FlowFieldTiles::new(origin, size, world_unit_size, actor_radius)
 }
 
+/// Find the route steps
 fn calc(flowfield_tiles: &FlowFieldTiles) {
 	let from = Vec2::new(499.5, 499.5);
 	let to = Vec2::new(-499.5, -499.5);

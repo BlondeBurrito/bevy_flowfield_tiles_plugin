@@ -50,7 +50,7 @@ fn prepare(
 }
 
 /// Build the fields
-fn calc(flowfield_tiles: &FlowFieldTiles, path: &Vec<RouteStep>) {
+fn calc(flowfield_tiles: &FlowFieldTiles, path: &[RouteStep]) {
 	let sector_costs = flowfield_tiles.sector_cost_fields.clone();
 	let read_costfields = sector_costs.read().unwrap();
 

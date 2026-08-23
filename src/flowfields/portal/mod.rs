@@ -1,22 +1,26 @@
-//! A Portal indicates a pathable area from one Sector to another.
+//! Each Sector has up to 4 boundaries with neighbouring Sectors (fewer when
+//! the sector is in a corner or along the edge of the game world). Each
+//! boundary can contain Portals which indicate a navigable point from the
+//! current Sector to a neighbour.
 //!
-//! Example, Portals exist in pairs on either side of a sector boundary
+//! A Portal is generated at the midpoint of a boundary - in situations where
+//! the `CostField` contains `255` costs along the edge then multiple Portals
+//! may be generated at the midpoint of each valid pathable segment along the
+//! boundary.
+//!
+//! Example, Portals exist in pairs on either side of a sector boundary, where
+//! a wall causes the same boundary to have multiple Portals
 //! ```txt
 //!  ____________ ____________ ____________ ____________
-//! |            |            |            |            |
-//! |            |            |            |            |
-//! |            |            |            |            |
-//! |            |            |            |            |
-//! |____________|____________|____________|____________|
 //! |            |            |            |            |
 //! |            |            |            |            |
 //! |         p<-|->p<---->p<-|->p         |            |
 //! |            |            |            |            |
 //! |____________|____________|____________|____________|
 //! |            |            |            |            |
-//! |            |            |            |            |
-//! |            |            |            |            |
-//! |            |            |            |            |
+//! |         p<-|->p         |            |            |
+//! |            |X           |            |            |
+//! |         p<-|->p         |            |            |
 //! |____________|____________|____________|____________|
 //! ```
 
