@@ -90,7 +90,7 @@ fn update_sprites(
 				SectorID::new(sector_label.0, sector_label.1),
 				FieldCell::new(cell_label.0, cell_label.1),
 			)) {
-				let new_handle: Handle<Image> = asset_server.load("ordinal_icons/portals.png");
+				let new_handle: Handle<Image> = asset_server.load("compass_dir_icons/portals.png");
 				sprite.image = new_handle;
 			} else {
 				let costfield = read_costfields

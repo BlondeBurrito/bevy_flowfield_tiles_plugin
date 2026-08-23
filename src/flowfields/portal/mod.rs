@@ -33,7 +33,7 @@ use crate::flowfields::{
 	fields::{Field, FieldCell, cost_field::CostField},
 	route::RouteStep,
 	sectors::{SectorID, sector_cost::SectorCostFields},
-	utilities::Ordinal,
+	utilities::CompassDir,
 };
 
 /// Describes the start and end indices of a portal
@@ -46,16 +46,16 @@ pub struct PortalWindow {
 	end: FieldCell,
 	/// The side of the sector the window sits on. This is required to distinguish
 	/// between portals where `start == end` and it sits in a corner
-	boundary: Ordinal,
+	boundary: CompassDir,
 }
 
 impl PortalWindow {
 	/// Init [PortalWindow]
-	pub fn new(start: FieldCell, end: FieldCell, ordinal: Ordinal) -> Self {
+	pub fn new(start: FieldCell, end: FieldCell, compass_dir: CompassDir) -> Self {
 		PortalWindow {
 			start,
 			end,
-			boundary: ordinal,
+			boundary: compass_dir,
 		}
 	}
 	/// Get the middle [FieldCell] of the window
@@ -96,7 +96,7 @@ impl PortalWindow {
 		cells
 	}
 	/// Get the side of the sector that the window sits upon
-	pub fn get_boundary(&self) -> &Ordinal {
+	pub fn get_boundary(&self) -> &CompassDir {
 		&self.boundary
 	}
 }
@@ -115,26 +115,29 @@ pub struct Windows {
 	west: Vec<PortalWindow>,
 }
 impl Windows {
-	/// Based on [Ordinal] get the list of windows for that boundary
-	fn get_windows_for_ordinal(&self, ordinal: &Ordinal) -> &Vec<PortalWindow> {
-		match ordinal {
-			Ordinal::North => &self.north,
-			Ordinal::East => &self.east,
-			Ordinal::South => &self.south,
-			Ordinal::West => &self.west,
-			_ => panic!("Ordinal {} cannot be used for looking up windows", ordinal),
+	/// Based on [CompassDir] get the list of windows for that boundary
+	fn get_windows_for_compass_dir(&self, compass_dir: &CompassDir) -> &Vec<PortalWindow> {
+		match compass_dir {
+			CompassDir::North => &self.north,
+			CompassDir::East => &self.east,
+			CompassDir::South => &self.south,
+			CompassDir::West => &self.west,
+			_ => panic!(
+				"CompassDir {} cannot be used for looking up windows",
+				compass_dir
+			),
 		}
 	}
-	/// Based on [Ordinal] add a window
-	fn add_window(&mut self, window: PortalWindow, ordinal: &Ordinal) {
-		match ordinal {
-			Ordinal::North => self.north.push(window),
-			Ordinal::East => self.east.push(window),
-			Ordinal::South => self.south.push(window),
-			Ordinal::West => self.west.push(window),
+	/// Based on [CompassDir] add a window
+	fn add_window(&mut self, window: PortalWindow, compass_dir: &CompassDir) {
+		match compass_dir {
+			CompassDir::North => self.north.push(window),
+			CompassDir::East => self.east.push(window),
+			CompassDir::South => self.south.push(window),
+			CompassDir::West => self.west.push(window),
 			_ => panic!(
-				"Ordinal {} cannot be used for recording portal windows",
-				ordinal
+				"CompassDir {} cannot be used for recording portal windows",
+				compass_dir
 			),
 		}
 	}
@@ -474,32 +477,37 @@ fn generate_sector_portals(
 	origin_sector: &SectorID,
 	origin_field: &CostField,
 ) {
-	let ordinals = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
-	for ordinal in ordinals.iter() {
+	let compass_dirs = [
+		CompassDir::North,
+		CompassDir::East,
+		CompassDir::South,
+		CompassDir::West,
+	];
+	for compass_dir in compass_dirs.iter() {
 		if let Some(windows) =
-			walk_sector_boundary(origin_sector, origin_field, scaled_costs, ordinal)
+			walk_sector_boundary(origin_sector, origin_field, scaled_costs, compass_dir)
 		{
 			for window in windows.iter() {
 				let value = portals.get_mut(origin_sector).unwrap();
-				value.add_window(*window, ordinal);
+				value.add_window(*window, compass_dir);
 			}
 		}
 	}
 }
 
-/// Walk along the [Ordinal] boundary of a sector determine where portal windows are
+/// Walk along the [CompassDir] boundary of a sector determine where portal windows are
 fn walk_sector_boundary(
 	origin_sector: &SectorID,
 	origin_field: &CostField,
 	scaled_costs: &BTreeMap<SectorID, CostField>,
-	ordinal: &Ordinal,
+	compass_dir: &CompassDir,
 ) -> Option<Vec<PortalWindow>> {
-	let adjacent_sector = origin_sector.get_in_ordinal_direction(ordinal, 1);
+	let adjacent_sector = origin_sector.get_in_compass_direction(compass_dir, 1);
 	// proceed if sector exists
 	if let Some(adjacent_field) = scaled_costs.get(&adjacent_sector) {
 		// walk along the boundary of the origin sector
 		// we need the FieldCells along origin boundary and the FieldCells along the inverse boundary of the adjacent sector
-		let (origin_cells, adjacent_cells) = boundary_field_cells(ordinal);
+		let (origin_cells, adjacent_cells) = boundary_field_cells(compass_dir);
 		// identify any windows
 		let mut windows = vec![];
 		let mut current_window = vec![];
@@ -517,7 +525,7 @@ fn walk_sector_boundary(
 					let portal_window = PortalWindow {
 						start: **start,
 						end: **end,
-						boundary: *ordinal,
+						boundary: *compass_dir,
 					};
 					windows.push(portal_window);
 					current_window.clear();
@@ -533,7 +541,7 @@ fn walk_sector_boundary(
 				let portal_window = PortalWindow {
 					start: **start,
 					end: **end,
-					boundary: *ordinal,
+					boundary: *compass_dir,
 				};
 				windows.push(portal_window);
 				current_window.clear();
@@ -552,9 +560,14 @@ fn generate_sector_nodes(
 	portal_graph: &mut StableGraph<i32, i32, Undirected, u32>,
 	nodes: &mut BTreeMap<PortalNode, NodeIndex<u32>>,
 ) {
-	let ordinals = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
-	for ordinal in ordinals.iter() {
-		for window in windows.get_windows_for_ordinal(ordinal).iter() {
+	let compass_dirs = [
+		CompassDir::North,
+		CompassDir::East,
+		CompassDir::South,
+		CompassDir::West,
+	];
+	for compass_dir in compass_dirs.iter() {
+		for window in windows.get_windows_for_compass_dir(compass_dir).iter() {
 			let portal_node = PortalNode {
 				sector: *sector_id,
 				window: *window,
@@ -626,7 +639,7 @@ fn generate_sector_internal_edges(
 	}
 }
 
-/// Using each [Ordinal] boundary of a sector lookup neighbouring sector
+/// Using each [CompassDir] boundary of a sector lookup neighbouring sector
 /// [PortalWindow] and create edges between them
 fn generate_sector_external_edges(
 	sector: &SectorID,
@@ -635,17 +648,22 @@ fn generate_sector_external_edges(
 	portal_graph: &mut StableGraph<i32, i32, Undirected, u32>,
 	portals: &BTreeMap<SectorID, Windows>,
 ) {
-	let ordinals = [Ordinal::North, Ordinal::East, Ordinal::South, Ordinal::West];
-	for ordinal in ordinals.iter() {
+	let compass_dirs = [
+		CompassDir::North,
+		CompassDir::East,
+		CompassDir::South,
+		CompassDir::West,
+	];
+	for compass_dir in compass_dirs.iter() {
 		// get the portal windows of this sector for a boundary
-		let this_portal_windows = windows.get_windows_for_ordinal(ordinal);
+		let this_portal_windows = windows.get_windows_for_compass_dir(compass_dir);
 		// find the adjacent sector so that its windows can be found
-		let adjacent_sector = sector.get_in_ordinal_direction(ordinal, 1);
-		// get the mirrored ordinal in the adjacent sector
-		let adjacent_ordinal = ordinal.inverse();
+		let adjacent_sector = sector.get_in_compass_direction(compass_dir, 1);
+		// get the mirrored compass dir in the adjacent sector
+		let adjacent_compass = compass_dir.inverse();
 		if let Some(adjacent_windows) = portals.get(&adjacent_sector) {
 			let adjacent_portal_windows =
-				adjacent_windows.get_windows_for_ordinal(&adjacent_ordinal);
+				adjacent_windows.get_windows_for_compass_dir(&adjacent_compass);
 			for (i, this_portal_window) in this_portal_windows.iter().enumerate() {
 				let adjacent_portal_window = adjacent_portal_windows.get(i).unwrap();
 				// create [PortalNode] for each window for looking up the graph indices
@@ -692,10 +710,10 @@ fn remove_sector_nodes_and_windows(
 	}
 }
 
-/// Get [FieldCell] sets along an [Ordinal] boundary. The first set are the cells along the [Ordinal]. The second set are the corresponding [FieldCell] adjacent in a sector in the [Ordinal] direction (i.e if `ordinal` is `North` then the second set are the [FieldCell] of the adjacent sectors `South` boundary)
-fn boundary_field_cells(ordinal: &Ordinal) -> ([FieldCell; 10], [FieldCell; 10]) {
-	match ordinal {
-		Ordinal::North => (
+/// Get [FieldCell] sets along an [CompassDir] boundary. The first set are the cells along the [CompassDir]. The second set are the corresponding [FieldCell] adjacent in a sector in the [CompassDir] direction (i.e if `compass_dir` is `North` then the second set are the [FieldCell] of the adjacent sectors `South` boundary)
+fn boundary_field_cells(compass_dir: &CompassDir) -> ([FieldCell; 10], [FieldCell; 10]) {
+	match compass_dir {
+		CompassDir::North => (
 			[
 				FieldCell::new(0, 0),
 				FieldCell::new(1, 0),
@@ -721,7 +739,7 @@ fn boundary_field_cells(ordinal: &Ordinal) -> ([FieldCell; 10], [FieldCell; 10])
 				FieldCell::new(9, 9),
 			],
 		),
-		Ordinal::East => (
+		CompassDir::East => (
 			[
 				FieldCell::new(9, 0),
 				FieldCell::new(9, 1),
@@ -747,7 +765,7 @@ fn boundary_field_cells(ordinal: &Ordinal) -> ([FieldCell; 10], [FieldCell; 10])
 				FieldCell::new(0, 9),
 			],
 		),
-		Ordinal::South => (
+		CompassDir::South => (
 			[
 				FieldCell::new(0, 9),
 				FieldCell::new(1, 9),
@@ -773,7 +791,7 @@ fn boundary_field_cells(ordinal: &Ordinal) -> ([FieldCell; 10], [FieldCell; 10])
 				FieldCell::new(9, 0),
 			],
 		),
-		Ordinal::West => (
+		CompassDir::West => (
 			[
 				FieldCell::new(0, 0),
 				FieldCell::new(0, 1),
@@ -799,7 +817,10 @@ fn boundary_field_cells(ordinal: &Ordinal) -> ([FieldCell; 10], [FieldCell; 10])
 				FieldCell::new(9, 9),
 			],
 		),
-		_ => panic!("Ordinal {} cannot be used for boundary walking", ordinal),
+		_ => panic!(
+			"CompassDir {} cannot be used for boundary walking",
+			compass_dir
+		),
 	}
 }
 
@@ -815,7 +836,7 @@ mod tests {
 		let window = PortalWindow {
 			start: FieldCell::new(0, 3),
 			end: FieldCell::new(0, 9),
-			boundary: Ordinal::West,
+			boundary: CompassDir::West,
 		};
 
 		let actual = FieldCell::new(0, 6);
@@ -828,7 +849,7 @@ mod tests {
 		let window = PortalWindow {
 			start: FieldCell::new(9, 5),
 			end: FieldCell::new(9, 7),
-			boundary: Ordinal::East,
+			boundary: CompassDir::East,
 		};
 
 		let actual = FieldCell::new(9, 6);
@@ -841,7 +862,7 @@ mod tests {
 		let window = PortalWindow {
 			start: FieldCell::new(0, 3),
 			end: FieldCell::new(0, 3),
-			boundary: Ordinal::West,
+			boundary: CompassDir::West,
 		};
 
 		let actual = FieldCell::new(0, 3);
@@ -850,26 +871,26 @@ mod tests {
 	}
 
 	#[test]
-	fn windows_ordinal() {
+	fn windows_compass_dir() {
 		let north = vec![PortalWindow {
 			start: FieldCell::new(0, 0),
 			end: FieldCell::new(5, 0),
-			boundary: Ordinal::North,
+			boundary: CompassDir::North,
 		}];
 		let east = vec![PortalWindow {
 			start: FieldCell::new(9, 0),
 			end: FieldCell::new(9, 4),
-			boundary: Ordinal::East,
+			boundary: CompassDir::East,
 		}];
 		let south = vec![PortalWindow {
 			start: FieldCell::new(2, 9),
 			end: FieldCell::new(7, 9),
-			boundary: Ordinal::South,
+			boundary: CompassDir::South,
 		}];
 		let west = vec![PortalWindow {
 			start: FieldCell::new(0, 4),
 			end: FieldCell::new(0, 8),
-			boundary: Ordinal::West,
+			boundary: CompassDir::West,
 		}];
 		let windows = Windows {
 			north: north.clone(),
@@ -878,10 +899,22 @@ mod tests {
 			west: west.clone(),
 		};
 
-		assert_eq!(north, *windows.get_windows_for_ordinal(&Ordinal::North));
-		assert_eq!(east, *windows.get_windows_for_ordinal(&Ordinal::East));
-		assert_eq!(south, *windows.get_windows_for_ordinal(&Ordinal::South));
-		assert_eq!(west, *windows.get_windows_for_ordinal(&Ordinal::West));
+		assert_eq!(
+			north,
+			*windows.get_windows_for_compass_dir(&CompassDir::North)
+		);
+		assert_eq!(
+			east,
+			*windows.get_windows_for_compass_dir(&CompassDir::East)
+		);
+		assert_eq!(
+			south,
+			*windows.get_windows_for_compass_dir(&CompassDir::South)
+		);
+		assert_eq!(
+			west,
+			*windows.get_windows_for_compass_dir(&CompassDir::West)
+		);
 	}
 
 	#[test]
@@ -890,7 +923,7 @@ mod tests {
 			north: vec![PortalWindow {
 				start: FieldCell::new(0, 0),
 				end: FieldCell::new(5, 0),
-				boundary: Ordinal::North,
+				boundary: CompassDir::North,
 			}],
 			east: vec![],
 			south: vec![],
@@ -899,20 +932,20 @@ mod tests {
 		let new = PortalWindow {
 			start: FieldCell::new(7, 0),
 			end: FieldCell::new(9, 0),
-			boundary: Ordinal::North,
+			boundary: CompassDir::North,
 		};
-		windows.add_window(new, &Ordinal::North);
+		windows.add_window(new, &CompassDir::North);
 
 		let actual = vec![
 			PortalWindow {
 				start: FieldCell::new(0, 0),
 				end: FieldCell::new(5, 0),
-				boundary: Ordinal::North,
+				boundary: CompassDir::North,
 			},
 			PortalWindow {
 				start: FieldCell::new(7, 0),
 				end: FieldCell::new(9, 0),
-				boundary: Ordinal::North,
+				boundary: CompassDir::North,
 			},
 		];
 		let result = windows.north;
@@ -925,22 +958,22 @@ mod tests {
 			north: vec![PortalWindow {
 				start: FieldCell::new(0, 0),
 				end: FieldCell::new(5, 0),
-				boundary: Ordinal::North,
+				boundary: CompassDir::North,
 			}],
 			east: vec![PortalWindow {
 				start: FieldCell::new(9, 0),
 				end: FieldCell::new(9, 4),
-				boundary: Ordinal::East,
+				boundary: CompassDir::East,
 			}],
 			south: vec![PortalWindow {
 				start: FieldCell::new(2, 9),
 				end: FieldCell::new(7, 9),
-				boundary: Ordinal::South,
+				boundary: CompassDir::South,
 			}],
 			west: vec![PortalWindow {
 				start: FieldCell::new(0, 4),
 				end: FieldCell::new(0, 8),
-				boundary: Ordinal::West,
+				boundary: CompassDir::West,
 			}],
 		};
 		let result = windows.remove_all();
@@ -948,22 +981,22 @@ mod tests {
 			PortalWindow {
 				start: FieldCell::new(0, 0),
 				end: FieldCell::new(5, 0),
-				boundary: Ordinal::North,
+				boundary: CompassDir::North,
 			},
 			PortalWindow {
 				start: FieldCell::new(9, 0),
 				end: FieldCell::new(9, 4),
-				boundary: Ordinal::East,
+				boundary: CompassDir::East,
 			},
 			PortalWindow {
 				start: FieldCell::new(2, 9),
 				end: FieldCell::new(7, 9),
-				boundary: Ordinal::South,
+				boundary: CompassDir::South,
 			},
 			PortalWindow {
 				start: FieldCell::new(0, 4),
 				end: FieldCell::new(0, 8),
-				boundary: Ordinal::West,
+				boundary: CompassDir::West,
 			},
 		];
 		assert_eq!(actual, result);
@@ -982,20 +1015,20 @@ mod tests {
 		let origin_field = sector_costs.get_scaled_costs().get(&origin_sector).unwrap();
 		let scaled_costs = sector_costs.get_scaled_costs();
 
-		let ordinal = &Ordinal::North;
-		let north = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, ordinal);
+		let compass_dir = &CompassDir::North;
+		let north = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, compass_dir);
 		assert!(north.is_none());
 
-		let ordinal = &Ordinal::East;
-		let east = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, ordinal);
+		let compass_dir = &CompassDir::East;
+		let east = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, compass_dir);
 		assert!(1 == east.unwrap().len());
 
-		let ordinal = &Ordinal::South;
-		let south = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, ordinal);
+		let compass_dir = &CompassDir::South;
+		let south = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, compass_dir);
 		assert!(1 == south.unwrap().len());
 
-		let ordinal = &Ordinal::West;
-		let west = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, ordinal);
+		let compass_dir = &CompassDir::West;
+		let west = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, compass_dir);
 		assert!(west.is_none());
 	}
 
@@ -1020,8 +1053,8 @@ mod tests {
 		let origin_field = sector_costs.get_scaled_costs().get(&origin_sector).unwrap();
 		let scaled_costs = sector_costs.get_scaled_costs();
 
-		let ordinal = &Ordinal::East;
-		let east = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, ordinal);
+		let compass_dir = &CompassDir::East;
+		let east = walk_sector_boundary(&origin_sector, origin_field, scaled_costs, compass_dir);
 		assert!(2 == east.unwrap().len());
 
 		// ensure the neighbour without a wall registers
@@ -1030,8 +1063,8 @@ mod tests {
 		let n_field = sector_costs.get_scaled_costs().get(&n_sector).unwrap();
 		let scaled_costs = sector_costs.get_scaled_costs();
 
-		let n_ordinal = &Ordinal::West;
-		let west = walk_sector_boundary(&n_sector, n_field, scaled_costs, n_ordinal);
+		let n_compass_dir = &CompassDir::West;
+		let west = walk_sector_boundary(&n_sector, n_field, scaled_costs, n_compass_dir);
 		assert!(2 == west.unwrap().len());
 	}
 

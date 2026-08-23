@@ -11,7 +11,7 @@
 //! * IntegrationField - an array which uses the CostField to determine a cumulative cost of reaching the goal/endpoint (where you want to path to). This is an ephemeral field - it exists when required to calculate a `FlowField`
 //! * FlowField - an array built from the `IntegrationField` which describes how an actor should move (flow) across the world
 //! * FlowField Cache - a means of storing `FlowFields` allowing multiple actors to use and reuse them
-//! * Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for discovery of Sectors/field cells at various points within the algorithm
+//! * CompassDir - a direction based on traditional compass cardinals and ordinals: N, NE, E, SE, S, SW, W, NW. Used for discovery of Sectors/field cells at various points within the algorithm
 //! * FieldCell - an element of an array
 //! * Goal - the target field cell an actor needs to path to
 //! * Portal goal - a target point within a sector that allows an actor to transition to another sector, thus bringing it closer towards/to the goal
@@ -47,14 +47,14 @@
 //!
 //! A series of passes are performed from the goal as an expanding wavefront calculating the field values:
 //!
-//! * The valid ordinal neighbours of the goal are determined (North, East, South, West - when not against a sector/world boundary)
-//! * For each ordinal field cell lookup their `CostField` value
+//! * The valid cardinal neighbours of the goal are determined (North, East, South, West - when not against a sector/world boundary)
+//! * For each neighbour field cell lookup their `CostField` value
 //! * Add the `CostField` cell cost to the `IntegrationFields` current wavefront cost (at the beginning this is the goal so int cost `0`)
-//! * Propagate to the next neighbours, find their ordinals and repeat adding their cost value to the current cells integration cost to produce their cumulative integration cost, and repeat until the entire field is done
+//! * Propagate to the next neighbours, find their cardinals and repeat adding their cost value to the current cells integration cost to produce their cumulative integration cost, and repeat until the entire field is done
 //!
 //! ## FlowField
 //!
-//! A `FlowField` is an array of 8-bit values built from a Sectors `IntegrationField`. The first 4 bits of the value correspond to one of eight ordinal movement directions an actor can take (plus a zero vector when impassable) and the second 4 bits correspond to flags which should be used by a character controller/steering pipeline to follow a path.
+//! A `FlowField` is an array of 8-bit values built from a Sectors `IntegrationField`. The first 4 bits of the value correspond to one of eight compass movement directions an actor can take (plus a zero vector when impassable) and the second 4 bits correspond to flags which should be used by a character controller/steering pipeline to follow a path.
 //!
 //! ## Caching FlowFields
 //!

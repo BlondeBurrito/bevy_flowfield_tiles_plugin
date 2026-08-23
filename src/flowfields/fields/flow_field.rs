@@ -16,7 +16,7 @@ use crate::flowfields::{
 	},
 	portal::PortalWindow,
 	route::RouteStep,
-	utilities::{FIELD_RESOLUTION, Ordinal},
+	utilities::{CompassDir, FIELD_RESOLUTION},
 };
 
 /// Bit to indicate a northerly direction
@@ -53,18 +53,18 @@ const BITS_FLAG_FILTER: u8 = 0b1111_0000;
 /// Helper for filtering a value for directional bits
 const BITS_COST_FILTER: u8 = 0b0000_1111;
 
-/// Convert an [Ordinal] to a bit representation
-pub fn convert_ordinal_to_bits_dir(ordinal: &Ordinal) -> u8 {
-	match ordinal {
-		Ordinal::North => BITS_NORTH,
-		Ordinal::East => BITS_EAST,
-		Ordinal::South => BITS_SOUTH,
-		Ordinal::West => BITS_WEST,
-		Ordinal::NorthEast => BITS_NORTH_EAST,
-		Ordinal::SouthEast => BITS_SOUTH_EAST,
-		Ordinal::SouthWest => BITS_SOUTH_WEST,
-		Ordinal::NorthWest => BITS_NORTH_WEST,
-		Ordinal::Zero => BITS_IMPASSABLE,
+/// Convert an [CompassDir] to a bit representation
+pub fn convert_compass_dir_to_bits_dir(compass_dir: &CompassDir) -> u8 {
+	match compass_dir {
+		CompassDir::North => BITS_NORTH,
+		CompassDir::East => BITS_EAST,
+		CompassDir::South => BITS_SOUTH,
+		CompassDir::West => BITS_WEST,
+		CompassDir::NorthEast => BITS_NORTH_EAST,
+		CompassDir::SouthEast => BITS_SOUTH_EAST,
+		CompassDir::SouthWest => BITS_SOUTH_WEST,
+		CompassDir::NorthWest => BITS_NORTH_WEST,
+		CompassDir::Zero => BITS_IMPASSABLE,
 	}
 }
 
@@ -226,7 +226,7 @@ fn set_starting_flags(flowfield: &mut FlowField, int_field: &IntegrationField) {
 fn set_portal_direction(flowfield: &mut FlowField, window: &PortalWindow) {
 	// based on window boundary find bit dir
 	let this_boundary = window.get_boundary();
-	let dir_bits = convert_ordinal_to_bits_dir(this_boundary);
+	let dir_bits = convert_compass_dir_to_bits_dir(this_boundary);
 	// walk the window and set the dir bits
 	for cell_index in window.get_all_window_cells().iter() {
 		flowfield.field[*cell_index] |= dir_bits;
@@ -254,15 +254,15 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 	// find the cheapest. That direction defines the flow
 	// dir bit to be set
 	let this_cell = FieldCell::from_index(cell_index);
-	let n_ordinals = Ordinal::get_all_cell_neighbours_with_ordinal(this_cell);
+	let n_compass_dirs = CompassDir::get_all_cell_neighbours_with_compass_dir(this_cell);
 
 	// if a direction points exactly at a goal just use that
-	let mut goal_dir: Option<Ordinal> = None;
+	let mut goal_dir: Option<CompassDir> = None;
 	// record best direction found
-	let mut best_dir: Option<(Ordinal, u32)> = None;
+	let mut best_dir: Option<(CompassDir, u32)> = None;
 
 	// go through all neighbours and find cheapest to set direction bits to
-	for (ordinal, n_cell) in n_ordinals.iter() {
+	for (compass_dir, n_cell) in n_compass_dirs.iter() {
 		let n_int_value = int_field.get_field_cell_value(*n_cell);
 		if n_int_value & INT_BITS_IMPASSABLE == INT_BITS_IMPASSABLE {
 			// cannot point into wall
@@ -270,11 +270,12 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 		}
 		// if neighbour is diagonal inspect orthogonal to ensure it's a valid
 		// direction. i.e it's not diagonal between two walls
-		match ordinal {
-			Ordinal::NorthEast => {
+		match compass_dir {
+			CompassDir::NorthEast => {
 				// check N and E for walls
-				if let Some(north_this) = this_cell.get_in_ordinal_direction(&Ordinal::North, 1)
-					&& let Some(east_this) = this_cell.get_in_ordinal_direction(&Ordinal::East, 1)
+				if let Some(north_this) = this_cell.get_in_compass_direction(&CompassDir::North, 1)
+					&& let Some(east_this) =
+						this_cell.get_in_compass_direction(&CompassDir::East, 1)
 				{
 					let north_this_value = int_field.get_field_cell_value(north_this);
 					let east_this_value = int_field.get_field_cell_value(east_this);
@@ -286,10 +287,11 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 					}
 				}
 			}
-			Ordinal::SouthEast => {
+			CompassDir::SouthEast => {
 				// check E and S for walls
-				if let Some(south_this) = this_cell.get_in_ordinal_direction(&Ordinal::South, 1)
-					&& let Some(east_this) = this_cell.get_in_ordinal_direction(&Ordinal::East, 1)
+				if let Some(south_this) = this_cell.get_in_compass_direction(&CompassDir::South, 1)
+					&& let Some(east_this) =
+						this_cell.get_in_compass_direction(&CompassDir::East, 1)
 				{
 					let south_this_value = int_field.get_field_cell_value(south_this);
 					let east_this_value = int_field.get_field_cell_value(east_this);
@@ -301,10 +303,11 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 					}
 				}
 			}
-			Ordinal::SouthWest => {
+			CompassDir::SouthWest => {
 				// check S and W for walls
-				if let Some(south_this) = this_cell.get_in_ordinal_direction(&Ordinal::South, 1)
-					&& let Some(west_this) = this_cell.get_in_ordinal_direction(&Ordinal::West, 1)
+				if let Some(south_this) = this_cell.get_in_compass_direction(&CompassDir::South, 1)
+					&& let Some(west_this) =
+						this_cell.get_in_compass_direction(&CompassDir::West, 1)
 				{
 					let south_this_value = int_field.get_field_cell_value(south_this);
 					let west_this_value = int_field.get_field_cell_value(west_this);
@@ -316,10 +319,11 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 					}
 				}
 			}
-			Ordinal::NorthWest => {
+			CompassDir::NorthWest => {
 				// check W and N for walls
-				if let Some(north_this) = this_cell.get_in_ordinal_direction(&Ordinal::North, 1)
-					&& let Some(west_this) = this_cell.get_in_ordinal_direction(&Ordinal::West, 1)
+				if let Some(north_this) = this_cell.get_in_compass_direction(&CompassDir::North, 1)
+					&& let Some(west_this) =
+						this_cell.get_in_compass_direction(&CompassDir::West, 1)
 				{
 					let north_this_value = int_field.get_field_cell_value(north_this);
 					let west_this_value = int_field.get_field_cell_value(west_this);
@@ -340,7 +344,7 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 			|| n_int_value & INT_BITS_PORTAL == INT_BITS_PORTAL
 		{
 			// can point to goal/portal goal
-			goal_dir = Some(*ordinal);
+			goal_dir = Some(*compass_dir);
 			break;
 		}
 
@@ -359,20 +363,20 @@ fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &Integ
 		if let Some((o, v)) = &mut best_dir {
 			if n_int_value & INT_FILTER_BITS_COST < *v {
 				*v = n_int_value & INT_FILTER_BITS_COST;
-				*o = *ordinal;
+				*o = *compass_dir;
 			}
 		} else {
-			best_dir = Some((*ordinal, n_int_value & INT_FILTER_BITS_COST));
+			best_dir = Some((*compass_dir, n_int_value & INT_FILTER_BITS_COST));
 		}
 	}
 
 	// set the bit direction based on best available
 	if let Some(dir) = goal_dir {
-		let bits = convert_ordinal_to_bits_dir(&dir);
+		let bits = convert_compass_dir_to_bits_dir(&dir);
 		*flow_value |= bits;
 		*flow_value |= BITS_PATHABLE;
 	} else if let Some((dir, _)) = best_dir {
-		let bits = convert_ordinal_to_bits_dir(&dir);
+		let bits = convert_compass_dir_to_bits_dir(&dir);
 		*flow_value |= bits;
 		*flow_value |= BITS_PATHABLE;
 	} else {
@@ -409,20 +413,20 @@ pub fn is_wall(cell_value: u8) -> bool {
 	cell_value & BITS_IMPASSABLE == BITS_IMPASSABLE && !is_pathable(cell_value)
 }
 
-/// From a pathable [FlowField] cell get the directional [Ordinal] of movement
-pub fn get_ordinal_from_bits(cell_value: u8) -> Ordinal {
+/// From a pathable [FlowField] cell get the directional [CompassDir] of movement
+pub fn get_compass_dir_from_bits(cell_value: u8) -> CompassDir {
 	let dir = cell_value & BITS_COST_FILTER;
 	match dir {
-		BITS_NORTH => Ordinal::North,
-		BITS_EAST => Ordinal::East,
-		BITS_SOUTH => Ordinal::South,
-		BITS_WEST => Ordinal::West,
-		BITS_NORTH_EAST => Ordinal::NorthEast,
-		BITS_SOUTH_EAST => Ordinal::SouthEast,
-		BITS_SOUTH_WEST => Ordinal::SouthWest,
-		BITS_NORTH_WEST => Ordinal::NorthWest,
-		BITS_DEFAULT => Ordinal::Zero,
-		_ => Ordinal::Zero, // _ => panic!("First 4 bits of cell are not recognised directions"),
+		BITS_NORTH => CompassDir::North,
+		BITS_EAST => CompassDir::East,
+		BITS_SOUTH => CompassDir::South,
+		BITS_WEST => CompassDir::West,
+		BITS_NORTH_EAST => CompassDir::NorthEast,
+		BITS_SOUTH_EAST => CompassDir::SouthEast,
+		BITS_SOUTH_WEST => CompassDir::SouthWest,
+		BITS_NORTH_WEST => CompassDir::NorthWest,
+		BITS_DEFAULT => CompassDir::Zero,
+		_ => CompassDir::Zero, // _ => panic!("First 4 bits of cell are not recognised directions"),
 	}
 }
 
@@ -523,7 +527,7 @@ mod tests {
 		let portal = Some(PortalWindow::new(
 			FieldCell::new(0, 0),
 			FieldCell::new(0, 0),
-			Ordinal::North,
+			CompassDir::North,
 		));
 		let route_step = RouteStep::new(&sector, goal, portal);
 		let int_field = IntegrationField::init(&costfield, &route_step);

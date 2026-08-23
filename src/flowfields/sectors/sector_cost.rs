@@ -11,7 +11,7 @@ use crate::flowfields::{
 	dimensions::Dimensions,
 	fields::{Field, FieldCell, cost_field::CostField},
 	sectors::SectorID,
-	utilities::{FIELD_RESOLUTION, Ordinal},
+	utilities::{CompassDir, FIELD_RESOLUTION},
 };
 
 /// Keys represent unique sector IDs and are in the format of `(column, row)`
@@ -205,40 +205,52 @@ impl SectorCostFields {
 				let cell = FieldCell::from_index(index);
 
 				// walk north
-				scale_in_ordinal_direction(&Ordinal::North, scale_count, cell, sector_id, scaled);
+				scale_in_compass_direction(
+					&CompassDir::North,
+					scale_count,
+					cell,
+					sector_id,
+					scaled,
+				);
 				// walk east
-				scale_in_ordinal_direction(&Ordinal::East, scale_count, cell, sector_id, scaled);
+				scale_in_compass_direction(&CompassDir::East, scale_count, cell, sector_id, scaled);
 				// walk south
-				scale_in_ordinal_direction(&Ordinal::South, scale_count, cell, sector_id, scaled);
+				scale_in_compass_direction(
+					&CompassDir::South,
+					scale_count,
+					cell,
+					sector_id,
+					scaled,
+				);
 				// walk west
-				scale_in_ordinal_direction(&Ordinal::West, scale_count, cell, sector_id, scaled);
+				scale_in_compass_direction(&CompassDir::West, scale_count, cell, sector_id, scaled);
 				// NE
-				scale_in_ordinal_direction(
-					&Ordinal::NorthEast,
+				scale_in_compass_direction(
+					&CompassDir::NorthEast,
 					scale_count,
 					cell,
 					sector_id,
 					scaled,
 				);
 				// SE
-				scale_in_ordinal_direction(
-					&Ordinal::SouthEast,
+				scale_in_compass_direction(
+					&CompassDir::SouthEast,
 					scale_count,
 					cell,
 					sector_id,
 					scaled,
 				);
 				// SW
-				scale_in_ordinal_direction(
-					&Ordinal::SouthWest,
+				scale_in_compass_direction(
+					&CompassDir::SouthWest,
 					scale_count,
 					cell,
 					sector_id,
 					scaled,
 				);
 				// NW
-				scale_in_ordinal_direction(
-					&Ordinal::NorthWest,
+				scale_in_compass_direction(
+					&CompassDir::NorthWest,
 					scale_count,
 					cell,
 					sector_id,
@@ -301,11 +313,11 @@ impl SectorCostFields {
 	}
 }
 
-/// Walk a number of `scale_count` steps in an [Ordinal] marking any scaled
+/// Walk a number of `scale_count` steps in an [CompassDir] marking any scaled
 /// [FieldCell] along the way as impassable if it collides which an existing
 /// wall
-fn scale_in_ordinal_direction(
-	ordinal: &Ordinal,
+fn scale_in_compass_direction(
+	compass_dir: &CompassDir,
 	scale_count: u32,
 	origin_cell: FieldCell,
 	origin_sector_id: &SectorID,
@@ -315,7 +327,8 @@ fn scale_in_ordinal_direction(
 	let mut fields_to_mark = vec![];
 	'scale_loop: for n in 1..=scale_count {
 		// find any sector change and cell arrived at
-		let (sector_delta, next_cell) = ordinal.step_cell_in_direction(&origin_cell, n as usize);
+		let (sector_delta, next_cell) =
+			compass_dir.step_cell_in_direction(&origin_cell, n as usize);
 		let next_sector = SectorID::new(
 			origin_sector_id.column + sector_delta.column,
 			origin_sector_id.row + sector_delta.row,

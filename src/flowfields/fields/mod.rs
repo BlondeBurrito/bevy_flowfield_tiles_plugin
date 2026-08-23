@@ -10,7 +10,7 @@ use bevy::prelude::*;
 
 use crate::flowfields::{
 	fields::bresenham::{walk_bresenham_shallow, walk_bresenham_steep},
-	utilities::{FIELD_RESOLUTION, Ordinal},
+	utilities::{CompassDir, FIELD_RESOLUTION},
 };
 
 /// Defines required access to field arrays
@@ -62,7 +62,8 @@ impl FieldCell {
 	pub fn get_row(&self) -> usize {
 		self.row
 	}
-	/// Convert the column-row representation into a 1-dimensional index that fits into field array size
+	/// Convert the column-row representation into a 1-dimensional index that fits
+	/// into field array size
 	pub fn as_1d_index(&self) -> usize {
 		self.get_row() * FIELD_RESOLUTION + self.get_column()
 	}
@@ -72,15 +73,20 @@ impl FieldCell {
 		let col = index % FIELD_RESOLUTION;
 		FieldCell::new(col, row)
 	}
-	/// Try and get a [FieldCell] a number of `steps` away in a particular [Ordinal] direction
-	pub fn get_in_ordinal_direction(&self, ordinal: &Ordinal, steps: usize) -> Option<FieldCell> {
-		let (column, row) = match ordinal {
-			Ordinal::North => {
+	/// Try and get a [FieldCell] a number of `steps` away in a particular
+	/// [CompassDir] direction
+	pub fn get_in_compass_direction(
+		&self,
+		compass_dir: &CompassDir,
+		steps: usize,
+	) -> Option<FieldCell> {
+		let (column, row) = match compass_dir {
+			CompassDir::North => {
 				let this_row = self.row;
 				let n = this_row.checked_sub(steps)?;
 				(self.column, n)
 			}
-			Ordinal::East => {
+			CompassDir::East => {
 				let this_col = self.column;
 				let n = this_col + steps;
 				if n < FIELD_RESOLUTION {
@@ -89,7 +95,7 @@ impl FieldCell {
 					return None;
 				}
 			}
-			Ordinal::South => {
+			CompassDir::South => {
 				let this_row = self.row;
 				let n = this_row + steps;
 				if n < FIELD_RESOLUTION {
@@ -98,12 +104,12 @@ impl FieldCell {
 					return None;
 				}
 			}
-			Ordinal::West => {
+			CompassDir::West => {
 				let this_col = self.column;
 				let n = this_col.checked_sub(steps)?;
 				(n, self.row)
 			}
-			Ordinal::NorthEast => {
+			CompassDir::NorthEast => {
 				let this_row = self.row;
 				let n_row = this_row.checked_sub(steps)?;
 				let this_col = self.column;
@@ -114,7 +120,7 @@ impl FieldCell {
 					return None;
 				}
 			}
-			Ordinal::SouthEast => {
+			CompassDir::SouthEast => {
 				let this_row = self.row;
 				let n_row = this_row + steps;
 				if n_row < FIELD_RESOLUTION {
@@ -129,7 +135,7 @@ impl FieldCell {
 					return None;
 				}
 			}
-			Ordinal::SouthWest => {
+			CompassDir::SouthWest => {
 				let this_row = self.row;
 				let n_row = this_row + steps;
 				if n_row < FIELD_RESOLUTION {
@@ -140,25 +146,28 @@ impl FieldCell {
 					return None;
 				}
 			}
-			Ordinal::NorthWest => {
+			CompassDir::NorthWest => {
 				let this_row = self.row;
 				let n_row = this_row.checked_sub(steps)?;
 				let this_col = self.column;
 				let n_col = this_col.checked_sub(steps)?;
 				(n_col, n_row)
 			}
-			_ => panic!("{} should never be used for FieldCell stepping", ordinal),
+			_ => panic!(
+				"{} should never be used for FieldCell stepping",
+				compass_dir
+			),
 		};
 		Some(FieldCell::new(column, row))
 	}
-	// /// In a given [Ordinal] find the first [FieldCell] in the adjacent sector
-	// pub fn get_sector_entry_cell(&self, ordinal: &Ordinal) -> FieldCell {
-	// 	match ordinal {
-	// 		Ordinal::North => FieldCell::new(self.get_column(), FIELD_RESOLUTION - 1),
-	// 		Ordinal::East => FieldCell::new(0, self.get_row()),
-	// 		Ordinal::South => FieldCell::new(self.get_column(), 0),
-	// 		Ordinal::West => FieldCell::new(FIELD_RESOLUTION - 1, self.get_row()),
-	// 		Ordinal::NorthEast => {
+	// /// In a given [CompassDir] find the first [FieldCell] in the adjacent sector
+	// pub fn get_sector_entry_cell(&self, compass_dir: &CompassDir) -> FieldCell {
+	// 	match compass_dir {
+	// 		CompassDir::North => FieldCell::new(self.get_column(), FIELD_RESOLUTION - 1),
+	// 		CompassDir::East => FieldCell::new(0, self.get_row()),
+	// 		CompassDir::South => FieldCell::new(self.get_column(), 0),
+	// 		CompassDir::West => FieldCell::new(FIELD_RESOLUTION - 1, self.get_row()),
+	// 		CompassDir::NorthEast => {
 	// 			if self.column + self.row == FIELD_RESOLUTION - 1 {
 	// 				//TODO wrong
 	// 				FieldCell::new(0, FIELD_RESOLUTION - 1)
@@ -176,10 +185,10 @@ impl FieldCell {
 	// 				FieldCell::new(0, FIELD_RESOLUTION - 1 - self.get_row())
 	// 			}
 	// 		}
-	// 		Ordinal::SouthEast => FieldCell::new(0, 0),
-	// 		Ordinal::SouthWest => FieldCell::new(FIELD_RESOLUTION - 1, 0),
-	// 		Ordinal::NorthWest => FieldCell::new(FIELD_RESOLUTION - 1, FIELD_RESOLUTION - 1),
-	// 		_ => panic!("{} should never be used for finding entry cell", ordinal),
+	// 		CompassDir::SouthEast => FieldCell::new(0, 0),
+	// 		CompassDir::SouthWest => FieldCell::new(FIELD_RESOLUTION - 1, 0),
+	// 		CompassDir::NorthWest => FieldCell::new(FIELD_RESOLUTION - 1, FIELD_RESOLUTION - 1),
+	// 		_ => panic!("{} should never be used for finding entry cell", compass_dir),
 	// 	}
 	// }
 	/// Get the adjacent neighbours of a [FieldCell]
@@ -204,34 +213,34 @@ impl FieldCell {
 		}
 		neighbours
 	}
-	/// Get the [Ordinal] from `self` to `rhs`
-	pub fn dir_from_this_to_rhs(&self, rhs: &FieldCell) -> Ordinal {
+	/// Get the [CompassDir] from `self` to `rhs`
+	pub fn dir_from_this_to_rhs(&self, rhs: &FieldCell) -> CompassDir {
 		if rhs.row < self.row {
 			// NW, N or NE
 			if rhs.column > self.column {
-				Ordinal::NorthEast
+				CompassDir::NorthEast
 			} else if rhs.column < self.column {
-				Ordinal::NorthWest
+				CompassDir::NorthWest
 			} else {
-				Ordinal::North
+				CompassDir::North
 			}
 		} else if rhs.row > self.row {
 			// SW, S or SE
 			if rhs.column > self.column {
-				Ordinal::SouthEast
+				CompassDir::SouthEast
 			} else if rhs.column < self.column {
-				Ordinal::SouthWest
+				CompassDir::SouthWest
 			} else {
-				Ordinal::South
+				CompassDir::South
 			}
 		} else {
 			// E or W, or `rhs` is `self`
 			if rhs.column > self.column {
-				Ordinal::East
+				CompassDir::East
 			} else if rhs.column < self.column {
-				Ordinal::West
+				CompassDir::West
 			} else {
-				Ordinal::Zero
+				CompassDir::Zero
 			}
 		}
 	}
@@ -314,122 +323,122 @@ mod tests {
 	}
 
 	#[test]
-	fn ordinal_north_valid() {
+	fn compass_dir_north_valid() {
 		let cell = FieldCell::new(0, 1);
 		let actual = FieldCell::new(0, 0);
-		let result = cell.get_in_ordinal_direction(&Ordinal::North, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::North, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 
 	#[test]
-	fn ordinal_north_invalid() {
+	fn compass_dir_north_invalid() {
 		let cell = FieldCell::new(0, 0);
-		let result = cell.get_in_ordinal_direction(&Ordinal::North, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::North, 1);
 		assert!(result.is_none())
 	}
 
 	#[test]
-	fn ordinal_east_valid() {
+	fn compass_dir_east_valid() {
 		let cell = FieldCell::new(1, 1);
 		let actual = FieldCell::new(2, 1);
-		let result = cell.get_in_ordinal_direction(&Ordinal::East, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::East, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 
 	#[test]
-	fn ordinal_east_invalid() {
+	fn compass_dir_east_invalid() {
 		let cell = FieldCell::new(9, 0);
-		let result = cell.get_in_ordinal_direction(&Ordinal::East, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::East, 1);
 		assert!(result.is_none())
 	}
 
 	#[test]
-	fn ordinal_south_valid() {
+	fn compass_dir_south_valid() {
 		let cell = FieldCell::new(1, 1);
 		let actual = FieldCell::new(1, 2);
-		let result = cell.get_in_ordinal_direction(&Ordinal::South, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::South, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 
 	#[test]
-	fn ordinal_south_invalid() {
+	fn compass_dir_south_invalid() {
 		let cell = FieldCell::new(0, 9);
-		let result = cell.get_in_ordinal_direction(&Ordinal::South, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::South, 1);
 		assert!(result.is_none())
 	}
 
 	#[test]
-	fn ordinal_west_valid() {
+	fn compass_dir_west_valid() {
 		let cell = FieldCell::new(1, 1);
 		let actual = FieldCell::new(0, 1);
-		let result = cell.get_in_ordinal_direction(&Ordinal::West, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::West, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 
 	#[test]
-	fn ordinal_west_invalid() {
+	fn compass_dir_west_invalid() {
 		let cell = FieldCell::new(0, 0);
-		let result = cell.get_in_ordinal_direction(&Ordinal::West, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::West, 1);
 		assert!(result.is_none())
 	}
 
 	#[test]
-	fn ordinal_northeast_valid() {
+	fn compass_dir_northeast_valid() {
 		let cell = FieldCell::new(1, 1);
 		let actual = FieldCell::new(2, 0);
-		let result = cell.get_in_ordinal_direction(&Ordinal::NorthEast, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::NorthEast, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 
 	#[test]
-	fn ordinal_northeast_invalid() {
+	fn compass_dir_northeast_invalid() {
 		let cell = FieldCell::new(0, 0);
-		let result = cell.get_in_ordinal_direction(&Ordinal::NorthEast, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::NorthEast, 1);
 		assert!(result.is_none())
 	}
 
 	#[test]
-	fn ordinal_southeast_valid() {
+	fn compass_dir_southeast_valid() {
 		let cell = FieldCell::new(1, 1);
 		let actual = FieldCell::new(2, 2);
-		let result = cell.get_in_ordinal_direction(&Ordinal::SouthEast, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::SouthEast, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 
 	#[test]
-	fn ordinal_southeast_invalid() {
+	fn compass_dir_southeast_invalid() {
 		let cell = FieldCell::new(9, 9);
-		let result = cell.get_in_ordinal_direction(&Ordinal::SouthEast, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::SouthEast, 1);
 		assert!(result.is_none())
 	}
 
 	#[test]
-	fn ordinal_southwest_valid() {
+	fn compass_dir_southwest_valid() {
 		let cell = FieldCell::new(1, 1);
 		let actual = FieldCell::new(0, 2);
-		let result = cell.get_in_ordinal_direction(&Ordinal::SouthWest, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::SouthWest, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 
 	#[test]
-	fn ordinal_southwest_invalid() {
+	fn compass_dir_southwest_invalid() {
 		let cell = FieldCell::new(0, 9);
-		let result = cell.get_in_ordinal_direction(&Ordinal::SouthWest, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::SouthWest, 1);
 		assert!(result.is_none())
 	}
 
 	#[test]
-	fn ordinal_northwest_valid() {
+	fn compass_dir_northwest_valid() {
 		let cell = FieldCell::new(1, 1);
 		let actual = FieldCell::new(0, 0);
-		let result = cell.get_in_ordinal_direction(&Ordinal::NorthWest, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::NorthWest, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 
 	#[test]
-	fn ordinal_northwest_invalid() {
+	fn compass_dir_northwest_invalid() {
 		let cell = FieldCell::new(0, 0);
-		let result = cell.get_in_ordinal_direction(&Ordinal::NorthWest, 1);
+		let result = cell.get_in_compass_direction(&CompassDir::NorthWest, 1);
 		assert!(result.is_none())
 	}
 
@@ -437,7 +446,7 @@ mod tests {
 	// fn sector_entry_north() {
 	// 	let cell = FieldCell::new(4, 4);
 	// 	let actual = FieldCell::new(4, 9);
-	// 	let result = cell.get_sector_entry_cell(&Ordinal::North);
+	// 	let result = cell.get_sector_entry_cell(&CompassDir::North);
 	// 	assert_eq!(actual, result);
 	// }
 
@@ -445,7 +454,7 @@ mod tests {
 	// fn sector_entry_east() {
 	// 	let cell = FieldCell::new(4, 4);
 	// 	let actual = FieldCell::new(0, 4);
-	// 	let result = cell.get_sector_entry_cell(&Ordinal::East);
+	// 	let result = cell.get_sector_entry_cell(&CompassDir::East);
 	// 	assert_eq!(actual, result);
 	// }
 
@@ -453,7 +462,7 @@ mod tests {
 	// fn sector_entry_south() {
 	// 	let cell = FieldCell::new(4, 4);
 	// 	let actual = FieldCell::new(4, 0);
-	// 	let result = cell.get_sector_entry_cell(&Ordinal::South);
+	// 	let result = cell.get_sector_entry_cell(&CompassDir::South);
 	// 	assert_eq!(actual, result);
 	// }
 
@@ -461,7 +470,7 @@ mod tests {
 	// fn sector_entry_west() {
 	// 	let cell = FieldCell::new(4, 4);
 	// 	let actual = FieldCell::new(9, 4);
-	// 	let result = cell.get_sector_entry_cell(&Ordinal::West);
+	// 	let result = cell.get_sector_entry_cell(&CompassDir::West);
 	// 	assert_eq!(actual, result);
 	// }
 
@@ -503,7 +512,7 @@ mod tests {
 		let this = FieldCell::new(3, 4);
 		let other = FieldCell::new(3, 3);
 		let result = this.dir_from_this_to_rhs(&other);
-		let actual = Ordinal::North;
+		let actual = CompassDir::North;
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -511,7 +520,7 @@ mod tests {
 		let this = FieldCell::new(3, 4);
 		let other = FieldCell::new(4, 3);
 		let result = this.dir_from_this_to_rhs(&other);
-		let actual = Ordinal::NorthEast;
+		let actual = CompassDir::NorthEast;
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -519,7 +528,7 @@ mod tests {
 		let this = FieldCell::new(3, 4);
 		let other = FieldCell::new(4, 4);
 		let result = this.dir_from_this_to_rhs(&other);
-		let actual = Ordinal::East;
+		let actual = CompassDir::East;
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -527,7 +536,7 @@ mod tests {
 		let this = FieldCell::new(3, 4);
 		let other = FieldCell::new(4, 5);
 		let result = this.dir_from_this_to_rhs(&other);
-		let actual = Ordinal::SouthEast;
+		let actual = CompassDir::SouthEast;
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -535,7 +544,7 @@ mod tests {
 		let this = FieldCell::new(3, 4);
 		let other = FieldCell::new(3, 5);
 		let result = this.dir_from_this_to_rhs(&other);
-		let actual = Ordinal::South;
+		let actual = CompassDir::South;
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -543,7 +552,7 @@ mod tests {
 		let this = FieldCell::new(3, 4);
 		let other = FieldCell::new(2, 5);
 		let result = this.dir_from_this_to_rhs(&other);
-		let actual = Ordinal::SouthWest;
+		let actual = CompassDir::SouthWest;
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -551,7 +560,7 @@ mod tests {
 		let this = FieldCell::new(3, 4);
 		let other = FieldCell::new(2, 3);
 		let result = this.dir_from_this_to_rhs(&other);
-		let actual = Ordinal::NorthWest;
+		let actual = CompassDir::NorthWest;
 		assert_eq!(actual, result);
 	}
 	#[test]
@@ -559,7 +568,7 @@ mod tests {
 		let this = FieldCell::new(3, 4);
 		let other = FieldCell::new(3, 4);
 		let result = this.dir_from_this_to_rhs(&other);
-		let actual = Ordinal::Zero;
+		let actual = CompassDir::Zero;
 		assert_eq!(actual, result);
 	}
 }

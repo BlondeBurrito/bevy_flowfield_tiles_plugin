@@ -246,7 +246,7 @@ fn update_sprite_visuals_based_on_actor(
 						field_cell_label.0,
 						field_cell_label.1,
 					));
-					let icon = cell_icons::get_ord_icon(flow_value);
+					let icon = cell_icons::get_compass_dir_icon(flow_value);
 					let new_handle: Handle<Image> = asset_server.load(icon);
 					sprite.image = new_handle;
 				}

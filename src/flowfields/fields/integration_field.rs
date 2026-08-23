@@ -20,10 +20,10 @@
 //!
 //! To calculate the cost of the cells in the field:
 //!
-//! 1. The valid ordinal neighbours of the corners are determined (one, none or many of North, East, South, West)
-//! 2. For each ordinal field cell lookup their [CostField] value
+//! 1. The valid cardinal neighbours of the corners are determined (one, none or many of North, East, South, West)
+//! 2. For each neighbour field cell lookup their [CostField] value
 //! 3. 3. Add the [CostField] cost to the [IntegrationField] cost of the current cell, this is the integrated-cost
-//! 4. Wavefront propagates to the next neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their cumulative integration-cost, and repeat until the entire field is done
+//! 4. Wavefront propagates to the next neighbours, find their cardinals and repeat adding their cost value to to the current cells integration cost to produce their cumulative integration-cost, and repeat until the entire field is done
 //!
 //! The end result effectively produces a gradient of high numbers to low numbers, a flow of sorts.
 //!
@@ -35,7 +35,7 @@ use bevy::reflect::Reflect;
 use crate::flowfields::{
 	fields::{Field, FieldCell, cost_field::CostField},
 	route::RouteStep,
-	utilities::{FIELD_RESOLUTION, Ordinal},
+	utilities::{CompassDir, FIELD_RESOLUTION},
 };
 
 /// Flags a 'FieldCell' as having Line Of Sight
@@ -185,7 +185,7 @@ fn propagate_los(
 				let dir = wave_cell.dir_from_this_to_rhs(neighbour);
 
 				match dir {
-					Ordinal::North | Ordinal::South => {
+					CompassDir::North | CompassDir::South => {
 						// check if the corner is actually reachable from the wavefront cell
 						// this prevents stepping between two diagonal wall cells and assigning
 						// an incorrect wavefront flag to a corner that shouldn't exist.
@@ -205,14 +205,14 @@ fn propagate_los(
 						// be a corner and can be used for integrated cost calculation
 						//
 						if let Some(wave_west) =
-							wave_cell.get_in_ordinal_direction(&Ordinal::West, 1)
+							wave_cell.get_in_compass_direction(&CompassDir::West, 1)
 						{
 							let wave_west_cost = field.field[wave_west.as_1d_index()];
 							// see if diagonally blocking
 							if wave_west_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
 								// not blocking, see if neighbour can be made a corner
 								if let Some(n_west) =
-									neighbour.get_in_ordinal_direction(&Ordinal::West, 1)
+									neighbour.get_in_compass_direction(&CompassDir::West, 1)
 								{
 									let n_west_cost = field.field[n_west.as_1d_index()];
 									if n_west_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
@@ -227,14 +227,14 @@ fn propagate_los(
 							}
 						}
 						if let Some(wave_east) =
-							wave_cell.get_in_ordinal_direction(&Ordinal::East, 1)
+							wave_cell.get_in_compass_direction(&CompassDir::East, 1)
 						{
 							let wave_east_cost = field.field[wave_east.as_1d_index()];
 							// see if diagonally blocking
 							if wave_east_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
 								// not blocking, see if neighbour can be made a corner
 								if let Some(n_east) =
-									neighbour.get_in_ordinal_direction(&Ordinal::East, 1)
+									neighbour.get_in_compass_direction(&CompassDir::East, 1)
 								{
 									let n_east_cost = field.field[n_east.as_1d_index()];
 									if n_east_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
@@ -249,16 +249,16 @@ fn propagate_los(
 							}
 						}
 					}
-					Ordinal::East | Ordinal::West => {
+					CompassDir::East | CompassDir::West => {
 						if let Some(wave_north) =
-							wave_cell.get_in_ordinal_direction(&Ordinal::North, 1)
+							wave_cell.get_in_compass_direction(&CompassDir::North, 1)
 						{
 							let wave_north_cost = field.field[wave_north.as_1d_index()];
 							// see if diagonally blocking
 							if wave_north_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
 								// not blocking, see if neighbour can be made a corner
 								if let Some(n_north) =
-									neighbour.get_in_ordinal_direction(&Ordinal::North, 1)
+									neighbour.get_in_compass_direction(&CompassDir::North, 1)
 								{
 									let n_north_cost = field.field[n_north.as_1d_index()];
 									if n_north_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
@@ -273,14 +273,14 @@ fn propagate_los(
 							}
 						}
 						if let Some(wave_south) =
-							wave_cell.get_in_ordinal_direction(&Ordinal::South, 1)
+							wave_cell.get_in_compass_direction(&CompassDir::South, 1)
 						{
 							let wave_south_cost = field.field[wave_south.as_1d_index()];
 							// see if diagonally blocking
 							if wave_south_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
 								// not blocking, see if neighbour can be made a corner
 								if let Some(n_south) =
-									neighbour.get_in_ordinal_direction(&Ordinal::South, 1)
+									neighbour.get_in_compass_direction(&CompassDir::South, 1)
 								{
 									let n_south_cost = field.field[n_south.as_1d_index()];
 									if n_south_cost & INT_BITS_IMPASSABLE != INT_BITS_IMPASSABLE {
@@ -295,7 +295,7 @@ fn propagate_los(
 							}
 						}
 					}
-					_ => panic!("Only orthogonal Ordinals should be here, found {}", dir),
+					_ => panic!("Only orthogonal CompassDir should be here, found {}", dir),
 				}
 			} else if cost & INT_BITS_LOS != INT_BITS_LOS {
 				// we have a new LOS that can be propagated,
@@ -338,10 +338,11 @@ fn extend_los_corner(
 		// if the line passes through the diagonal of two impassable cells propagation should stop otherwise a line of corners would be assigned that's not reachable from the corner being extrapolated
 		if i > 0 {
 			let previous = &blocked_cells[i - 1];
-			match Ordinal::cell_to_cell_direction(*blocked, *previous) {
-				Ordinal::NorthEast => {
-					if let Some(south) = Ordinal::get_cell_neighbour(*blocked, Ordinal::South)
-						&& let Some(west) = Ordinal::get_cell_neighbour(*blocked, Ordinal::West)
+			match CompassDir::cell_to_cell_direction(*blocked, *previous) {
+				CompassDir::NorthEast => {
+					if let Some(south) = CompassDir::get_cell_neighbour(*blocked, CompassDir::South)
+						&& let Some(west) =
+							CompassDir::get_cell_neighbour(*blocked, CompassDir::West)
 					{
 						let s_v = field.get_field_cell_value(south) & INT_BITS_IMPASSABLE;
 						let w_v = field.get_field_cell_value(west) & INT_BITS_IMPASSABLE;
@@ -350,9 +351,10 @@ fn extend_los_corner(
 						}
 					}
 				}
-				Ordinal::SouthEast => {
-					if let Some(north) = Ordinal::get_cell_neighbour(*blocked, Ordinal::North)
-						&& let Some(west) = Ordinal::get_cell_neighbour(*blocked, Ordinal::West)
+				CompassDir::SouthEast => {
+					if let Some(north) = CompassDir::get_cell_neighbour(*blocked, CompassDir::North)
+						&& let Some(west) =
+							CompassDir::get_cell_neighbour(*blocked, CompassDir::West)
 					{
 						let n_v = field.get_field_cell_value(north) & INT_BITS_IMPASSABLE;
 						let w_v = field.get_field_cell_value(west) & INT_BITS_IMPASSABLE;
@@ -361,9 +363,10 @@ fn extend_los_corner(
 						}
 					}
 				}
-				Ordinal::SouthWest => {
-					if let Some(north) = Ordinal::get_cell_neighbour(*blocked, Ordinal::North)
-						&& let Some(east) = Ordinal::get_cell_neighbour(*blocked, Ordinal::East)
+				CompassDir::SouthWest => {
+					if let Some(north) = CompassDir::get_cell_neighbour(*blocked, CompassDir::North)
+						&& let Some(east) =
+							CompassDir::get_cell_neighbour(*blocked, CompassDir::East)
 					{
 						let n_v = field.get_field_cell_value(north) & INT_BITS_IMPASSABLE;
 						let e_v = field.get_field_cell_value(east) & INT_BITS_IMPASSABLE;
@@ -372,9 +375,10 @@ fn extend_los_corner(
 						}
 					}
 				}
-				Ordinal::NorthWest => {
-					if let Some(south) = Ordinal::get_cell_neighbour(*blocked, Ordinal::South)
-						&& let Some(east) = Ordinal::get_cell_neighbour(*blocked, Ordinal::East)
+				CompassDir::NorthWest => {
+					if let Some(south) = CompassDir::get_cell_neighbour(*blocked, CompassDir::South)
+						&& let Some(east) =
+							CompassDir::get_cell_neighbour(*blocked, CompassDir::East)
 					{
 						let s_v = field.get_field_cell_value(south) & INT_BITS_IMPASSABLE;
 						let e_v = field.get_field_cell_value(east) & INT_BITS_IMPASSABLE;
@@ -383,7 +387,7 @@ fn extend_los_corner(
 						}
 					}
 				}
-				Ordinal::Zero => panic!("Neighbour not found"),
+				CompassDir::Zero => panic!("Neighbour not found"),
 				_ => {}
 			}
 		}
@@ -557,7 +561,7 @@ mod tests {
 		let portal = Some(PortalWindow::new(
 			FieldCell::new(0, 9),
 			FieldCell::new(9, 9),
-			Ordinal::South,
+			CompassDir::South,
 		));
 		let route_step = RouteStep::new(&sector, goal, portal);
 		let int_field = IntegrationField::init(&costfield, &route_step);

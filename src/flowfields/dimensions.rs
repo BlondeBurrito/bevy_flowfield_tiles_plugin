@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::flowfields::utilities::{FIELD_RESOLUTION, Ordinal};
+use crate::flowfields::utilities::{CompassDir, FIELD_RESOLUTION};
 use crate::flowfields::{fields::FieldCell, sectors::SectorID};
 
 /// The dimensions and scaling of the world
@@ -309,7 +309,7 @@ impl Dimensions {
 	/// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
 	/// of the map retrieve the IDs neighbouring sectors
 	pub fn get_ids_of_neighbouring_sectors(self, sector_id: &SectorID) -> Vec<SectorID> {
-		Ordinal::get_sector_neighbours(
+		CompassDir::get_sector_neighbours(
 			sector_id,
 			self.get_length(),
 			self.get_depth(),
@@ -318,32 +318,32 @@ impl Dimensions {
 	}
 
 	/// A sector has up to four neighbours. Based on the ID of the sector and the dimensions
-	/// of the map retrieve the IDs neighbouring sectors and the [Ordinal] direction from the
+	/// of the map retrieve the IDs neighbouring sectors and the [CompassDir] direction from the
 	/// current sector that that sector is found in
-	pub fn get_ordinal_and_ids_of_neighbouring_sectors(
+	pub fn get_compass_dir_and_ids_of_neighbouring_sectors(
 		&self,
 		sector_id: &SectorID,
-	) -> Vec<(Ordinal, SectorID)> {
-		Ordinal::get_sector_neighbours_with_ordinal(
+	) -> Vec<(CompassDir, SectorID)> {
+		CompassDir::get_sector_neighbours_with_compass_dir(
 			sector_id,
 			self.get_length(),
 			self.get_depth(),
 			self.get_unit_scale(),
 		)
 	}
-	/// From an [Ordinal] get the ID of a neighbouring sector. Returns [None]
+	/// From an [CompassDir] get the ID of a neighbouring sector. Returns [None]
 	/// if the sector would be out of bounds
-	pub fn get_sector_id_from_ordinal(
+	pub fn get_sector_id_from_compass_dir(
 		&self,
-		ordinal: Ordinal,
+		compass_dir: CompassDir,
 		sector_id: &SectorID,
 	) -> Option<SectorID> {
 		let sector_column_limit =
 			(self.get_length() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as i32 - 1;
 		let sector_row_limit =
 			(self.get_depth() / (self.world_unit_size * FIELD_RESOLUTION as f32)) as i32 - 1;
-		match ordinal {
-			Ordinal::North => {
+		match compass_dir {
+			CompassDir::North => {
 				if sector_id.get_row() > 0 {
 					Some(SectorID::new(
 						sector_id.get_column(),
@@ -353,7 +353,7 @@ impl Dimensions {
 					None
 				}
 			}
-			Ordinal::East => {
+			CompassDir::East => {
 				if sector_id.get_column() < sector_column_limit {
 					Some(SectorID::new(
 						sector_id.get_column() + 1,
@@ -363,7 +363,7 @@ impl Dimensions {
 					None
 				}
 			}
-			Ordinal::South => {
+			CompassDir::South => {
 				if sector_id.get_row() < sector_row_limit {
 					Some(SectorID::new(
 						sector_id.get_column(),
@@ -373,7 +373,7 @@ impl Dimensions {
 					None
 				}
 			}
-			Ordinal::West => {
+			CompassDir::West => {
 				if sector_id.get_column() > 0 {
 					Some(SectorID::new(
 						sector_id.get_column() - 1,
@@ -383,7 +383,7 @@ impl Dimensions {
 					None
 				}
 			}
-			Ordinal::NorthEast => {
+			CompassDir::NorthEast => {
 				if sector_id.get_row() > 0 {
 					if sector_id.get_column() < sector_column_limit {
 						Some(SectorID::new(
@@ -397,7 +397,7 @@ impl Dimensions {
 					None
 				}
 			}
-			Ordinal::SouthEast => {
+			CompassDir::SouthEast => {
 				if sector_id.get_row() < sector_row_limit {
 					if sector_id.get_column() < sector_column_limit {
 						Some(SectorID::new(
@@ -411,7 +411,7 @@ impl Dimensions {
 					None
 				}
 			}
-			Ordinal::SouthWest => {
+			CompassDir::SouthWest => {
 				if sector_id.get_row() < sector_row_limit {
 					if sector_id.get_column() > 0 {
 						Some(SectorID::new(
@@ -425,7 +425,7 @@ impl Dimensions {
 					None
 				}
 			}
-			Ordinal::NorthWest => {
+			CompassDir::NorthWest => {
 				if sector_id.get_row() > 0 {
 					if sector_id.get_column() > 0 {
 						Some(SectorID::new(
@@ -439,8 +439,10 @@ impl Dimensions {
 					None
 				}
 			}
-			Ordinal::Zero => {
-				error!("`get_sector_id_from_ordinal` should never be called with `Ordinal::Zero`");
+			CompassDir::Zero => {
+				error!(
+					"`get_sector_id_from_compass_dir` should never be called with `CompassDir::Zero`"
+				);
 				None
 			}
 		}
@@ -732,11 +734,11 @@ mod tests {
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(4, 0);
-		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let result = dimensions.get_compass_dir_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
-			(Ordinal::East, SectorID::new(5, 0)),
-			(Ordinal::South, SectorID::new(4, 1)),
-			(Ordinal::West, SectorID::new(3, 0)),
+			(CompassDir::East, SectorID::new(5, 0)),
+			(CompassDir::South, SectorID::new(4, 1)),
+			(CompassDir::West, SectorID::new(3, 0)),
 		];
 		assert_eq!(actual, result);
 	}
@@ -748,11 +750,11 @@ mod tests {
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(19, 3);
-		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let result = dimensions.get_compass_dir_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
-			(Ordinal::North, SectorID::new(19, 2)),
-			(Ordinal::South, SectorID::new(19, 4)),
-			(Ordinal::West, SectorID::new(18, 3)),
+			(CompassDir::North, SectorID::new(19, 2)),
+			(CompassDir::South, SectorID::new(19, 4)),
+			(CompassDir::West, SectorID::new(18, 3)),
 		];
 		assert_eq!(actual, result);
 	}
@@ -764,11 +766,11 @@ mod tests {
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(5, 19);
-		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let result = dimensions.get_compass_dir_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
-			(Ordinal::North, SectorID::new(5, 18)),
-			(Ordinal::East, SectorID::new(6, 19)),
-			(Ordinal::West, SectorID::new(4, 19)),
+			(CompassDir::North, SectorID::new(5, 18)),
+			(CompassDir::East, SectorID::new(6, 19)),
+			(CompassDir::West, SectorID::new(4, 19)),
 		];
 		assert_eq!(actual, result);
 	}
@@ -780,11 +782,11 @@ mod tests {
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(0, 5);
-		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let result = dimensions.get_compass_dir_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
-			(Ordinal::North, SectorID::new(0, 4)),
-			(Ordinal::East, SectorID::new(1, 5)),
-			(Ordinal::South, SectorID::new(0, 6)),
+			(CompassDir::North, SectorID::new(0, 4)),
+			(CompassDir::East, SectorID::new(1, 5)),
+			(CompassDir::South, SectorID::new(0, 6)),
 		];
 		assert_eq!(actual, result);
 	}
@@ -796,120 +798,120 @@ mod tests {
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(5, 7);
-		let result = dimensions.get_ordinal_and_ids_of_neighbouring_sectors(&sector_id);
+		let result = dimensions.get_compass_dir_and_ids_of_neighbouring_sectors(&sector_id);
 		let actual = vec![
-			(Ordinal::North, SectorID::new(5, 6)),
-			(Ordinal::East, SectorID::new(6, 7)),
-			(Ordinal::South, SectorID::new(5, 8)),
-			(Ordinal::West, SectorID::new(4, 7)),
+			(CompassDir::North, SectorID::new(5, 6)),
+			(CompassDir::East, SectorID::new(6, 7)),
+			(CompassDir::South, SectorID::new(5, 8)),
+			(CompassDir::West, SectorID::new(4, 7)),
 		];
 		assert_eq!(actual, result);
 	}
 	#[test]
-	fn sector_id_ordinal_north() {
+	fn sector_id_compass_dir_north() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::North, &sector_id);
 		let actual = SectorID::new(1, 0);
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
-	fn sector_id_ordinal_east() {
+	fn sector_id_compass_dir_east() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::East, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::East, &sector_id);
 		let actual = SectorID::new(2, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
-	fn sector_id_ordinal_south() {
+	fn sector_id_compass_dir_south() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::South, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::South, &sector_id);
 		let actual = SectorID::new(1, 2);
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
-	fn sector_id_ordinal_west() {
+	fn sector_id_compass_dir_west() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::West, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::West, &sector_id);
 		let actual = SectorID::new(0, 1);
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
-	fn sector_id_ordinal_northeast() {
+	fn sector_id_compass_dir_northeast() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::NorthEast, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::NorthEast, &sector_id);
 		let actual = SectorID::new(2, 0);
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
-	fn sector_id_ordinal_southeast() {
+	fn sector_id_compass_dir_southeast() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::SouthEast, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::SouthEast, &sector_id);
 		let actual = SectorID::new(2, 2);
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
-	fn sector_id_ordinal_southwest() {
+	fn sector_id_compass_dir_southwest() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::SouthWest, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::SouthWest, &sector_id);
 		let actual = SectorID::new(0, 2);
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
-	fn sector_id_ordinal_northwest() {
+	fn sector_id_compass_dir_northwest() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::NorthWest, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::NorthWest, &sector_id);
 		let actual = SectorID::new(0, 0);
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
-	fn sector_id_ordinal_oob() {
+	fn sector_id_compass_dir_oob() {
 		let origin = (0.0, 0.0);
 		let size = (300.0, 300.0);
 		let world_unit_size = 1.0;
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 0);
-		let result = dimensions.get_sector_id_from_ordinal(Ordinal::North, &sector_id);
+		let result = dimensions.get_sector_id_from_compass_dir(CompassDir::North, &sector_id);
 		assert!(result.is_none())
 	}
 	#[test]
