@@ -2,7 +2,8 @@
 //!
 
 use bevy_flowfield_tiles_plugin::prelude::*;
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
+use std::hint::black_box;
 
 /// Create FlowFieldTiles
 fn init_bundle(origin: (f32, f32), size: (f32, f32), world_unit_size: f32, actor_radius: f32) {

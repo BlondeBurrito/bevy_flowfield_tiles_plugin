@@ -9,7 +9,8 @@ use crate::flowfields::{fields::flow_field::FlowField, route::RouteStep, sectors
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Default)]
 pub struct FlowFieldCache {
-	/// Cache of [FlowFields] keyed based on goal/exit portal [RouteStep]
+	/// Cache of [crate::flowfields::fields::flow_field::FlowField]s keyed based
+	/// on goal/exit portal [RouteStep]
 	cache: BTreeMap<RouteStep, FlowField>,
 }
 

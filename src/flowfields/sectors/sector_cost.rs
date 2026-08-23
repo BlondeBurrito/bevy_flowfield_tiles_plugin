@@ -30,7 +30,7 @@ pub struct SectorCostFields {
 	baseline: BTreeMap<SectorID, CostField>,
 	/// Each [FieldCell] containing an impassable `255` value is scaled based on actor size to close off gaps which the actor could not path through
 	scaled: BTreeMap<SectorID, CostField>,
-	/// Each scaled [CostField] requires a graph of local traversal. This is used to determine is a [FieldCell] is able to traverse to a [Portal]
+	/// Each scaled [CostField] requires a graph of local traversal. This is used to determine is a [FieldCell] is able to traverse to a [crate::flowfields::portal::Portals]
 	#[reflect(ignore)] //TODO
 	graphs: BTreeMap<SectorID, StableGraph<u8, u8, Directed, u16>>,
 }

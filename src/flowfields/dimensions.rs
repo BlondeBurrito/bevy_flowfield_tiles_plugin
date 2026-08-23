@@ -34,7 +34,8 @@ pub struct Dimensions {
 	/// A unit of space, this forms the basis of the dimensions of a [FieldCell]
 	/// and influences the number of sectors computed
 	world_unit_size: f32,
-	/// Actor size influences the expansion of [CostField] impassable cells to
+	/// Actor size influences the expansion of
+	/// [crate::flowfields::fields::cost_field::CostField] impassable cells to
 	/// ensure that Actors avoid trying to path through small gaps which they
 	/// can't fit through - hence an alternative route will be explored to go
 	/// around small gaps

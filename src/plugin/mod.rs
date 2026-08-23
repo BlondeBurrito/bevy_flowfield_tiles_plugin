@@ -29,7 +29,8 @@ impl Plugin for FlowFieldTilesPlugin {
 	}
 }
 
-/// Process the queue of [CostField] updates and schedule portal recalculation
+/// Process the queue of [crate::flowfields::fields::cost_field::CostField]
+/// updates and schedule portal recalculation
 #[cfg(not(tarpaulin_include))]
 fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 	for mut flowfield_tiles in &mut query {

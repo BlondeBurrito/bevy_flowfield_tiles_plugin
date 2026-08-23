@@ -470,7 +470,7 @@ impl Portals {
 	}
 }
 
-/// Walk through each boundary of sector and compute the [`PortalWindow`s]
+/// Walk through each boundary of sector and compute the [PortalWindow]s
 fn generate_sector_portals(
 	portals: &mut BTreeMap<SectorID, Windows>,
 	scaled_costs: &BTreeMap<SectorID, CostField>,

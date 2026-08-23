@@ -21,4 +21,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - run: |
           export RUSTDOCFLAGS="-Z unstable-options --show-coverage"
-          cargo +nightly doc --workspace --all-features --no-deps --release
+          cargo +nightly doc --workspace --all-features --no-deps --release --document-private-items

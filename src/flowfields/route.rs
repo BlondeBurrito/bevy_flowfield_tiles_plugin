@@ -12,7 +12,7 @@ use crate::flowfields::{portal::PortalWindow, sectors::SectorID};
 pub struct RouteStep {
 	/// The sector the step refers to
 	sector: SectorID,
-	/// Goal [FieldCell] as an index
+	/// Goal [crate::flowfields::fields::FieldCell] as an index
 	goal: usize,
 	/// If Some then the actual goal is a [PortalWindow]. If None then the sector is the end goal sector
 	portal: Option<PortalWindow>,

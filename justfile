@@ -79,7 +79,7 @@ changelog TAG:
 # evaluate documentation coverage
 doc-coverage:
   $env:RUSTDOCFLAGS="-Z unstable-options --show-coverage"
-  cargo +nightly doc --workspace --all-features --no-deps --release
+  cargo +nightly doc --workspace --all-features --no-deps --release --document-private-items
   # https://github.com/rust-lang/rust/issues/58154
 # evaluate test coverage
 code-coverage:

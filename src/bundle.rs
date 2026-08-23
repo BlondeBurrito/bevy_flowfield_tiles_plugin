@@ -37,7 +37,7 @@ pub struct FlowFieldTiles {
 	/// A list of updates to be applied to [SectorCostFields]
 	pub costfield_update_queue: VecDeque<CostFieldUpdateItem>,
 	/// Stores [bevy::tasks::AsyncComputeTaskPool] [Task] when a
-	///  [crate::flowfields::fields::cost_field::CostFieldCostField] is
+	///  [crate::flowfields::fields::cost_field::CostField] is
 	/// being updated
 	#[cfg_attr(feature = "serde", serde(skip))]
 	pub costfield_update_task: Option<Task<SectorID>>,

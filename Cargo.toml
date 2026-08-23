@@ -20,7 +20,6 @@ bevy = { version = "0.19", default-features = false, features = ["bevy_render", 
 serde = { version = "1", features = ["derive", "rc"] }
 serde-big-array = { version = "0.5" }
 ron = { version = "0.12" }
-csv = { version = "1" }
 photon-rs = { version = "0.3"}
 petgraph = { version = "0.8", default-features = false, features = ["std", "stable_graph", "serde-1"] }
 
@@ -49,9 +48,9 @@ exclude.workspace = true
 publish = true
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["async_futures"] }
+criterion = { version = "0.8", features = ["async_futures"] }
 bevy = { workspace = true, default-features = true, features=["wayland", "system_font_discovery"]}
-rand = "0.9"
+rand = "0.10"
 avian2d = { version = "0.7", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d examples for collision detection
 # avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
 
@@ -61,7 +60,6 @@ petgraph = { workspace = true }
 serde = { workspace = true, optional = true }
 serde-big-array = { workspace = true, optional = true }
 ron = { workspace = true, optional = true }
-csv = { workspace = true, optional = true }
 photon-rs = {workspace = true, optional = true }
 
 [lints]

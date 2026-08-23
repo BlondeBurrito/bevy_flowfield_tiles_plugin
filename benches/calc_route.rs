@@ -5,7 +5,8 @@
 
 use bevy::prelude::*;
 use bevy_flowfield_tiles_plugin::prelude::*;
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
+use std::hint::black_box;
 
 /// Create FlowFieldTiles
 fn prepare(
