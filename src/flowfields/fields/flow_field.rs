@@ -101,16 +101,23 @@ impl Field<u8> for FlowField {
 
 impl FlowField {
 	/// Init [FlowField] with default values and flags set for goal(s), walls and LOS
-	pub fn new(route_step: &RouteStep, int_field: &IntegrationField) -> FlowField {
+	pub fn new(
+		route_step: &RouteStep,
+		int_field: &IntegrationField,
+		prev_int_field: Option<&IntegrationField>,
+	) -> FlowField {
 		let mut flowfield = FlowField::default();
 		set_starting_flags(&mut flowfield, int_field);
 		if let Some(window) = route_step.portal() {
-			set_portal_direction(&mut flowfield, window);
-			//TODO use RouteStep so that portals can be aligned to point to cheapest
-			//TODO: value in neighbour sector? Requires knowing previous int field
-			//TODO: this would create a hard dependency in flow generation, int
-			//TODO: fields must be available in order before flow can be found
-			//TODO: optimise_portal_direction(&mut flowfield, int_field, prev_int_field, window);
+			if let Some(neighbour_int) = prev_int_field {
+				// read the previous int field leading to this flowfield,
+				// align the portal cells of this to point at the best (cheapest)
+				// cost in the neighbour
+				optimise_portal_direction(&mut flowfield, neighbour_int, window);
+			} else {
+				// fallback//TODO remove this in a future release as it should never be called now
+				set_portal_direction(&mut flowfield, window);
+			}
 		}
 
 		flowfield
@@ -233,13 +240,284 @@ fn set_portal_direction(flowfield: &mut FlowField, window: &PortalWindow) {
 	}
 }
 
-// fn optimise_portal_direction(
-// 	flowfield: &mut FlowField,
-// 	int_field: &IntegrationField,
-// 	prev_int_field: &IntegrationField,
-//  route_step: &RouteStep,
-// ) {
-// }
+/// When building the [FlowField] that has portal based goals, identify what
+/// sector boundary they lie upon and set their directional bits to point into
+/// the neighbouring sector. Use the previous [IntegrationField] to find the
+/// cheapest neighbour to point towards
+fn optimise_portal_direction(
+	flowfield: &mut FlowField,
+	prev_int_field: &IntegrationField,
+	this_window: &PortalWindow,
+) {
+	// based on window boundary find bit dir
+	let this_boundary = this_window.get_boundary();
+
+	// note these cells run left-right for north and south boundaries, and
+	// top-bottom for east-west
+	let this_cells = this_window.get_all_window_cells();
+	// unit length window so set dir into next sector as normal
+	if this_cells.len() == 1 {
+		let dir_bits = convert_compass_dir_to_bits_dir(this_boundary);
+		flowfield.field[this_cells[0]] |= dir_bits;
+		return;
+	}
+	// get integration cost in the neighbour along the window
+	let adjacent_values = match this_boundary {
+		CompassDir::North => {
+			let mut values = vec![];
+			for this_cell in this_cells.iter() {
+				let fc = FieldCell::from_index(*this_cell);
+				// adj is on south boundary so const row 9
+				let adj_cell = FieldCell::new(fc.column, 9);
+				values.push(prev_int_field.get_field_cell_value(adj_cell) & INT_FILTER_BITS_COST);
+			}
+			values
+		}
+		CompassDir::East => {
+			let mut values = vec![];
+			for this_cell in this_cells.iter() {
+				let fc = FieldCell::from_index(*this_cell);
+				// adj is on west boundary so const col 0
+				let adj_cell = FieldCell::new(0, fc.row);
+				values.push(prev_int_field.get_field_cell_value(adj_cell) & INT_FILTER_BITS_COST);
+			}
+			values
+		}
+		CompassDir::South => {
+			let mut values = vec![];
+			for this_cell in this_cells.iter() {
+				let fc = FieldCell::from_index(*this_cell);
+				// adj is on north boundary so const row 0
+				let adj_cell = FieldCell::new(fc.column, 0);
+				values.push(prev_int_field.get_field_cell_value(adj_cell) & INT_FILTER_BITS_COST);
+			}
+			values
+		}
+		CompassDir::West => {
+			let mut values = vec![];
+			for this_cell in this_cells.iter() {
+				let fc = FieldCell::from_index(*this_cell);
+				// adj is on east boundary so const column 9
+				let adj_cell = FieldCell::new(9, fc.row);
+				values.push(prev_int_field.get_field_cell_value(adj_cell) & INT_FILTER_BITS_COST);
+			}
+			values
+		}
+		_ => panic!(
+			"Invalid compass dir {} used for optimising flow portal direction",
+			this_boundary
+		),
+	};
+
+	// work through the cells of the window and set the flow direction
+	// towards the cheapest int cost
+	match this_boundary {
+		CompassDir::North => {
+			for (i, this_cell) in this_cells.iter().enumerate() {
+				// first one can only look at 2
+				if i == 0 {
+					// points north
+					let n_value = adjacent_values[i];
+					// points northeast
+					let ne_value = adjacent_values[i + 1];
+
+					if n_value <= ne_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::North);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::NorthEast);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				} else if i == this_cells.len() - 1 {
+					// last one can only look at 2
+					//
+					// points north
+					let n_value = adjacent_values[i];
+					// points northwest
+					let nw_value = adjacent_values[i - 1];
+
+					if n_value <= nw_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::North);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::NorthWest);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				} else {
+					// others can compare 3
+					let nw_value = adjacent_values[i - 1];
+					let n_value = adjacent_values[i];
+					let ne_value = adjacent_values[i + 1];
+
+					if n_value <= nw_value && n_value <= ne_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::North);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else if nw_value <= n_value && nw_value <= ne_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::NorthWest);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::NorthEast);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				}
+			}
+		}
+		CompassDir::East => {
+			for (i, this_cell) in this_cells.iter().enumerate() {
+				// first one can only look at 2
+				if i == 0 {
+					// points east
+					let e_value = adjacent_values[i];
+					// points southeast
+					let se_value = adjacent_values[i + 1];
+
+					if e_value <= se_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::East);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::SouthEast);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				} else if i == this_cells.len() - 1 {
+					// last one can only look at 2
+					//
+					// points east
+					let e_value = adjacent_values[i];
+					// points northeast
+					let ne_value = adjacent_values[i - 1];
+
+					if e_value <= ne_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::East);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::NorthEast);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				} else {
+					// others can compare 3
+					let ne_value = adjacent_values[i - 1];
+					let e_value = adjacent_values[i];
+					let se_value = adjacent_values[i + 1];
+
+					if e_value <= ne_value && e_value <= se_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::East);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else if ne_value <= e_value && ne_value <= se_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::NorthEast);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::SouthEast);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				}
+			}
+		}
+		CompassDir::South => {
+			for (i, this_cell) in this_cells.iter().enumerate() {
+				// first one can only look at 2
+				if i == 0 {
+					// points south
+					let s_value = adjacent_values[i];
+					// points southeast
+					let se_value = adjacent_values[i + 1];
+
+					if s_value <= se_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::South);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::SouthEast);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				} else if i == this_cells.len() - 1 {
+					// last one can only look at 2
+					//
+					// points south
+					let s_value = adjacent_values[i];
+					// points southwest
+					let sw_value = adjacent_values[i - 1];
+
+					if s_value <= sw_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::South);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::SouthWest);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				} else {
+					// others can compare 3
+					let sw_value = adjacent_values[i - 1];
+					let s_value = adjacent_values[i];
+					let se_value = adjacent_values[i + 1];
+
+					if s_value <= sw_value && s_value <= se_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::South);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else if sw_value <= s_value && sw_value <= se_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::SouthWest);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::SouthEast);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				}
+			}
+		}
+		CompassDir::West => {
+			for (i, this_cell) in this_cells.iter().enumerate() {
+				// first one can only look at 2
+				if i == 0 {
+					// points west
+					let w_value = adjacent_values[i];
+					// points southwest
+					let sw_value = adjacent_values[i + 1];
+
+					if w_value <= sw_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::West);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::SouthWest);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				} else if i == this_cells.len() - 1 {
+					// last one can only look at 2
+					//
+					// points west
+					let w_value = adjacent_values[i];
+					// points northwest
+					let nw_value = adjacent_values[i - 1];
+
+					if w_value <= nw_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::West);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::NorthWest);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				} else {
+					// others can compare 3
+					let nw_value = adjacent_values[i - 1];
+					let w_value = adjacent_values[i];
+					let sw_value = adjacent_values[i + 1];
+
+					if w_value <= nw_value && w_value <= sw_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::West);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else if nw_value <= w_value && nw_value <= sw_value {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::NorthWest);
+						flowfield.field[*this_cell] |= dir_bits;
+					} else {
+						let dir_bits = convert_compass_dir_to_bits_dir(&CompassDir::SouthWest);
+						flowfield.field[*this_cell] |= dir_bits;
+					}
+				}
+			}
+		}
+		_ => panic!(
+			"Invalid compass dir {} used for optimising flow portal direction",
+			this_boundary
+		),
+	}
+}
 
 /// Compare the neighbours of a cell in the [FlowField] and determine their bits
 fn calculate_flow_cell(cell_index: usize, flow_value: &mut u8, int_field: &IntegrationField) {
@@ -521,6 +799,14 @@ mod tests {
 
 	#[test]
 	fn portal_dir_north() {
+		let prev_costfield = CostField::default();
+		let prev_sector = SectorID::new(1, 0);
+		let prev_goal = 25;
+		let prev_portal = None;
+		let prev_route_step = RouteStep::new(&prev_sector, prev_goal, prev_portal);
+		let mut prev_int_field = IntegrationField::init(&prev_costfield, &prev_route_step);
+		prev_int_field.build(&prev_costfield);
+
 		let costfield = CostField::default();
 		let sector = SectorID::new(1, 1);
 		let goal = 0;
@@ -532,7 +818,7 @@ mod tests {
 		let route_step = RouteStep::new(&sector, goal, portal);
 		let int_field = IntegrationField::init(&costfield, &route_step);
 
-		let flowfield = FlowField::new(&route_step, &int_field);
+		let flowfield = FlowField::new(&route_step, &int_field, Some(&prev_int_field));
 
 		let r_c = flowfield.field[0];
 		assert!(r_c & BITS_NORTH == BITS_NORTH)
@@ -579,7 +865,7 @@ mod tests {
 		let route_step = RouteStep::new(&sector, goal, portal);
 		let int_field = IntegrationField::init(&costfield, &route_step);
 
-		let mut flowfield = FlowField::new(&route_step, &int_field);
+		let mut flowfield = FlowField::new(&route_step, &int_field, None);
 		flowfield.build(&int_field);
 
 		let r_c = FieldCell::new(2, 9);

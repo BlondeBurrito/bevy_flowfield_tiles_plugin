@@ -150,7 +150,10 @@ fn process_flow_queue(mut query: Query<&mut FlowFieldTiles>) {
 			// if a route is waiting process it
 			let mut generated = vec![];
 			if let Some(route) = write_queue.pop_front() {
+				// create each integration field
 				// reverse iter so starting at goal and calculate fields towards source
+				// NB: this means `ints` is in order of goal to source
+				let mut ints = vec![];
 				for step in route.iter().rev() {
 					let sector = step.get_sector();
 					let scaled_costfields = read_costfields.get_scaled_costs();
@@ -158,11 +161,22 @@ fn process_flow_queue(mut query: Query<&mut FlowFieldTiles>) {
 
 					let mut integrationfield = IntegrationField::init(scaled_costfield, step);
 					integrationfield.build(scaled_costfield);
-
-					let mut flowfield = FlowField::new(step, &integrationfield);
-					flowfield.build(&integrationfield);
-
-					generated.push((*step, flowfield));
+					ints.push(integrationfield);
+				}
+				// build each flowfield
+				// reverse iter so starting at goal and calculate fields towards source
+				// we don't need to flip the index (calling enumerate before rev)
+				// because ints is in order of goal to source
+				for (i, step) in route.iter().rev().enumerate() {
+					if i == 0 {
+						let mut flowfield = FlowField::new(step, &ints[i], None);
+						flowfield.build(&ints[i]);
+						generated.push((*step, flowfield));
+					} else {
+						let mut flowfield = FlowField::new(step, &ints[i], Some(&ints[i - 1]));
+						flowfield.build(&ints[i]);
+						generated.push((*step, flowfield));
+					}
 				}
 			}
 			generated

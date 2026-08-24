@@ -32,7 +32,7 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	let goal_sector = SectorID::new(0, 2);
 	let goal_cell = FieldCell::new(0, 7);
 
-	let mut intfields: BTreeMap<RouteStep, IntegrationField> = BTreeMap::new();
+	let mut flowfields: BTreeMap<SectorID, FlowField> = BTreeMap::new();
 	if let Some(route) = read_portals.find_path(
 		&source_sector,
 		&source_cell,
@@ -40,25 +40,38 @@ fn setup(mut cmds: Commands, asset_server: Res<AssetServer>) {
 		&goal_cell,
 		&read_costfields,
 	) {
-		for step in route.iter() {
-			// create integrationfields for each step
+		// create each integration field
+		// reverse iter so starting at goal and calculate fields towards source
+		// NB: this means `ints` is in order of goal to source
+		let mut ints = vec![];
+		for step in route.iter().rev() {
 			let sector = step.get_sector();
-			let costfield = &read_costfields.get_scaled_costs().get(sector).unwrap();
-			let mut intfield = IntegrationField::init(costfield, step);
-			intfield.build(costfield);
-			intfields.insert(*step, intfield);
+			let scaled_costfields = read_costfields.get_scaled_costs();
+			let scaled_costfield = scaled_costfields.get(sector).unwrap();
+
+			let mut integrationfield = IntegrationField::init(scaled_costfield, step);
+			integrationfield.build(scaled_costfield);
+			ints.push(integrationfield);
+		}
+		// build each flowfield
+		// reverse iter so starting at goal and calculate fields towards source
+		// we don't need to flip the index (calling enumerate before rev)
+		// because ints is in order of goal to source
+		for (i, step) in route.iter().rev().enumerate() {
+			if i == 0 {
+				let mut flowfield = FlowField::new(step, &ints[i], None);
+				flowfield.build(&ints[i]);
+				flowfields.insert(*step.get_sector(), flowfield);
+			} else {
+				let mut flowfield = FlowField::new(step, &ints[i], Some(&ints[i - 1]));
+				flowfield.build(&ints[i]);
+				flowfields.insert(*step.get_sector(), flowfield);
+			}
 		}
 	} else {
 		panic!("Failed to find route");
 	}
 	drop(read_portals);
-
-	let mut flowfields: BTreeMap<SectorID, FlowField> = BTreeMap::new();
-	for (step, intfield) in intfields.iter() {
-		let mut flowfield = FlowField::new(step, intfield);
-		flowfield.build(intfield);
-		flowfields.insert(*step.get_sector(), flowfield);
-	}
 
 	// create a UI grid
 	cmds.spawn(Camera2d);

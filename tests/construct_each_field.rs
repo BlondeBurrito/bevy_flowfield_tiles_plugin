@@ -26,17 +26,32 @@ fn field_on_field() {
 		.unwrap();
 
 	let mut generated = vec![];
-	for step in path.iter() {
+	// create each integration field
+	// reverse iter so starting at goal and calculate fields towards source
+	// NB: this means `ints` is in order of goal to source
+	let mut ints = vec![];
+	for step in path.iter().rev() {
 		let sector = step.get_sector();
 		let scaled_costfields = sector_cost_fields.get_scaled_costs();
 		let scaled_costfield = scaled_costfields.get(sector).unwrap();
 
 		let mut integrationfield = IntegrationField::init(scaled_costfield, step);
 		integrationfield.build(scaled_costfield);
-
-		let mut flowfield = FlowField::new(step, &integrationfield);
-		flowfield.build(&integrationfield);
-
-		generated.push((*step, flowfield));
+		ints.push(integrationfield);
+	}
+	// build each flowfield
+	// reverse iter so starting at goal and calculate fields towards source
+	// we don't need to flip the index (calling enumerate before rev)
+	// because ints is in order of goal to source
+	for (i, step) in path.iter().rev().enumerate() {
+		if i == 0 {
+			let mut flowfield = FlowField::new(step, &ints[i], None);
+			flowfield.build(&ints[i]);
+			generated.push((*step, flowfield));
+		} else {
+			let mut flowfield = FlowField::new(step, &ints[i], Some(&ints[i - 1]));
+			flowfield.build(&ints[i]);
+			generated.push((*step, flowfield));
+		}
 	}
 }

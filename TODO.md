@@ -6,3 +6,4 @@
 - 3d model doesnt match ron costfield layout!
 - internal docs
 - add tests for xy/xyz when origin is none zero
+- carry LOS into neighbouring sectors if it hits a portal. Carry Waveblocked through portals
