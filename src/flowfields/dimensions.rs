@@ -173,7 +173,6 @@ impl Dimensions {
 
 		top_left + relative_offset
 	}
-	//TODO return Result
 	/// From a 2d position get the sector and field cell it resides in
 	#[cfg(feature = "2d")]
 	pub fn get_sector_and_field_cell_from_xy(
@@ -189,6 +188,7 @@ impl Dimensions {
 			let field_id = FieldCell::new(field_id_0, field_id_1);
 			return Some((sector_id, field_id));
 		}
+		//TODO return Result
 		None
 	}
 	/// From a field cell within a Sector retrieve the 2d Vec2 of its
@@ -203,8 +203,8 @@ impl Dimensions {
 		let f_offset = Vec2::new(f_col * self.world_unit_size, -f_row * self.world_unit_size);
 		// point in space for top-left corner of the field cell
 		let point = sector_xy + f_offset;
-		if point.x.abs() > self.origin.0 + self.get_length() / 2.0
-			|| point.y.abs() > self.origin.1 + self.get_depth() / 2.0
+		if point.x.abs() > self.origin.0.abs() + self.get_length() / 2.0
+			|| point.y.abs() > self.origin.1.abs() + self.get_depth() / 2.0
 		{
 			None
 		} else {
@@ -230,8 +230,8 @@ impl Dimensions {
 		);
 		// point in space for top-left corner of the field cell
 		let point = sector_xyz + f_offset;
-		if point.x.abs() > self.origin.0 + self.get_length() / 2.0
-			|| point.z.abs() > self.origin.1 + self.get_depth() / 2.0
+		if point.x.abs() > self.origin.0.abs() + self.get_length() / 2.0
+			|| point.z.abs() > self.origin.1.abs() + self.get_depth() / 2.0
 		{
 			None
 		} else {
@@ -256,10 +256,6 @@ impl Dimensions {
 			|| position.z < top_left.y
 			|| position.z > bottom_right.y
 		{
-			error!(
-				"Position is out of bounds of Dimensions, x {}, z {}, cannot calculate SectorID. Is the actor outside of the map or trying to request route outside of it?",
-				position.x, position.z
-			);
 			//TODO use Result instead
 			return None;
 		}
@@ -288,7 +284,6 @@ impl Dimensions {
 
 		top_left + relative_offset
 	}
-	//TODO return Result
 	/// From a point in 3D space calculate what Sector and field cell it resides in
 	#[cfg(feature = "3d")]
 	pub fn get_sector_and_field_cell_from_xyz(
@@ -304,6 +299,7 @@ impl Dimensions {
 			let field_id = FieldCell::new(field_id_0, field_id_1);
 			return Some((sector_id, field_id));
 		}
+		//TODO return Result
 		None
 	}
 
@@ -505,6 +501,7 @@ mod tests {
 	}
 
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_costfields_top_left_sector_id_from_xyz() {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
@@ -517,6 +514,7 @@ mod tests {
 		assert_eq!(actual, result);
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_costfields_top_right_sector_id_from_xyz() {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
@@ -529,6 +527,7 @@ mod tests {
 		assert_eq!(actual, result);
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_costfields_bottom_right_sector_id_from_xyz() {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
@@ -541,6 +540,7 @@ mod tests {
 		assert_eq!(actual, result);
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_costfields_bottom_left_sector_id_from_xyz() {
 		let origin = (0.0, 0.0);
 		let size = (20.0, 20.0);
@@ -553,6 +553,7 @@ mod tests {
 		assert_eq!(actual, result);
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_fieldcell_id_from_xyz() {
 		let origin = (0.0, 0.0);
 		let size = (30.0, 30.0);
@@ -567,6 +568,7 @@ mod tests {
 		assert_eq!(actual, result.1);
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_fieldcell_id_from_xyz_small() {
 		let origin = (0.0, 0.0);
 		let size = (50.0, 100.0);
@@ -583,6 +585,7 @@ mod tests {
 		assert_eq!(actual_field, result.1);
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_fieldcell_id_from_xyz_single() {
 		let origin = (0.0, 0.0);
 		let size = (10.0, 10.0);
@@ -599,6 +602,7 @@ mod tests {
 		assert_eq!(actual_field, result.1);
 	}
 	#[test]
+	#[cfg(feature = "2d")]
 	fn sector_from_xy_none() {
 		let origin = (0.0, 0.0);
 		let size = (30.0, 30.0);
@@ -611,6 +615,7 @@ mod tests {
 		assert!(result.is_none());
 	}
 	#[test]
+	#[cfg(feature = "2d")]
 	fn sector_from_xy() {
 		let origin = (0.0, 0.0);
 		let size = (1280.0, 1280.0);
@@ -623,6 +628,7 @@ mod tests {
 		assert_eq!(actual, result.unwrap());
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_xyz_corner_zero() {
 		let origin = (0.0, 0.0);
 		let size = (30.0, 30.0);
@@ -635,6 +641,7 @@ mod tests {
 		assert_eq!(actual, result)
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn sector_xyz_corner_centre() {
 		let origin = (0.0, 0.0);
 		let size = (30.0, 30.0);
@@ -916,6 +923,7 @@ mod tests {
 		assert!(result.is_none())
 	}
 	#[test]
+	#[cfg(feature = "2d")]
 	fn get_xy() {
 		let origin = (0.0, 0.0);
 		let size = (1920.0, 1920.0);
@@ -931,6 +939,7 @@ mod tests {
 		assert_eq!(actual, result);
 	}
 	#[test]
+	#[cfg(feature = "3d")]
 	fn get_xyz() {
 		let origin = (0.0, 0.0);
 		let size = (30.0, 30.0);
@@ -944,5 +953,77 @@ mod tests {
 			.get_xyz_from_field_sector(sector_id, field_id)
 			.unwrap();
 		assert_eq!(actual, result);
+	}
+
+	#[test]
+	#[cfg(feature = "2d")]
+	fn get_xy_origin_offset() {
+		let origin = (224.0, -84.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(2, 1);
+		let field_id = FieldCell::new(6, 2);
+		let actual = Vec2::new(928.0, 108.0);
+		let result = dimensions
+			.get_xy_from_field_sector(sector_id, field_id)
+			.unwrap();
+		assert_eq!(actual, result);
+	}
+
+	#[test]
+	#[cfg(feature = "3d")]
+	fn get_xyz_origin_offset() {
+		let origin = (-53.0, -162.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let sector_id = SectorID::new(2, 1);
+		let field_id = FieldCell::new(6, 2);
+		let actual = Vec3::new(-42.0, 0.0, -165.0);
+		let result = dimensions
+			.get_xyz_from_field_sector(sector_id, field_id)
+			.unwrap();
+		assert_eq!(actual, result);
+	}
+
+	#[test]
+	#[cfg(feature = "2d")]
+	fn get_sid_fc_from_xy_origin_offset() {
+		let origin = (224.0, -84.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec2::new(928.0, 108.0);
+		let (sector, cell) = dimensions
+			.get_sector_and_field_cell_from_xy(position)
+			.unwrap();
+
+		let actual_sector = SectorID::new(2, 1);
+		assert_eq!(actual_sector, sector);
+		let actual_cell = FieldCell::new(6, 2);
+		assert_eq!(actual_cell, cell);
+	}
+
+	#[test]
+	#[cfg(feature = "3d")]
+	fn get_sid_fc_from_xyz_origin_offset() {
+		let origin = (-53.0, -162.0);
+		let size = (30.0, 30.0);
+		let world_unit_size = 1.0;
+		let actor_radius = 0.5;
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let position = Vec3::new(-42.0, 0.0, -165.0);
+		let (sector, cell) = dimensions
+			.get_sector_and_field_cell_from_xyz(position)
+			.unwrap();
+
+		let actual_sector = SectorID::new(2, 1);
+		assert_eq!(actual_sector, sector);
+		let actual_cell = FieldCell::new(6, 2);
+		assert_eq!(actual_cell, cell);
 	}
 }

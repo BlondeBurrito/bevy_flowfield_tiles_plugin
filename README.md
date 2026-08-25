@@ -59,7 +59,9 @@ For larger and larger environments with an increasing number of pathing actors i
 
 # Design/Process
 
-To generate a set of navigation `FlowFields` the game world is divided into Sectors indexed by `(column, row)` and each Sector has 3 layers of data: `[CostField, IntegrationField, Flowfield]`. Each layer aids the next in building out a path. A concept of `Portals` is used to connect Sectors together.
+To generate a set of navigation `FlowFields` the game world is divided into a grid of Sectors indexed by `(column, row)` and each Sector has 3 layers of data: `[CostField, IntegrationField, Flowfield]`. Each layer aids the next in building out a path. A concept of `Portals` is used to connect Sectors together.
+
+Topologically Sectors are arranged with a top-left convention, with 0..n columns reading left to right and 0..n rows reading top to bottom. This means that Sector (0, 0) lies in negative-x positive-y space for 2d usage, with increasing Sector columns being found along the x-axis in a positive direction and increasing Sector rows being found along the y-axis heading in a negative direction; for 3d Sector (0, 0) lies in negative-x and negative-z space, with increasing columns heading in a positive-x direction and increasing rows heading in a positive-z direction.
 
 ## Sector
 
