@@ -219,7 +219,7 @@ impl Dimensions {
 	/// The `y` coordinate is defaulted to `0.0`.
 	#[cfg(feature = "3d")]
 	pub fn get_xyz_from_field_sector(&self, sector: SectorID, field: FieldCell) -> Option<Vec3> {
-		let sector_xyz = self.get_sector_corner_xyz(sector);
+		let sector_xyz = self.get_sector_corner_xyz(&sector);
 		let f_col = field.get_column() as f32;
 		let f_row = field.get_row() as f32;
 
@@ -270,7 +270,7 @@ impl Dimensions {
 
 	/// Calculate the `x, y, z` coordinates at the top-left corner of a sector based on map dimensions
 	#[cfg(feature = "3d")]
-	pub fn get_sector_corner_xyz(&self, sector_id: SectorID) -> Vec3 {
+	pub fn get_sector_corner_xyz(&self, sector_id: &SectorID) -> Vec3 {
 		let sector_len = self.world_unit_size * FIELD_RESOLUTION as f32;
 		// find the global point in space for Sector (0, 0) based on the global origin
 		let top_left = Vec3::new(self.size.0 / -2.0, 0.0, self.size.1 / -2.0)
@@ -291,7 +291,7 @@ impl Dimensions {
 		position: Vec3,
 	) -> Option<(SectorID, FieldCell)> {
 		if let Some(sector_id) = self.get_sector_id_from_xyz(position) {
-			let sector_corner_origin = self.get_sector_corner_xyz(sector_id);
+			let sector_corner_origin = self.get_sector_corner_xyz(&sector_id);
 			let field_id_0 =
 				((position.x - sector_corner_origin.x) / self.world_unit_size).floor() as usize;
 			let field_id_1 =
@@ -636,7 +636,7 @@ mod tests {
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(0, 0);
-		let result = dimensions.get_sector_corner_xyz(sector_id);
+		let result = dimensions.get_sector_corner_xyz(&sector_id);
 		let actual = Vec3::new(-15.0, 0.0, -15.0);
 		assert_eq!(actual, result)
 	}
@@ -649,7 +649,7 @@ mod tests {
 		let actor_radius = 0.5;
 		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
 		let sector_id = SectorID::new(1, 1);
-		let result = dimensions.get_sector_corner_xyz(sector_id);
+		let result = dimensions.get_sector_corner_xyz(&sector_id);
 		let actual = Vec3::new(-5.0, 0.0, -5.0);
 		assert_eq!(actual, result)
 	}

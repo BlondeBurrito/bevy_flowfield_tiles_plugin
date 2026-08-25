@@ -51,7 +51,9 @@ publish = true
 criterion = { version = "0.8", features = ["async_futures"] }
 bevy = { workspace = true, default-features = true, features=["wayland", "system_font_discovery"]}
 rand = "0.10"
-avian2d = { version = "0.7", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d examples for collision detection
+avian2d = { version = "0.7", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
+avian3d = { version = "0.7", default-features = false, features = ["3d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
+# used in 2d examples for collision detection
 # avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
 
 [dependencies]

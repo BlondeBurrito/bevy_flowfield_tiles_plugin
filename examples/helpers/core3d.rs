@@ -1,25 +1,25 @@
-//! Main set of helpers for running 2d examples
+//! Main set of helpers for running 3d examples
 //!
 
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::{
 	prelude::*,
 	tasks::{Task, futures::check_ready},
 };
 use bevy_flowfield_tiles_plugin::prelude::*;
 
-/// Dimension of square sprites making up the world
-#[allow(dead_code)]
-pub const FIELD_SPRITE_DIMENSION: f32 = 64.0;
-/// Pixel size of the world
-#[allow(dead_code)]
-pub const WORLD_SIZE: (f32, f32) = (1920.0, 1920.0);
+/// Timestep of actor movement system
+pub const ACTOR_TIMESTEP: f32 = 1.0 / 64.0;
+
 /// Size of a unit of space
 #[allow(dead_code)]
-pub const WORLD_UNIT_SIZE: f32 = 64.0;
+pub const WORLD_UNIT_SIZE: f32 = 1.0;
 /// Radius of an actor
 #[allow(dead_code)]
-pub const ACTOR_RADIUS: f32 = 16.0;
+pub const ACTOR_RADIUS: f32 = 0.3;
+/// Height of an actor
+#[allow(dead_code)]
+pub const ACTOR_HEIGHT: f32 = 0.6;
 
 /// Used in CollisionLayers so that actors don't collide with one another, only the terrain
 #[derive(Default)]
@@ -45,58 +45,52 @@ impl PhysicsLayer for Layer {
 	}
 }
 
+/// Get light source bundle
+#[cfg(not(tarpaulin_include))]
+pub fn get_light() -> (DirectionalLight, Transform) {
+	(
+		DirectionalLight {
+			illuminance: light_consts::lux::OVERCAST_DAY,
+			shadow_maps_enabled: true,
+			..default()
+		},
+		Transform::from_xyz(0.0, 15.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+	)
+}
+
 /// Create collider entities around the world
 #[allow(dead_code)]
 #[cfg(not(tarpaulin_include))]
-pub fn create_wall_colliders(mut cmds: Commands) {
-	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 1.0);
-	let top_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION * 30.0,
-		FIELD_SPRITE_DIMENSION / 2.0,
-		1.0,
-	);
-	let bottom_location = Vec3::new(0.0, -FIELD_SPRITE_DIMENSION * 15.0, 1.0);
-	let bottom_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION * 30.0,
-		FIELD_SPRITE_DIMENSION / 2.0,
-		1.0,
-	);
-	let left_location = Vec3::new(-FIELD_SPRITE_DIMENSION * 15.0, 0.0, 1.0);
-	let left_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION / 2.0,
-		FIELD_SPRITE_DIMENSION * 30.0,
-		1.0,
-	);
-	let right_location = Vec3::new(FIELD_SPRITE_DIMENSION * 15.0, 0.0, 1.0);
-	let right_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION / 2.0,
-		FIELD_SPRITE_DIMENSION * 30.0,
-		1.0,
-	);
-
-	let walls = [
-		(top_location, top_scale),
-		(bottom_location, bottom_scale),
-		(left_location, left_scale),
-		(right_location, right_scale),
-	];
-
-	for (loc, scale) in walls.iter() {
-		cmds.spawn((
-			Sprite {
-				color: Color::BLACK,
-				..default()
-			},
-			Transform {
-				translation: *loc,
-				scale: *scale,
-				..default()
-			},
+pub fn get_wall_colliders(
+	x_length: f32,
+	z_length: f32,
+) -> [(Transform, RigidBody, Collider, CollisionLayers); 4] {
+	[
+		(
+			Transform::from_translation(Vec3::new(0.0, ACTOR_HEIGHT / 2.0, -z_length / 2.0 - 0.5)),
 			RigidBody::Static,
-			Collider::rectangle(1.0, 1.0),
+			Collider::cuboid(x_length, ACTOR_HEIGHT, 0.5),
 			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
-		));
-	}
+		),
+		(
+			Transform::from_translation(Vec3::new(0.0, ACTOR_HEIGHT / 2.0, z_length / 2.0 + 0.5)),
+			RigidBody::Static,
+			Collider::cuboid(x_length, ACTOR_HEIGHT, 0.5),
+			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+		),
+		(
+			Transform::from_translation(Vec3::new(-x_length / 2.0 - 0.5, ACTOR_HEIGHT / 2.0, 0.0)),
+			RigidBody::Static,
+			Collider::cuboid(0.5, ACTOR_HEIGHT, z_length),
+			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+		),
+		(
+			Transform::from_translation(Vec3::new(x_length / 2.0 + 0.5, ACTOR_HEIGHT / 2.0, 0.0)),
+			RigidBody::Static,
+			Collider::cuboid(0.5, ACTOR_HEIGHT, z_length),
+			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+		),
+	]
 }
 
 /// Attached to the actor as a record of where it is and where it wants to go, used to lookup the correct FlowField
@@ -104,14 +98,13 @@ pub fn create_wall_colliders(mut cmds: Commands) {
 #[allow(clippy::missing_docs_in_private_items)]
 #[derive(Default, Component)]
 pub struct Pathing {
-	pub target: Option<Vec2>,
+	pub target: Option<Vec3>,
 	pub pollable_route: Option<Task<Option<Vec<RouteStep>>>>,
 	pub route: Option<Vec<RouteStep>>,
 	pub request_ticks: u32,
 }
 
 /// Request a route if an actor of `T` has a target set
-#[allow(dead_code)]
 pub fn actor_request_route<T: Component>(
 	mut actor_q: Query<(&Transform, &mut Pathing), With<T>>,
 	flow_q: Query<&FlowFieldTiles>,
@@ -124,7 +117,7 @@ pub fn actor_request_route<T: Component>(
 		{
 			// ask for a route
 			for flowfield_tiles in &flow_q {
-				let task = flowfield_tiles.get_route_2d(actor_tform.translation.truncate(), target);
+				let task = flowfield_tiles.get_route_3d(actor_tform.translation, target);
 				if let Some(t) = task {
 					actor_pathing.pollable_route = Some(t);
 					actor_pathing.route = None;
@@ -151,7 +144,7 @@ pub fn actor_update_route<T: Component>(mut actor_q: Query<&mut Pathing, With<T>
 
 /// Actor speed
 #[allow(dead_code)]
-const SPEED: f32 = 20000.0;
+const SPEED: f32 = 300.0;
 
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
@@ -168,10 +161,10 @@ pub fn actor_steering<T: Component>(
 		if let Some(steps) = &mut pathing.route {
 			if let Some(step) = steps.first() {
 				// get actor position in terms of sector and cell
-				let actor_pos = tform.translation.truncate();
+				let actor_pos = tform.translation;
 				let Some((sector, cell)) = flowfield_tiles
 					.get_dimensions()
-					.get_sector_and_field_cell_from_xy(actor_pos)
+					.get_sector_and_field_cell_from_xyz(actor_pos)
 				else {
 					// actor is out of bounds of Dimensions, do something about it...
 					warn!("Actor is out of bounds");
@@ -187,7 +180,7 @@ pub fn actor_steering<T: Component>(
 							let dir = (pathing.target.unwrap() - actor_pos).normalize();
 							velocity.0 = dir * SPEED * time_step.delta_secs();
 						} else {
-							if let Some(dir) = field.get_2d_dir(&cell) {
+							if let Some(dir) = field.get_3d_dir(&cell) {
 								// move along the flow
 								velocity.0 = dir * SPEED * time_step.delta_secs();
 							}
@@ -227,11 +220,10 @@ pub fn stop_at_destination<T: Component>(
 	mut actors: Query<(&mut LinearVelocity, &mut Pathing, &Transform), With<T>>,
 ) {
 	for (mut vel, mut path, tform) in &mut actors {
-		let position = tform.translation.truncate();
+		let position = tform.translation.with_y(0.0);
 		if let Some(target) = path.target
-			&& (target - position).length_squared() < 36.0
+			&& (target - position).length_squared() < 0.25
 		{
-			// within 6 pixels of target
 			vel.0 *= 0.0;
 			path.target = None;
 			path.pollable_route = None;
