@@ -285,3 +285,52 @@ impl FlowFieldTiles {
 		&self.flowfield_cache
 	}
 }
+
+// #[rustfmt::skip]
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn new() {
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+
+		let f = FlowFieldTiles::new(origin, size, world_unit_size, actor_radius);
+		assert_eq!(3, f.get_dimensions().get_sector_column_count());
+	}
+	#[test]
+	fn new_cost() {
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let cost = 3;
+
+		let f = FlowFieldTiles::new_with_cost(origin, size, world_unit_size, actor_radius, cost);
+		assert_eq!(3, f.get_dimensions().get_sector_column_count());
+	}
+	#[test]
+	fn new_ron() {
+		let path = env!("CARGO_MANIFEST_DIR").to_string()
+			+ "/assets/sector_costfields_continuous_layout.ron";
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let f = FlowFieldTiles::from_ron(origin, size, world_unit_size, actor_radius, &path);
+		assert_eq!(3, f.get_dimensions().get_sector_column_count());
+	}
+	#[test]
+	fn new_heightmap() {
+		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/heightmap.png";
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let f = FlowFieldTiles::from_heightmap(origin, size, world_unit_size, actor_radius, &path);
+		assert_eq!(3, f.get_dimensions().get_sector_column_count());
+	}
+}

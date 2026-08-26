@@ -878,6 +878,16 @@ mod tests {
 		);
 		assert!(r & BITS_IMPASSABLE == BITS_IMPASSABLE);
 
+		let r_c = FieldCell::new(3, 7);
+		let r = flowfield.get_field_cell_value(r_c);
+		println!(
+			"{} :: flags: {:#010b}, cost: {:#010b}",
+			r_c,
+			r & BITS_FLAG_FILTER,
+			r & BITS_COST_FILTER
+		);
+		assert!(r & BITS_PATHABLE == BITS_PATHABLE);
+
 		let r_c = FieldCell::new(4, 8);
 		let r = flowfield.get_field_cell_value(r_c);
 		println!(
