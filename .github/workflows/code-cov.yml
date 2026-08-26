@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Nix dependencies
         uses: ./.github/actions/install_linux_deps
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
       - run: |
-          cargo install cargo-tarpaulin
-          cargo tarpaulin --profile codecov --workspace --all-features --include-tests --engine=llvm --fail-under 85 --ignore-panics
+          cargo install cargo-llvm-cov
+          cargo llvm-cov --profile codecov --workspace --all-features --fail-under-lines 85

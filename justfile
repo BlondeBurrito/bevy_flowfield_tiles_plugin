@@ -83,7 +83,7 @@ doc-coverage:
   # https://github.com/rust-lang/rust/issues/58154
 # evaluate test coverage
 code-coverage:
-  cargo tarpaulin --release --workspace --all-features --include-tests --engine=llvm --ignore-panics
+  cargo llvm-cov --profile codecov --workspace --all-features
 # install the crate from the local source rather than remote
 install:
   cargo install --path .
@@ -103,7 +103,7 @@ dev-tools:
   cargo install rust-script;
   rust-script --install-file-association;
   cargo install --locked cargo-deny
-  cargo install cargo-tarpaulin
+  cargo install cargo-llvm-cov
 # Generate a diagram from a puml file under ./docs/png
 diagram NAME:
   java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" docs/png/{{NAME}}.puml
