@@ -31,7 +31,6 @@ pub enum Layer {
 }
 
 // Determine collision interaction
-#[cfg(not(tarpaulin_include))]
 impl PhysicsLayer for Layer {
 	fn to_bits(&self) -> u32 {
 		match self {
@@ -47,7 +46,6 @@ impl PhysicsLayer for Layer {
 
 /// Create collider entities around the world
 #[allow(dead_code)]
-#[cfg(not(tarpaulin_include))]
 pub fn create_wall_colliders(mut cmds: Commands) {
 	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 1.0);
 	let top_scale = Vec3::new(
@@ -156,7 +154,6 @@ const SPEED: f32 = 20000.0;
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
 #[allow(dead_code)]
-#[cfg(not(tarpaulin_include))]
 pub fn actor_steering<T: Component>(
 	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<T>>,
 	flow_q: Query<&FlowFieldTiles>,

@@ -31,7 +31,6 @@ impl Plugin for FlowFieldTilesPlugin {
 
 /// Process the queue of [crate::flowfields::fields::cost_field::CostField]
 /// updates and schedule portal recalculation
-#[cfg(not(tarpaulin_include))]
 fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 	for mut flowfield_tiles in &mut query {
 		// if flowfields are currently being generated then skip until they are done
@@ -117,7 +116,6 @@ fn process_costfield_update_queue(mut query: Query<&mut FlowFieldTiles>) {
 }
 
 /// Process the queue of routes and generate [FlowField]s
-#[cfg(not(tarpaulin_include))]
 fn process_flow_queue(mut query: Query<&mut FlowFieldTiles>) {
 	for mut flowfield_tiles in &mut query {
 		// only proceed with generating flows if no updates are currently active for

@@ -163,7 +163,6 @@ impl FlowFieldTiles {
 	/// From a greyscale heightmap image initialise a bundle where the
 	/// [crate::flowfields::fields::cost_field::CostField]s are derived from the
 	/// pixel values of the image
-	#[cfg(not(tarpaulin_include))]
 	#[cfg(feature = "heightmap")]
 	pub fn from_heightmap(
 		origin: (f32, f32),

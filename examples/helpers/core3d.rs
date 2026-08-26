@@ -31,7 +31,6 @@ pub enum Layer {
 }
 
 // Determine collision interaction
-#[cfg(not(tarpaulin_include))]
 impl PhysicsLayer for Layer {
 	fn to_bits(&self) -> u32 {
 		match self {
@@ -46,7 +45,6 @@ impl PhysicsLayer for Layer {
 }
 
 /// Get light source bundle
-#[cfg(not(tarpaulin_include))]
 pub fn get_light() -> (DirectionalLight, Transform) {
 	(
 		DirectionalLight {
@@ -60,7 +58,6 @@ pub fn get_light() -> (DirectionalLight, Transform) {
 
 /// Create collider entities around the world
 #[allow(dead_code)]
-#[cfg(not(tarpaulin_include))]
 pub fn get_wall_colliders(
 	x_length: f32,
 	z_length: f32,
@@ -149,7 +146,6 @@ const SPEED: f32 = 300.0;
 /// If the actor has a destination set then try to retrieve the relevant
 /// [FlowField] for its current position and move the actor
 #[allow(dead_code)]
-#[cfg(not(tarpaulin_include))]
 pub fn actor_steering<T: Component>(
 	mut actor_q: Query<(&mut LinearVelocity, &mut Transform, &mut Pathing), With<T>>,
 	flow_q: Query<&FlowFieldTiles>,

@@ -21,4 +21,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: |
           cargo install cargo-llvm-cov
-          cargo llvm-cov --profile codecov --workspace --all-features --fail-under-lines 85
+          cargo llvm-cov --profile codecov --workspace --all-features --show-missing-lines --fail-under-lines 85

@@ -83,7 +83,7 @@ doc-coverage:
   # https://github.com/rust-lang/rust/issues/58154
 # evaluate test coverage
 code-coverage:
-  cargo llvm-cov --profile codecov --workspace --all-features
+  cargo llvm-cov --profile codecov --workspace --all-features --show-missing-lines
 # install the crate from the local source rather than remote
 install:
   cargo install --path .

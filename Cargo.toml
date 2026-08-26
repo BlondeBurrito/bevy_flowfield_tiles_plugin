@@ -29,7 +29,7 @@ missing_docs_in_private_items = "deny"
 todo = "deny"
 unimplemented = "warn"
 [workspace.lints.rust]
-unexpected_cfgs = { level = "allow", check-cfg = ['cfg(tarpaulin_include)'] }
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(coverage,coverage_nightly)'] }
 
 [package]
 name = "bevy_flowfield_tiles_plugin"
