@@ -821,7 +821,7 @@ impl CompassDir {
 		}
 	}
 	/// For two sectors next to each other it can be useful to find the [CompassDir] from the `source` to the `target`. If they are not adjacent None is returned
-	pub fn sector_to_sector_direction(target: SectorID, source: SectorID) -> Option<Self> {
+	pub fn sector_to_sector_direction(target: &SectorID, source: &SectorID) -> Option<Self> {
 		let i32_target = (target.get_column(), target.get_row());
 		let i32_source = (source.get_column(), source.get_row());
 
@@ -1617,5 +1617,40 @@ mod tests {
 			(CompassDir::SouthEast, FieldCell::new(1, 1)),
 		];
 		assert_eq!(actual, result)
+	}
+	#[test]
+	fn sector_sector() {
+		let source = SectorID::new(1, 1);
+
+		let target = SectorID::new(1, 0);
+		let actual = CompassDir::North;
+		assert_eq!(
+			actual,
+			CompassDir::sector_to_sector_direction(&target, &source).unwrap()
+		);
+
+		let target = SectorID::new(2, 1);
+		let actual = CompassDir::East;
+		assert_eq!(
+			actual,
+			CompassDir::sector_to_sector_direction(&target, &source).unwrap()
+		);
+
+		let target = SectorID::new(1, 2);
+		let actual = CompassDir::South;
+		assert_eq!(
+			actual,
+			CompassDir::sector_to_sector_direction(&target, &source).unwrap()
+		);
+
+		let target = SectorID::new(0, 1);
+		let actual = CompassDir::West;
+		assert_eq!(
+			actual,
+			CompassDir::sector_to_sector_direction(&target, &source).unwrap()
+		);
+
+		let target = SectorID::new(2, 2);
+		assert!(CompassDir::sector_to_sector_direction(&target, &source).is_none());
 	}
 }

@@ -75,4 +75,14 @@ mod tests {
 
 		assert!(cache.cache.len() == 1);
 	}
+
+	#[test]
+	fn insert_get() {
+		let mut cache = FlowFieldCache::default();
+		let step = RouteStep::new(&SectorID::new(0, 0), 1, None);
+		cache.insert(&step, FlowField::default());
+
+		let r = cache.get(&step);
+		assert!(r.is_some());
+	}
 }
