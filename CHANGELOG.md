@@ -2,6 +2,57 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.0] - 2026-08-29
+
+### Features
+
+- [**breaking**] Updated to Bevy 0.19 (#77)
+
+Updated to Bevy 0.19
+
+Bumped MSRV to 1.97
+
+Bumped Rust Edition to 2024
+
+Changed fields to be 1-dimensional arrays instead of 2, improves memory layout
+
+`IntegrationField` and `FlowField` are computed in the `AsyncComputeTaskPool`
+
+Removed message based path request
+
+Actors now query `FlowFieldTiles` for a pollable task for a route
+
+Combined Portals and PortalGraph into a single structure
+
+Rewritten portal graph (3rd time)
+
+Removed `SectorPortals`
+
+Replaced `FlowFieldTilesBundle` with `FlowFieldTiles`. Rather than many components everything is a single component
+
+Renamed Ordinal to `CompassDir` (as it really contains Cardinals and Ordinals)
+
+Reworked data initialisation, removed confusing sector_resolution, instead the component is setup via origin (f32, f32), world size (f32, f32), world unit size f32 and actor radius f32
+
+Removed IntegrationBuilder
+
+Removed RouteCache, the FlowFieldCache handles queryable data
+
+Portal expansion is contained within the portal setup, instead of being computed during IntegrationField building
+
+Reworked benches
+
+Moved examples into folders based on what they do
+
+Removed example_utils crate, examples now use helpers for steering pipeline logic with local mod paths
+
+Removed feature csv
+
+Removed feature bevy_mesh (calculation was brittle and error prone)
+
+Reflect is now only partially supported
+
+
 ## [0.14.0] - 2025-11-08
 
 ### Features
