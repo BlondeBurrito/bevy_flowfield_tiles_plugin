@@ -2,31 +2,31 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
-    
+
 env:
   CARGO_TERM_COLOR: always
-    
+
 jobs:
   nix_test:
     name: nix_test
     runs-on: ubuntu-latest
     steps:
-      - name: Nix dependencies
-        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld libwayland-dev
       - uses: actions/checkout@v3
+      - name: Nix dependencies
+        uses: ./.github/actions/install_linux_deps
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --release --workspace --all-features
   nix_build:
     name: nix_build
     runs-on: ubuntu-latest
     steps:
-      - name: Nix dependencies
-        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld libwayland-dev
       - uses: actions/checkout@v3
+      - name: Nix dependencies
+        uses: ./.github/actions/install_linux_deps
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release --workspace
   win_test:
@@ -47,17 +47,13 @@ jobs:
     name: macos_test
     runs-on: macos-latest
     steps:
-      - name: deps
-        run: brew install keith/formulae/ld64.lld
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --release --workspace --all-features
+      - run: cargo build --release --workspace --all-features
   macos_build:
     name: macos_build
     runs-on: macos-latest
     steps:
-      - name: deps
-        run: brew install keith/formulae/ld64.lld
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release --workspace

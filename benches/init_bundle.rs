@@ -1,13 +1,13 @@
-//! Measure initialising the FlowFieldTilesBundle - this means that Portals and
-//! the PortalGraph are calculated
+//! Measure initialising the FlowFieldTiles
 //!
 
 use bevy_flowfield_tiles_plugin::prelude::*;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
+use std::hint::black_box;
 
-/// Create a set of CostFields
-fn init_bundle(map_length: u32, map_depth: u32, sector_resolution: u32, actor_size: f32) {
-	let _ = FlowFieldTilesBundle::new(map_length, map_depth, sector_resolution, actor_size);
+/// Create FlowFieldTiles
+fn init_bundle(origin: (f32, f32), size: (f32, f32), world_unit_size: f32, actor_radius: f32) {
+	let _ = FlowFieldTiles::new(origin, size, world_unit_size, actor_radius);
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
@@ -16,9 +16,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	group.bench_function("init_bundle", |b| {
 		b.iter(|| {
 			init_bundle(
-				black_box(1000),
-				black_box(1000),
-				black_box(10),
+				black_box((0.0, 0.0)),
+				black_box((1000.0, 1000.0)),
+				black_box(1.0),
 				black_box(0.5),
 			)
 		})

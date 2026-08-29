@@ -1,0 +1,9 @@
+name: Install Linux dependencies
+description: Installs deps needed on linux
+runs:
+  using: composite
+  steps:
+    - name: Install Linux dependencies
+      shell: bash
+      if: ${{ runner.os == 'linux' }}
+      run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld libwayland-dev libxkbcommon-dev libx264-164 libx264-dev libfontconfig1-dev

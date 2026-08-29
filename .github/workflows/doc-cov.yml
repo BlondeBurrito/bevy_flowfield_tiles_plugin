@@ -2,23 +2,23 @@ name: Doc-cov
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
-    
+
 env:
   CARGO_TERM_COLOR: always
-    
+
 jobs:
   doc_cov:
     name: doc_cov
     runs-on: ubuntu-latest
     steps:
-      - name: Nix dependencies
-        run: sudo apt-get update; sudo apt-get -y install libasound2-dev libudev-dev lld libwayland-dev
       - uses: actions/checkout@v3
+      - name: Nix dependencies
+        uses: ./.github/actions/install_linux_deps
       - uses: dtolnay/rust-toolchain@nightly
       - run: |
           export RUSTDOCFLAGS="-Z unstable-options --show-coverage"
-          cargo +nightly doc --workspace --all-features --no-deps --release
+          cargo +nightly doc --workspace --all-features --no-deps --release --document-private-items

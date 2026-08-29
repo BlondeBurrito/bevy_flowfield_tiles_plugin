@@ -1,8 +1,8 @@
 [workspace.package]
-version = "0.14.0"
+version = "0.15.0"
 authors = ["BlondeBurrito"]
-edition = "2021"
-rust-version = "1.85"
+edition = "2024"
+rust-version = "1.97"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/BlondeBurrito/bevy_flowfield_tiles_plugin"
@@ -11,16 +11,17 @@ keywords = ["navigation", "pathfinding", "bevy"]
 categories = ["game-development", "algorithms"]
 exclude = [".github/", "crates/", "assets/", "docs/png/", "justfile"]
 
-[workspace]
-members = ["crates/*"]
+# [workspace]
+# members = ["crates/*"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.17", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
-serde = { version = "1", features = ["derive"] }
-ron = { version = "0.10" }
-csv = { version = "1" }
+bevy = { version = "0.19", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
+serde = { version = "1", features = ["derive", "rc"] }
+serde-big-array = { version = "0.5" }
+ron = { version = "0.12" }
 photon-rs = { version = "0.3"}
+petgraph = { version = "0.8", default-features = false, features = ["std", "stable_graph", "serde-1"] }
 
 [workspace.lints.clippy]
 cargo_common_metadata = "deny"
@@ -28,7 +29,7 @@ missing_docs_in_private_items = "deny"
 todo = "deny"
 unimplemented = "warn"
 [workspace.lints.rust]
-unexpected_cfgs = { level = "allow", check-cfg = ['cfg(tarpaulin_include)'] }
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(coverage,coverage_nightly)'] }
 
 [package]
 name = "bevy_flowfield_tiles_plugin"
@@ -47,34 +48,35 @@ exclude.workspace = true
 publish = true
 
 [dev-dependencies]
-criterion = "0.5"
-bevy = { workspace = true, default-features = true, features=["wayland"]}
-rand = "0.9"
-avian2d = { version = "0.4", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]} # used in 2d exmaples for collision detection
+criterion = { version = "0.8", features = ["async_futures"] }
+bevy = { workspace = true, default-features = true, features=["wayland", "system_font_discovery"]}
+rand = "0.10"
+avian2d = { version = "0.7", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
+avian3d = { version = "0.7", default-features = false, features = ["3d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
+# used in 2d examples for collision detection
 # avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
-examples_utils = { path = "crates/examples_utils" }
 
 [dependencies]
 bevy = { workspace = true, features = ["bevy_render", "wayland"] }
-serde = { workspace = true, optional = true}
-ron = { workspace = true, optional = true}
-csv = { workspace = true, optional = true}
-photon-rs = {workspace = true, optional = true}
+petgraph = { workspace = true }
+serde = { workspace = true, optional = true }
+serde-big-array = { workspace = true, optional = true }
+ron = { workspace = true, optional = true }
+photon-rs = {workspace = true, optional = true }
 
 [lints]
 workspace = true
 
 [features]
-serde = ["dep:serde"]
+serde = ["dep:serde", "dep:serde-big-array"]
 ron = ["serde", "dep:ron"]
-csv = ["serde", "dep:csv"]
 2d = []
 3d = []
 heightmap = ["dep:photon-rs"]
 # multithread = []
 
 [package.metadata.docs.rs]
-features = ["serde", "ron", "csv", "2d", "3d", "heightmap"]
+features = ["serde", "ron", "2d", "3d", "heightmap"]
 
 [profile.dev]
 opt-level = 1
@@ -114,105 +116,101 @@ name = "init_bundle"
 harness = false
 
 [[bench]]
-name = "init_cost_fields"
+name = "init_costfields"
 harness = false
 
 [[bench]]
 name = "init_portals"
 harness = false
 
-[[bench]]
-name = "init_portal_graph"
-harness = false
-
 ###################
 
 [[example]]
-name = "visualise_cost_field"
-path = "examples/visualise_cost_field.rs"
+name = "visualise_costfield"
+path = "examples/visualise/visualise_costfield.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "visualise_cost_field_heightmap"
-path = "examples/visualise_cost_field_heightmap.rs"
+name = "visualise_costfield_heightmap"
+path = "examples/visualise/visualise_costfield_heightmap.rs"
 required-features = ["heightmap"]
 
 [[example]]
 name = "visualise_portals"
-path = "examples/visualise_portals.rs"
-required-features = ["csv", "2d"]
+path = "examples/visualise/visualise_portals.rs"
+required-features = ["ron", "2d"]
 
 [[example]]
-name = "visualise_integration_field_los"
-path = "examples/visualise_integration_field_los.rs"
+name = "visualise_integrationfield_los"
+path = "examples/visualise/visualise_integrationfield_los.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "visualise_integration_field"
-path = "examples/visualise_integration_field.rs"
+name = "visualise_integrationfield"
+path = "examples/visualise/visualise_integrationfield.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "visualise_integration_fields"
-path = "examples/visualise_integration_fields.rs"
+name = "visualise_integrationfields"
+path = "examples/visualise/visualise_integrationfields.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "visualise_flow_field_tiles"
-path = "examples/visualise_flow_field_tiles.rs"
+name = "visualise_flowfield_tiles"
+path = "examples/visualise/visualise_flowfield_tiles.rs"
 required-features = ["ron"]
 
 [[example]]
-name = "flow_field_right_click"
-path = "examples/flow_field_right_click.rs"
+name = "flowfield_right_click"
+path = "examples/visualise/flowfield_right_click.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_with_steering"
-path = "examples/2d_with_steering.rs"
+path = "examples/2d/2d_with_steering.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_variety_costs"
-path = "examples/2d_variety_costs.rs"
+path = "examples/2d/2d_variety_costs.rs"
 required-features = ["heightmap", "2d"]
 
 [[example]]
-name = "2d_complex_movement"
-path = "examples/2d_complex_movement.rs"
-required-features = ["csv", "2d"]
-
-[[example]]
 name = "2d_multi_actor"
-path = "examples/2d_multi_actor.rs"
+path = "examples/2d/2d_multi_actor.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_multi_actor_controls"
-path = "examples/2d_multi_actor_controls.rs"
+path = "examples/2d/2d_multi_actor_controls.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
-name = "2d_mutate_costfields"
-path = "examples/2d_mutate_costfields.rs"
+name = "2d_continuous_mutate"
+path = "examples/2d/2d_continuous_mutate.rs"
 required-features = ["ron", "2d"]
-
-[[example]]
-name = "3d_actor_movement"
-path = "examples/3d_actor_movement.rs"
-required-features = ["ron", "3d"]
 
 [[example]]
 name = "2d_continuous"
-path = "examples/2d_continuous.rs"
+path = "examples/2d/2d_continuous.rs"
 required-features = ["ron", "2d"]
 
 [[example]]
 name = "2d_large_actor"
-path = "examples/2d_large_actor.rs"
+path = "examples/2d/2d_large_actor.rs"
 required-features = ["ron", "2d"]
 
+# [[example]]
+# name = "2d_from_mesh"
+# path = "examples/2d/2d_from_mesh.rs"
+# required-features = ["2d"]
+
 [[example]]
-name = "2d_from_mesh"
-path = "examples/2d_from_mesh.rs"
-required-features = ["2d"]
+name = "3d_actor_movement"
+path = "examples/3d/3d_actor_movement.rs"
+required-features = ["ron", "3d"]
+
+# [[example]]
+# name = "experiment"
+# path = "examples/experiment.rs"
+# required-features = ["ron", "2d"]

@@ -1,222 +1,288 @@
-//! Defines a bundle which can be spawned as/inserted into an entity which
-//! movable actors can query for pathing data
+//! Defines the [FlowFieldTiles] component which can be spawned as/inserted
+//! into an entity which movable actors can query for pathing data
 //!
 
-use crate::prelude::*;
-use bevy::prelude::*;
+use std::{
+	collections::VecDeque,
+	sync::{Arc, RwLock},
+};
 
-/// Defines all required components for generating [FlowField] Tiles
+use bevy::{
+	prelude::*,
+	tasks::{AsyncComputeTaskPool, Task},
+};
+
+use crate::flowfields::{
+	dimensions::Dimensions,
+	fields::{FieldCell, flow_field::FlowField},
+	flowfield_cache::FlowFieldCache,
+	portal::Portals,
+	route::RouteStep,
+	sectors::{
+		SectorID,
+		sector_cost::{CostFieldUpdateItem, SectorCostFields},
+	},
+};
+
+/// Defines all required data for generating [FlowField] Tiles
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Bundle)]
-pub struct FlowFieldTilesBundle {
-	/// [CostField]s of all sectors
-	pub sector_cost_fields: SectorCostFields,
-	/// Portals for all sectors
-	pub sector_portals: SectorPortals,
-	/// Graph describing how to get from one sector to another
-	pub portal_graph: PortalGraph,
+#[derive(Component)]
+pub struct FlowFieldTiles {
 	/// Size of the world
-	pub map_dimensions: MapDimensions,
-	/// Cache of overarching portal-portal routes
-	pub route_cache: RouteCache,
+	pub dimensions: Dimensions,
+	/// [crate::flowfields::fields::cost_field::CostField]s of all sectors
+	pub sector_cost_fields: Arc<RwLock<SectorCostFields>>,
+	/// Portals and graph describing sector-to-sector connectivity
+	pub portals: Arc<RwLock<Portals>>,
+	/// A list of updates to be applied to [SectorCostFields]
+	pub costfield_update_queue: VecDeque<CostFieldUpdateItem>,
+	/// Stores [bevy::tasks::AsyncComputeTaskPool] [Task] when a
+	///  [crate::flowfields::fields::cost_field::CostField] is
+	/// being updated
+	#[cfg_attr(feature = "serde", serde(skip))]
+	pub costfield_update_task: Option<Task<SectorID>>,
+	/// Stores [bevy::tasks::AsyncComputeTaskPool] [Task] when a [Portals] are
+	/// being updated
+	#[cfg_attr(feature = "serde", serde(skip))]
+	pub portal_update_task: Option<Task<SectorID>>,
+	/// Store groups of routes that will be used to create [FlowField]
+	pub flow_queue: Arc<RwLock<VecDeque<Vec<RouteStep>>>>,
+	/// Stores [bevy::tasks::AsyncComputeTaskPool] [Task] when a group of
+	/// [FlowField]s are being built
+	#[cfg_attr(feature = "serde", serde(skip))]
+	pub flow_gen_task: Option<Task<Vec<(RouteStep, FlowField)>>>,
 	/// Cache of [FlowField]s that can be queried in a steering pipeline
-	pub flow_field_cache: FlowFieldCache,
+	pub flowfield_cache: FlowFieldCache,
 }
 
-impl FlowFieldTilesBundle {
+impl FlowFieldTiles {
+	/// Get a reference to the [Dimensions]
+	pub fn get_dimensions(&self) -> &Dimensions {
+		&self.dimensions
+	}
 	/// Get a reference to the [SectorCostFields]
-	pub fn get_sector_cost_fields(&self) -> &SectorCostFields {
+	pub fn get_sector_cost_fields(&self) -> &Arc<RwLock<SectorCostFields>> {
 		&self.sector_cost_fields
 	}
-	/// Get a reference to the [SectorPortals]
-	pub fn get_sector_portals(&self) -> &SectorPortals {
-		&self.sector_portals
+	/// Get a mutable reference to the [SectorCostFields]
+	pub fn get_sector_cost_fields_mut(&mut self) -> &mut Arc<RwLock<SectorCostFields>> {
+		&mut self.sector_cost_fields
 	}
-	/// Get a reference to the [PortalGraph]
-	pub fn get_portal_graph(&self) -> &PortalGraph {
-		&self.portal_graph
+	/// Get a reference to [Portals]
+	pub fn get_portals(&self) -> &Arc<RwLock<Portals>> {
+		&self.portals
 	}
-	/// Get a reference to the [MapDimensions]
-	pub fn get_map_dimensions(&self) -> &MapDimensions {
-		&self.map_dimensions
-	}
-	/// Get a reference to the [RouteCache]
-	pub fn get_route_cache(&self) -> &RouteCache {
-		&self.route_cache
-	}
-	/// Get a mutable reference to the [RouteCache]
-	pub fn get_route_cache_mut(&mut self) -> &mut RouteCache {
-		&mut self.route_cache
-	}
-	/// Get a reference to the [FlowFieldCache]
-	pub fn get_flowfield_cache(&self) -> &FlowFieldCache {
-		&self.flow_field_cache
-	}
-	/// Get a mutable reference to the [FlowFieldCache]
-	pub fn get_flowfield_cache_mut(&mut self) -> &mut FlowFieldCache {
-		&mut self.flow_field_cache
-	}
-	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions
-	pub fn new(map_length: u32, map_depth: u32, sector_resolution: u32, actor_size: f32) -> Self {
-		let map_dimensions =
-			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-		let cost_fields = SectorCostFields::new(&map_dimensions);
-		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
-		// update default portals for cost fields
-		for sector_id in cost_fields.get_scaled().keys() {
-			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
-		}
-		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
-		let route_cache = RouteCache::default();
-		let cache = FlowFieldCache::default();
-		FlowFieldTilesBundle {
-			sector_cost_fields: cost_fields,
-			sector_portals: portals,
-			portal_graph: graph,
-			map_dimensions,
-			route_cache,
-			flow_field_cache: cache,
+	/// Create a new instance of [FlowFieldTiles] based on world dimensions
+	pub fn new(
+		origin: (f32, f32),
+		size: (f32, f32),
+		world_unit_size: f32,
+		actor_radius: f32,
+	) -> Self {
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let costfields = Arc::new(RwLock::new(SectorCostFields::new(&dimensions)));
+		let c = costfields.read().unwrap();
+		let portals = Arc::new(RwLock::new(Portals::new(&c)));
+		// unlock now that portals are built
+		drop(c);
+
+		FlowFieldTiles {
+			dimensions,
+			sector_cost_fields: costfields,
+			portals,
+			costfield_update_queue: VecDeque::new(),
+			costfield_update_task: None,
+			portal_update_task: None,
+			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
+			flow_gen_task: None,
+			flowfield_cache: FlowFieldCache::default(),
 		}
 	}
-	/// Create a new instance of [FlowFieldTilesBundle] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
+	/// Create a new instance of [FlowFieldTiles] with a starting `cost` across
+	/// all [crate::flowfields::fields::cost_field::CostField]s
+	pub fn new_with_cost(
+		origin: (f32, f32),
+		size: (f32, f32),
+		world_unit_size: f32,
+		actor_radius: f32,
+		cost: u8,
+	) -> Self {
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let costfields = Arc::new(RwLock::new(SectorCostFields::new_with_cost(
+			&dimensions,
+			cost,
+		)));
+		let c = costfields.read().unwrap();
+		let portals = Arc::new(RwLock::new(Portals::new(&c)));
+		// unlock now that portals are built
+		drop(c);
+
+		FlowFieldTiles {
+			dimensions,
+			sector_cost_fields: costfields,
+			portals,
+			costfield_update_queue: VecDeque::new(),
+			costfield_update_task: None,
+			portal_update_task: None,
+			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
+			flow_gen_task: None,
+			flowfield_cache: FlowFieldCache::default(),
+		}
+	}
+	/// Create a new instance of [FlowFieldTiles] based on map dimensions where the [SectorCostFields] are derived from a `.ron` file
 	#[cfg(feature = "ron")]
 	pub fn from_ron(
-		map_length: u32,
-		map_depth: u32,
-		sector_resolution: u32,
-		actor_size: f32,
-		path: &str,
+		origin: (f32, f32),
+		size: (f32, f32),
+		world_unit_size: f32,
+		actor_radius: f32,
+		file_path: &str,
 	) -> Self {
-		let map_dimensions =
-			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-		let cost_fields = SectorCostFields::from_ron(path.to_string(), &map_dimensions);
-		if ((map_length * map_depth) / (sector_resolution * sector_resolution)) as usize
-			!= cost_fields.get_baseline().len()
-		{
-			panic!("Map size ({}, {}) with resolution {} produces ({}x{}) sectors. Ron file only produces {} sectors", map_length, map_depth, sector_resolution, map_length/sector_resolution, map_depth/sector_resolution, cost_fields.get_baseline().len());
-		}
-		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
-		// update default portals for cost fields
-		for sector_id in cost_fields.get_scaled().keys() {
-			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
-		}
-		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
-		let route_cache = RouteCache::default();
-		let cache = FlowFieldCache::default();
-		FlowFieldTilesBundle {
-			sector_cost_fields: cost_fields,
-			sector_portals: portals,
-			portal_graph: graph,
-			map_dimensions,
-			route_cache,
-			flow_field_cache: cache,
-		}
-	}
-	/// Create a new instance of [FlowFieldTilesBundle] from a directory containing CSV [CostField] files
-	#[cfg(not(tarpaulin_include))]
-	#[cfg(feature = "csv")]
-	pub fn from_csv(
-		map_length: u32,
-		map_depth: u32,
-		sector_resolution: u32,
-		actor_size: f32,
-		directory: &str,
-	) -> Self {
-		let map_dimensions =
-			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-		let cost_fields = SectorCostFields::from_csv_dir(&map_dimensions, directory.to_string());
-		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
-		// update default portals for cost fields
-		for sector_id in cost_fields.get_scaled().keys() {
-			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
-		}
-		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
-		let route_cache = RouteCache::default();
-		let cache = FlowFieldCache::default();
-		FlowFieldTilesBundle {
-			sector_cost_fields: cost_fields,
-			sector_portals: portals,
-			portal_graph: graph,
-			map_dimensions,
-			route_cache,
-			flow_field_cache: cache,
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let costfields = Arc::new(RwLock::new(SectorCostFields::from_ron(
+			file_path.into(),
+			&dimensions,
+		)));
+		let c = costfields.read().unwrap();
+		let portals = Arc::new(RwLock::new(Portals::new(&c)));
+		// unlock now that portals are built
+		drop(c);
+
+		FlowFieldTiles {
+			dimensions,
+			sector_cost_fields: costfields,
+			portals,
+			costfield_update_queue: VecDeque::new(),
+			costfield_update_task: None,
+			portal_update_task: None,
+			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
+			flow_gen_task: None,
+			flowfield_cache: FlowFieldCache::default(),
 		}
 	}
 	/// From a greyscale heightmap image initialise a bundle where the
-	/// [CostField]s are derived from the pixel values of the image
-	#[cfg(not(tarpaulin_include))]
+	/// [crate::flowfields::fields::cost_field::CostField]s are derived from the
+	/// pixel values of the image
 	#[cfg(feature = "heightmap")]
 	pub fn from_heightmap(
-		map_length: u32,
-		map_depth: u32,
-		sector_resolution: u32,
-		actor_size: f32,
+		origin: (f32, f32),
+		size: (f32, f32),
+		world_unit_size: f32,
+		actor_radius: f32,
 		file_path: &str,
 	) -> Self {
-		let map_dimensions =
-			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-		let cost_fields = SectorCostFields::from_heightmap(&map_dimensions, file_path.to_string());
-		let mut portals = SectorPortals::new(map_length, map_depth, sector_resolution);
-		// update default portals for cost fields
-		for sector_id in cost_fields.get_scaled().keys() {
-			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
-		}
-		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
-		let route_cache = RouteCache::default();
-		let cache = FlowFieldCache::default();
-		FlowFieldTilesBundle {
-			sector_cost_fields: cost_fields,
-			sector_portals: portals,
-			portal_graph: graph,
-			map_dimensions,
-			route_cache,
-			flow_field_cache: cache,
+		let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
+		let costfields = Arc::new(RwLock::new(SectorCostFields::from_heightmap(
+			&dimensions,
+			file_path.into(),
+		)));
+		let c = costfields.read().unwrap();
+		let portals = Arc::new(RwLock::new(Portals::new(&c)));
+		// unlock now that portals are built
+		drop(c);
+
+		FlowFieldTiles {
+			dimensions,
+			sector_cost_fields: costfields,
+			portals,
+			costfield_update_queue: VecDeque::new(),
+			costfield_update_task: None,
+			portal_update_task: None,
+			flow_queue: Arc::new(RwLock::new(VecDeque::new())),
+			flow_gen_task: None,
+			flowfield_cache: FlowFieldCache::default(),
 		}
 	}
-	/// From a list of 2d meshes and their translation initialise a bundle. The vertex points of the meshes must be within the `map_length` and `map_depth` of the world.
-	///
-	/// The default cell Costs can be set with `internal_cost` and
-	/// `external_cost` for cells within any meshs and for cells outside of any
-	/// meshes
-	#[cfg(not(tarpaulin_include))]
+	/// Add a [CostFieldUpdateItem] to the queue based on the [Dimensions]
+	/// `world_unit_size` at the supplied `position`
 	#[cfg(feature = "2d")]
-	pub fn from_bevy_2d_meshes(
-		meshes: Vec<(&Mesh, Vec2)>,
-		map_length: u32,
-		map_depth: u32,
-		sector_resolution: u32,
-		actor_size: f32,
-		internal_cost: u8,
-		external_cost: u8,
-	) -> Self {
-		let map_dimensions =
-			MapDimensions::new(map_length, map_depth, sector_resolution, actor_size);
-		let cost_fields = SectorCostFields::from_bevy_2d_meshes(
-			&map_dimensions,
-			&meshes,
-			internal_cost,
-			external_cost,
-		);
-		let mut portals = SectorPortals::new(
-			map_dimensions.get_length(),
-			map_dimensions.get_depth(),
-			sector_resolution,
-		);
-		// update default portals for cost fields
-		for sector_id in cost_fields.get_scaled().keys() {
-			portals.update_portals(*sector_id, &cost_fields, &map_dimensions);
+	pub fn add_costfield_update_2d(&mut self, position: Vec2, cost: u8) {
+		if let Some((sector, cell)) = self.dimensions.get_sector_and_field_cell_from_xy(position) {
+			let item = CostFieldUpdateItem::new(&sector, &cell, cost);
+			self.costfield_update_queue.push_back(item);
 		}
-		let graph = PortalGraph::new(&portals, &cost_fields, &map_dimensions);
-		let route_cache = RouteCache::default();
-		let cache = FlowFieldCache::default();
-		FlowFieldTilesBundle {
-			sector_cost_fields: cost_fields,
-			sector_portals: portals,
-			portal_graph: graph,
-			map_dimensions,
-			route_cache,
-			flow_field_cache: cache,
+	}
+	/// Add a [CostFieldUpdateItem] to the queue based on the [Dimensions]
+	/// `world_unit_size` at the supplied `position`
+	#[cfg(feature = "3d")]
+	pub fn add_costfield_update_3d(&mut self, position: Vec3, cost: u8) {
+		if let Some((sector, cell)) = self.dimensions.get_sector_and_field_cell_from_xyz(position) {
+			let item = CostFieldUpdateItem::new(&sector, &cell, cost);
+			self.costfield_update_queue.push_back(item);
 		}
+	}
+
+	/// Request a path (if it exists). If the `from` and `to` parameters are valid
+	/// coordinates in [Dimensions] space a [Task] will be returned. Polling this
+	/// task will return a high-level list of [RouteStep] describing the portal-to
+	/// -portal route of the path if it exists. Each [RouteStep] can be used with
+	/// the `read_flowfield()` method to obtain a [FlowField] for the step
+	#[cfg(feature = "2d")]
+	pub fn get_route_2d(&self, from: Vec2, to: Vec2) -> Option<Task<Option<Vec<RouteStep>>>> {
+		let (source_sector, source_cell) =
+			self.dimensions.get_sector_and_field_cell_from_xy(from)?;
+		let (goal_sector, goal_cell) = self.dimensions.get_sector_and_field_cell_from_xy(to)?;
+		//
+		self.get_route(source_sector, source_cell, goal_sector, goal_cell)
+	}
+	/// Request a path (if it exists). If the `from` and `to` parameters are valid
+	/// coordinates in [Dimensions] space a [Task] will be returned. Polling this
+	/// task will return a high-level list of [RouteStep] describing the portal-to
+	/// -portal route of the path if it exists. Each [RouteStep] can be used with
+	/// the `read_flowfield()` method to obtain a [FlowField] for the step
+	#[cfg(feature = "3d")]
+	pub fn get_route_3d(&self, from: Vec3, to: Vec3) -> Option<Task<Option<Vec<RouteStep>>>> {
+		let (source_sector, source_cell) =
+			self.dimensions.get_sector_and_field_cell_from_xyz(from)?;
+		let (goal_sector, goal_cell) = self.dimensions.get_sector_and_field_cell_from_xyz(to)?;
+		self.get_route(source_sector, source_cell, goal_sector, goal_cell)
+	}
+	/// From a source and goal attempt to retrieve a series of [RouteStep]
+	/// describing the path
+	fn get_route(
+		&self,
+		source_sector: SectorID,
+		source_cell: FieldCell,
+		goal_sector: SectorID,
+		goal_cell: FieldCell,
+	) -> Option<Task<Option<Vec<RouteStep>>>> {
+		let costfields = self.sector_cost_fields.clone();
+		let portals = self.portals.clone();
+		let queue = self.flow_queue.clone();
+		//
+		let thread_pool = AsyncComputeTaskPool::get();
+		let task = thread_pool.spawn(async move {
+			let read_costfields = costfields.read().unwrap();
+			let read_portals = portals.read().unwrap();
+			let path = read_portals.find_path(
+				&source_sector,
+				&source_cell,
+				&goal_sector,
+				&goal_cell,
+				&read_costfields,
+			);
+
+			if let Some(p) = path {
+				// push route into a queue for flowfield generation
+				let mut write_queue = queue.write().unwrap();
+				write_queue.push_back(p.clone());
+				Some(p)
+			} else {
+				None
+			}
+		});
+		Some(task)
+	}
+
+	/// Retrieve a [FlowField] based on a [RouteStep]
+	///
+	/// This will return `None` if the [FlowField] has not been generated yet
+	pub fn read_flowfield(&self, route_step: &RouteStep) -> Option<&FlowField> {
+		self.flowfield_cache.get(route_step)
+	}
+	/// Get a reference to the [FlowFieldCache]
+	pub fn flowfield_cache(&self) -> &FlowFieldCache {
+		&self.flowfield_cache
 	}
 }
 
@@ -224,32 +290,47 @@ impl FlowFieldTilesBundle {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
 	#[test]
-	fn valid_map_dimensions() {
-		let _map_dimsions = MapDimensions::new(10, 10, 10, 0.5);
+	fn new() {
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+
+		let f = FlowFieldTiles::new(origin, size, world_unit_size, actor_radius);
+		assert_eq!(3, f.get_dimensions().get_sector_column_count());
 	}
 	#[test]
-	#[should_panic]
-	fn invalid_map_dimensions() {
-		MapDimensions::new(99, 3, 10, 1.0);
+	fn new_cost() {
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let cost = 3;
+
+		let f = FlowFieldTiles::new_with_cost(origin, size, world_unit_size, actor_radius, cost);
+		assert_eq!(3, f.get_dimensions().get_sector_column_count());
 	}
 	#[test]
-	fn new_bundle() {
-		let b = FlowFieldTilesBundle::new(30, 30, 10, 0.5);
-		let _ = b.get_sector_cost_fields();
-		let _ = b.get_sector_portals();
-		let _ = b.get_portal_graph();
-		let _ = b.get_map_dimensions();
-		let _ = b.get_route_cache();
-		let _ = b.get_flowfield_cache();
-		let mut b = FlowFieldTilesBundle::new(30, 30, 10, 0.5);
-		let _ = b.get_route_cache_mut();
-		let _ = b.get_flowfield_cache_mut();
-	}
-	#[test]
-	fn new_bundle_from_ron() {
+	fn new_ron() {
 		let path = env!("CARGO_MANIFEST_DIR").to_string()
-			+ "/assets/sector_cost_fields_continuous_layout.ron";
-		let _ = FlowFieldTilesBundle::from_ron(30, 30, 10, 0.5, &path);
+			+ "/assets/sector_costfields_continuous_layout.ron";
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let f = FlowFieldTiles::from_ron(origin, size, world_unit_size, actor_radius, &path);
+		assert_eq!(3, f.get_dimensions().get_sector_column_count());
+	}
+	#[test]
+	fn new_heightmap() {
+		let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/heightmap.png";
+		let origin = (0.0, 0.0);
+		let size = (1920.0, 1920.0);
+		let world_unit_size = 64.0;
+		let actor_radius = 16.0;
+		let f = FlowFieldTiles::from_heightmap(origin, size, world_unit_size, actor_radius, &path);
+		assert_eq!(3, f.get_dimensions().get_sector_column_count());
 	}
 }

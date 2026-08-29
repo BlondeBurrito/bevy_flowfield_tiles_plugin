@@ -1,5 +1,5 @@
 # very useful command line runner - https://github.com/casey/just
-set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set shell := ["pwsh.exe", "-NoLogo", "-Command"]
 alias c := clippy
 alias d := doc
 alias db := debug
@@ -36,9 +36,8 @@ bench-save-main: build
   cargo bench -q --bench calc_flow_sparse --workspace --all-features -- --save-baseline main_calc_flow_sparse
   cargo bench -q --bench calc_flow_maze --workspace --all-features -- --save-baseline main_calc_flow_maze
   cargo bench -q --bench init_bundle --workspace --all-features -- --save-baseline main_init_bundle
-  cargo bench -q --bench init_cost_fields --workspace --all-features -- --save-baseline main_init_cost_fields
+  cargo bench -q --bench init_costfields --workspace --all-features -- --save-baseline main_init_costfields
   cargo bench -q --bench init_portals --workspace --all-features -- --save-baseline main_init_portals
-  cargo bench -q --bench init_portal_graph --workspace --all-features -- --save-baseline main_init_portal_graph
 # compare each benchmark against a saved bench taken from main
 bench-compare: build
   cargo bench -q --bench calc_route --workspace --all-features -- --baseline main_calc_route
@@ -46,14 +45,13 @@ bench-compare: build
   cargo bench -q --bench calc_flow_sparse --workspace --all-features -- --baseline main_calc_flow_sparse
   cargo bench -q --bench calc_flow_maze --workspace --all-features -- --baseline main_calc_flow_maze
   cargo bench -q --bench init_bundle --workspace --all-features -- --baseline main_init_bundle
-  cargo bench -q --bench init_cost_fields --workspace --all-features -- --baseline main_init_cost_fields
+  cargo bench -q --bench init_costfields --workspace --all-features -- --baseline main_init_costfields
   cargo bench -q --bench init_portals --workspace --all-features -- --baseline main_init_portals
-  cargo bench -q --bench init_portal_graph --workspace --all-features -- --baseline main_init_portal_graph
 # run a debug build so the compiler can call out overflow errors etc, rather than making assumptions
 debug:
   cargo build --workspace --all-features
 # run tests
-test: debug
+test:
   cargo test --release --workspace --all-features
 # generate documentation
 doc:
@@ -81,11 +79,11 @@ changelog TAG:
 # evaluate documentation coverage
 doc-coverage:
   $env:RUSTDOCFLAGS="-Z unstable-options --show-coverage"
-  cargo +nightly doc --workspace --all-features --no-deps --release
+  cargo +nightly doc --workspace --all-features --no-deps --release --document-private-items
   # https://github.com/rust-lang/rust/issues/58154
 # evaluate test coverage
 code-coverage:
-  cargo tarpaulin --release --workspace --all-features --include-tests --engine=llvm --ignore-panics
+  cargo llvm-cov --profile codecov --workspace --all-features --show-missing-lines
 # install the crate from the local source rather than remote
 install:
   cargo install --path .
@@ -105,7 +103,7 @@ dev-tools:
   cargo install rust-script;
   rust-script --install-file-association;
   cargo install --locked cargo-deny
-  cargo install cargo-tarpaulin
+  cargo install cargo-llvm-cov
 # Generate a diagram from a puml file under ./docs/png
 diagram NAME:
   java -jar "C:\ProgramData\chocolatey\lib\plantuml\tools\plantuml.jar" docs/png/{{NAME}}.puml

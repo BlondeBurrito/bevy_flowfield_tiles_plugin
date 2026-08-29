@@ -4,34 +4,34 @@
 //!
 //! ## Useful definitions
 //!
-//! * Sector - a slice of a game world composed of three 2D arrays called fields (`CostField`, `IntegrationField` and `FlowField`). A game world is effectively represented by a number of Sectors
-//! * CostField - a 2D array describing how difficult it is to path through each cell of the array. It is always present in system memory
+//! * Sector - a slice of a game world composed of three arrays called fields (`CostField`, `IntegrationField` and `FlowField`). A game world is effectively represented by a number of Sectors. Elements within a field are referred to as "cells" or `FieldCells`
+//! * CostField - an array describing how difficult it is to path a Sector.
 //! * Cost - how difficult/expensive it is to path somewhere, you could also call it <i>weight</i>, each cell of `CostField` has one of these
-//! * Portal - a navigatable point which links one Sector to another to enable movement from one side of the world to another
-//! * IntegrationField - a 2D array which uses the CostField to determine a cumulative cost of reaching the goal/endpoint (where you want to path to). This is an ephemeral field - it exists when required to calculate a `FlowField`
-//! * FlowField - a 2D array built from the `IntegrationField` which decribes how an actor should move (flow) across the world
+//! * Portal - a navigable point which links one Sector to another to enable movement from one side of the world to another
+//! * IntegrationField - an array which uses the CostField to determine a cumulative cost of reaching the goal/endpoint (where you want to path to). This is an ephemeral field - it exists when required to calculate a `FlowField`
+//! * FlowField - an array built from the `IntegrationField` which describes how an actor should move (flow) across the world
 //! * FlowField Cache - a means of storing `FlowFields` allowing multiple actors to use and reuse them
-//! * Ordinal - a direction based on traditional compass ordinals: N, NE, E, SE, S, SW, W, NW. Used for discovery of Sectors/field cells at various points within the algorithm
-//! * Field cell - an element of a 2D array
+//! * CompassDir - a direction based on traditional compass cardinals and ordinals: N, NE, E, SE, S, SW, W, NW. Used for discovery of Sectors/field cells at various points within the algorithm
+//! * FieldCell - an element of an array
 //! * Goal - the target field cell an actor needs to path to
 //! * Portal goal - a target point within a sector that allows an actor to transition to another sector, thus bringing it closer towards/to the goal
 //!
 //! ## Sector
 //!
-//! For a 3-dimensional world the `x-z` (`x-y` in 2d) plane defines the number of Sectors used to represent it with a constant called `SECTOR_RESOLUTION`, currently enforced at `10`. This means that a for a `30x30` world there would be `3x3` Sectors representing it. Each Sector has an associated unqiue ID taken as its position: `(column, row)`.
+//! For a 3-dimensional world the `x-z` (`x-y` in 2d) plane defines the number of Sectors used to represent `FlowFieldTiles`. Every Sector can be visualised as a grid with dimensions `10x10`. A world with size (90, 110) will have `9x11` Sectors.
 //!
 //! ## CostField
 //!
-//! A `CostField` is an `MxN` 2D array of 8-bit values. The values indicate the `cost` of navigating through that cell of the field. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the field cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
+//! A `CostField` is an array of 8-bit values. The values indicate the `cost` of navigating through that cell of the field. A value of `1` is the default and indicates the easiest `cost`, and a value of `255` is a special value used to indicate that the field cell is impassable - this could be used to indicate a wall or obstacle. All other values from `2-254` represent increasing cost, for instance a slope or difficult terrain such as a marsh. The idea is that the pathfinding calculations will favour cells with a smaller value before any others.
 //!
 //!
 //! ## Portals
 //!
-//! Each Sector has up to 4 boundaries with neighbouring Sectors (fewer when the sector is in a corner or along the edge of the game world). Each boundary can contain Portals which indicate a navigatable point from the current Sector to a neighbour. Portals serve a dual purpose, one of which is to provide responsiveness - `FlowFields` may take time to generate so when an actor needs to move a quick A* pathing query can produce an inital path route based on moving from one Portal to another and they can start moving in the general direction to the goal/target/endpoint. Once the `FlowFields` have been built the actor can switch to using them for granular navigation instead.
+//! Each Sector has up to 4 boundaries with neighbouring Sectors (fewer when the sector is in a corner or along the edge of the game world). Each boundary can contain Portals which indicate a navigable point from the current Sector to a neighbour. Portals serve a dual purpose, one of which is to provide responsiveness - `FlowFields` may take time to generate so when an actor needs to move, a quick A* pathing query can produce an initial path route based on moving from one Portal to another and they can start moving in the general direction to the goal/target/endpoint. Once the `FlowFields` have been built the actor can switch to using them for granular navigation instead.
 //!
-//! ## Portal Graph
+//! ### Portal Graph
 //!
-//! For finding a path from one Sector to another at a Portal level all Sector Portals are recorded within a data strucutre known as `PortalGraph`. The Portals are stored as Nodes and Edges are created between them to represent traversable paths, it gets built in three stages:
+//! For finding a path from one Sector to another at a Portal level all Sector Portals are recorded within a graph. The Portals are stored as Nodes and Edges are created between them to represent traversable paths, it gets built in three stages:
 //!
 //! * For all Portals add a graph `node`
 //! * For each sector create `edges` (pathable routes) to and from each Portal `node` - effectively create internal walkable routes of each sector
@@ -41,32 +41,33 @@
 //!
 //! ## IntegrationField
 //!
-//! An `IntegrationField` is an `MxN` 2D array of 16-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target. It's an ephemeral field, as in it gets built for a required sector and then consumed by the `FlowField` calculation.
+//! An `IntegrationField` is an array of 16-bit values. It uses the `CostField` to produce a cumulative cost to reach the end goal/target. It's an ephemeral field, as in it gets built for a required sector and then consumed by the `FlowField` calculation.
 //!
 //! When a new route needs to be processed the field values are set to `u16::MAX` and the field cell containing the goal is set to `0`.
 //!
 //! A series of passes are performed from the goal as an expanding wavefront calculating the field values:
 //!
-//! * The valid ordinal neighbours of the goal are determined (North, East, South, West - when not against a sector/world boundary)
-//! * For each ordinal field cell lookup their `CostField` value
-//! * Add the `CostField` cost to the `IntegrationFields` cost of the current cell (at the beginning this is the goal int cost `0`)
-//! * Propagate to the next neighbours, find their ordinals and repeat adding their cost value to to the current cells integration cost to produce their cumulative integration cost, and repeat until the entire field is done
+//! * The valid cardinal neighbours of the goal are determined (North, East, South, West - when not against a sector/world boundary)
+//! * For each neighbour field cell lookup their `CostField` value
+//! * Add the `CostField` cell cost to the `IntegrationFields` current wavefront cost (at the beginning this is the goal so int cost `0`)
+//! * Propagate to the next neighbours, find their cardinals and repeat adding their cost value to the current cells integration cost to produce their cumulative integration cost, and repeat until the entire field is done
 //!
 //! ## FlowField
 //!
-//! A `FlowField` is an `MxN` 2D array of 8-bit values built from a Sectors `IntegrationField`. The first 4 bits of the value correspond to one of eight ordinal movement directions an actor can take (plus a zero vector when impassable) and the second 4 bits correspond to flags which should be used by a character controller/steering pipeline to follow a path.
+//! A `FlowField` is an array of 8-bit values built from a Sectors `IntegrationField`. The first 4 bits of the value correspond to one of eight compass movement directions an actor can take (plus a zero vector when impassable) and the second 4 bits correspond to flags which should be used by a character controller/steering pipeline to follow a path.
 //!
 //! ## Caching FlowFields
 //!
-//! To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) a pair of caches are used to store pathing data:
+//! To enable actors to reuse `FlowFields` (thus avoiding repeated calculations) all generated fields are stored in a `FlowFieldCache` map. This cache is indexed based on sector-portal metadata.
 //!
-//! * Route Cache - when an actor requests to go somewhere a high-level route is generated from describing the overall series of sector-portals to traverse (`PortalGraph` A*). If a `FlowField` hasn't yet been calculated then an actor can use the `route_cache` as a fallback to gain a generalist direction they should start moving in. Once the `FlowFields` have been built they can swap over to using those more granular paths. Additionally changes to `CostFields` can change portal positions and the real best path, so `FlowFields` are regenerated for the relevant sectors that `CostFields` have modified and during the regeneration steps an actor can once again use the high-level route as the fallback
-//!
-//! * Field Cache - for every sector-to-portal part of a route a `FlowField` is built and stored in the cache. Actors can poll this cache to get the true flow direction to their goal. A Character Controller/Steering Pipeline is responsible for interpreting the values of the `FlowField` to produce movement - while this plugin includes a Steering Pipeline the reality is that every game has it's own quirks and desires for movement so you will most likely want to build your own Pipeline. The real point of this plugin is to encapulsate the data structures and logic to make a `FlowField` which an Actor can then read through it's own implementation.
+//! For every sector-to-portal part of a route a `FlowField` is built and stored in the cache. Actors can poll this cache to get the true flow direction to their goal. A Character Controller/Steering Pipeline is responsible for interpreting the values of the `FlowField` to produce movement - the repository of this plugin contains a series of examples that show a "bare-minimum" implementation of a pipeline for reading [fields::flow_field::FlowField]s. In reality every game has its own controller/movement requirements so it's out of scope to provide a generic/agnostic Steering Pipeline. The real point of this plugin is to encapsulate the data structures and logic to make a `FlowField` which an Actor can then read through it's own implementation.
 //!
 
+pub mod dimensions;
 pub mod fields;
+pub mod flowfield_cache;
 pub mod portal;
+pub mod route;
 pub mod sectors;
 pub mod utilities;
 
