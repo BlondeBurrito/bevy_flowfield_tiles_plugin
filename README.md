@@ -300,11 +300,12 @@ struct ActorLarge
 fn setup () {
     cmds.spawn(FlowFieldTiles::new(
     	/* stuff */
+     actor_radius: 16.0,
     )).insert(ActorSmall);
 
-    let actor_size_large = 78.0;
     cmds.spawn(FlowFieldTiles::new(
     	/* stuff */
+     actor_radius: 48.0
     )).insert(ActorLarge);
 }
 
@@ -557,7 +558,7 @@ If you're combining this with a Physics simulation you'll need to ensure that yo
 
 * `serde` - enables serialization on some data types
 * `ron` - enables reading `CostField` from files. NB: fixed-size arrays in `.ron` are written as tuples
-* `2d` - enables interface methods when working with Flowfields in a 2d world, additionally allows using a list of Bevy 2d meshes to initialise the Flowfields
+* `2d` - enables interface methods when working with Flowfields in a 2d world
 * `3d` - enables interface methods when working with FlowFields in a 3d world
 * `heightmap` - allows initialising the `CostField`s from a greyscale png/jpeg where each pixel of the image represents a `FieldCell`. Alpha channel is optional (it'll just be ignored if included in the image). A pixel with colour channels `(0, 0, 0, 255)` (black) represents an impassable `255` cost whereas `(255, 255, 255, 255)` (white) is translated as a cost of `1`, channel values in between will be more expensive costs
 
