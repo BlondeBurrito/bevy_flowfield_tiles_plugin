@@ -23,8 +23,7 @@ use crate::flowfields::{
 	derive(serde::Deserialize, serde::Serialize),
 	serde(default)
 )]
-#[derive(Component, Clone, Default, Reflect)]
-#[reflect(Component)]
+#[derive(Clone, Default, Reflect)]
 pub struct SectorCostFields {
 	/// Initial costs based on the unit size of each field
 	baseline: BTreeMap<SectorID, CostField>,

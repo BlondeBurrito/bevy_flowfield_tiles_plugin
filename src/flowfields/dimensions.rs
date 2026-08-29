@@ -8,8 +8,7 @@ use crate::flowfields::{fields::FieldCell, sectors::SectorID};
 
 /// The dimensions and scaling of the world
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Component, Default, Clone, Copy, Reflect)]
-#[reflect(Component)]
+#[derive(Default, Clone, Copy, Reflect)]
 pub struct Dimensions {
 	/// The origin point of your game world. This is used to translate a point from Bevy global space into a [SectorID] and [FieldCell], and back
 	///

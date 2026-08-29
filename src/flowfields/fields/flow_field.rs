@@ -163,7 +163,7 @@ impl FlowField {
 			BITS_SOUTH_WEST => Some(Vec2::new(-1.0, -1.0)),
 			BITS_NORTH_WEST => Some(Vec2::new(-1.0, 1.0)),
 			BITS_DEFAULT => {
-				warn!("Flow cell has no calculation {}", field_cell);
+				// warn!("Flow cell has no calculation {}", field_cell);
 				None
 			}
 			_ => {
@@ -190,7 +190,7 @@ impl FlowField {
 			BITS_SOUTH_WEST => Some(Vec3::new(-1.0, 0.0, 1.0)),
 			BITS_NORTH_WEST => Some(Vec3::new(-1.0, 0.0, -1.0)),
 			BITS_DEFAULT => {
-				warn!("Flow cell has no calculation {}", field_cell);
+				// warn!("Flow cell has no calculation {}", field_cell);
 				None
 			}
 			_ => {

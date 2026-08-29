@@ -31,14 +31,7 @@ fn main() {
 		// .insert_resource(SubstepCount(30))
 		.insert_resource(Gravity(Vec2::ZERO))
 		.add_plugins(FlowFieldTilesPlugin)
-		.add_systems(
-			Startup,
-			(
-				setup_visualisation,
-				setup_navigation,
-				core2d::create_wall_colliders,
-			),
-		)
+		.add_systems(Startup, (setup_visualisation, setup_navigation))
 		.add_systems(PreUpdate, click_set_target)
 		.add_systems(Update, core2d::actor_request_route::<core::Actor>)
 		.add_systems(Update, (update_sprite_visuals_based_on_actor,))
@@ -53,12 +46,15 @@ fn main() {
 		.run();
 }
 
+/// Size of the world in pixels, must be a factor of ACTOR_SIZE
+const WORLD_SIZE: (f32, f32) = (1920.0, 1920.0);
+
 /// Spawn sprites to represent the world
 fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 	cmds.spawn(camera::get_camera_2d(2.0));
 	let sprite_dimension = core2d::FIELD_SPRITE_DIMENSION;
 	let origin = (0.0, 0.0);
-	let size = (1920.0, 1920.0);
+	let size = WORLD_SIZE;
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
 	let actor_radius = ACTOR_RADIUS;
 	let dimensions = Dimensions::new(origin, size, world_unit_size, actor_radius);
@@ -115,13 +111,18 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 			}
 		}
 	}
+	// collider walls around everything
+	let outer_walls = core2d::get_wall_colliders(size.0, size.1);
+	for bundle in outer_walls {
+		cmds.spawn(bundle);
+	}
 }
 /// Spawn navigation related entities
 fn setup_navigation(mut cmds: Commands) {
 	// create the entity handling the algorithm
 	let path = env!("CARGO_MANIFEST_DIR").to_string() + "/assets/sector_costfields.ron";
 	let origin = (0.0, 0.0);
-	let size = (1920.0, 1920.0);
+	let size = WORLD_SIZE;
 	let world_unit_size = core2d::WORLD_UNIT_SIZE;
 	let actor_radius = ACTOR_RADIUS;
 	cmds.spawn(FlowFieldTiles::from_ron(

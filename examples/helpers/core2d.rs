@@ -11,9 +11,6 @@ use bevy_flowfield_tiles_plugin::prelude::*;
 /// Dimension of square sprites making up the world
 #[allow(dead_code)]
 pub const FIELD_SPRITE_DIMENSION: f32 = 64.0;
-/// Pixel size of the world
-#[allow(dead_code)]
-pub const WORLD_SIZE: (f32, f32) = (1920.0, 1920.0);
 /// Size of a unit of space
 #[allow(dead_code)]
 pub const WORLD_UNIT_SIZE: f32 = 64.0;
@@ -46,55 +43,36 @@ impl PhysicsLayer for Layer {
 
 /// Create collider entities around the world
 #[allow(dead_code)]
-pub fn create_wall_colliders(mut cmds: Commands) {
-	let top_location = Vec3::new(0.0, FIELD_SPRITE_DIMENSION * 15.0, 1.0);
-	let top_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION * 30.0,
-		FIELD_SPRITE_DIMENSION / 2.0,
-		1.0,
-	);
-	let bottom_location = Vec3::new(0.0, -FIELD_SPRITE_DIMENSION * 15.0, 1.0);
-	let bottom_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION * 30.0,
-		FIELD_SPRITE_DIMENSION / 2.0,
-		1.0,
-	);
-	let left_location = Vec3::new(-FIELD_SPRITE_DIMENSION * 15.0, 0.0, 1.0);
-	let left_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION / 2.0,
-		FIELD_SPRITE_DIMENSION * 30.0,
-		1.0,
-	);
-	let right_location = Vec3::new(FIELD_SPRITE_DIMENSION * 15.0, 0.0, 1.0);
-	let right_scale = Vec3::new(
-		FIELD_SPRITE_DIMENSION / 2.0,
-		FIELD_SPRITE_DIMENSION * 30.0,
-		1.0,
-	);
-
-	let walls = [
-		(top_location, top_scale),
-		(bottom_location, bottom_scale),
-		(left_location, left_scale),
-		(right_location, right_scale),
-	];
-
-	for (loc, scale) in walls.iter() {
-		cmds.spawn((
-			Sprite {
-				color: Color::BLACK,
-				..default()
-			},
-			Transform {
-				translation: *loc,
-				scale: *scale,
-				..default()
-			},
+pub fn get_wall_colliders(
+	x_length: f32,
+	y_length: f32,
+) -> [(Transform, RigidBody, Collider, CollisionLayers); 4] {
+	[
+		(
+			Transform::from_translation(Vec3::new(0.0, y_length / 2.0 + 16.0, 0.0)),
 			RigidBody::Static,
-			Collider::rectangle(1.0, 1.0),
+			Collider::rectangle(x_length, 16.0),
 			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
-		));
-	}
+		),
+		(
+			Transform::from_translation(Vec3::new(0.0, -y_length / 2.0 - 16.0, 0.0)),
+			RigidBody::Static,
+			Collider::rectangle(x_length, 16.0),
+			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+		),
+		(
+			Transform::from_translation(Vec3::new(-x_length / 2.0 - 16.0, 0.0, 0.0)),
+			RigidBody::Static,
+			Collider::rectangle(16.0, y_length),
+			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+		),
+		(
+			Transform::from_translation(Vec3::new(x_length / 2.0 + 16.0, 0.0, 0.0)),
+			RigidBody::Static,
+			Collider::rectangle(16.0, y_length),
+			CollisionLayers::new([Layer::Terrain], [Layer::Actor]),
+		),
+	]
 }
 
 /// Attached to the actor as a record of where it is and where it wants to go, used to lookup the correct FlowField

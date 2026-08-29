@@ -209,3 +209,8 @@ required-features = ["ron", "2d"]
 name = "3d_actor_movement"
 path = "examples/3d/3d_actor_movement.rs"
 required-features = ["ron", "3d"]
+
+# [[example]]
+# name = "experiment"
+# path = "examples/experiment.rs"
+# required-features = ["ron", "2d"]

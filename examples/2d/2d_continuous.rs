@@ -35,12 +35,7 @@ fn main() {
 		.add_plugins(FlowFieldTilesPlugin)
 		.add_systems(
 			Startup,
-			(
-				setup_visualisation,
-				setup_navigation,
-				core2d::create_wall_colliders,
-				create_counters,
-			),
+			(setup_visualisation, setup_navigation, create_counters),
 		)
 		.add_systems(
 			Update,
@@ -123,6 +118,11 @@ fn setup_visualisation(mut cmds: Commands, asset_server: Res<AssetServer>) {
 				));
 			}
 		}
+	}
+	// collider walls around everything
+	let outer_walls = core2d::get_wall_colliders(size.0, size.1);
+	for bundle in outer_walls {
+		cmds.spawn(bundle);
 	}
 }
 
