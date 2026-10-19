@@ -156,7 +156,7 @@ fn create_counter(mut cmds: Commands) {
 				p.spawn((
 					Text::new(category),
 					TextFont {
-						font: FontSource::Monospace,
+						font: FontSource::Generic(GenericFontFamily::Monospace),
 						font_size: FontSize::Px(30.0),
 						..default()
 					},
@@ -165,7 +165,7 @@ fn create_counter(mut cmds: Commands) {
 				.with_child((
 					TextSpan::default(),
 					TextFont {
-						font: FontSource::Monospace,
+						font: FontSource::Generic(GenericFontFamily::Monospace),
 						font_size: FontSize::Px(30.0),
 						..default()
 					},

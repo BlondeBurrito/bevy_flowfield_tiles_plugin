@@ -58,7 +58,7 @@ fn setup(mut cmds: Commands) {
 					p.spawn((
 						Text::new(convert_integration_flags(*value)),
 						TextFont {
-							font: FontSource::Monospace,
+							font: FontSource::Generic(GenericFontFamily::Monospace),
 							font_size: FontSize::Px(15.0),
 							..default()
 						},

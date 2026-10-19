@@ -3,7 +3,7 @@
 //!
 //!
 
-use bevy::{math::u8, prelude::*};
+use bevy::prelude::*;
 use petgraph::{Directed, stable_graph::StableGraph};
 use std::collections::BTreeMap;
 

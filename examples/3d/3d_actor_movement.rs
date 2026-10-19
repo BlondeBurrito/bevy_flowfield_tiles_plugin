@@ -128,7 +128,7 @@ fn setup_navigation(
 		&path,
 	));
 	// create the controllable actor in the top right corner
-	let mesh = meshes.add(Mesh::from(bevy::math::primitives::Capsule3d {
+	let mesh = meshes.add(Mesh::from(bevy::prelude::Capsule3d {
 		radius: core3d::ACTOR_RADIUS,
 		half_length: core3d::ACTOR_HEIGHT / 2.0,
 	}));
