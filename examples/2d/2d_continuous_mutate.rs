@@ -191,7 +191,7 @@ fn click_update_cost(
 						core2d::FIELD_SPRITE_DIMENSION,
 					),
 					world_position,
-					Rotation::default().into(),
+					Rotation::default(),
 					&SpatialQueryFilter::from_mask(core2d::Layer::Actor),
 				);
 				if !intersections.is_empty() {
@@ -337,7 +337,7 @@ fn create_counters(mut cmds: Commands) {
 			p.spawn((
 				Text::new("FPS: "),
 				TextFont {
-					font: FontSource::Monospace,
+					font: FontSource::Generic(GenericFontFamily::Monospace),
 					font_size: FontSize::Px(30.0),
 					..default()
 				},
@@ -346,7 +346,7 @@ fn create_counters(mut cmds: Commands) {
 			.with_child((
 				TextSpan::default(),
 				TextFont {
-					font: FontSource::Monospace,
+					font: FontSource::Generic(GenericFontFamily::Monospace),
 					font_size: FontSize::Px(30.0),
 					..default()
 				},
@@ -358,7 +358,7 @@ fn create_counters(mut cmds: Commands) {
 			p.spawn((
 				Text::new("Actors: "),
 				TextFont {
-					font: FontSource::Monospace,
+					font: FontSource::Generic(GenericFontFamily::Monospace),
 					font_size: FontSize::Px(30.0),
 					..default()
 				},
@@ -367,7 +367,7 @@ fn create_counters(mut cmds: Commands) {
 			.with_child((
 				TextSpan::default(),
 				TextFont {
-					font: FontSource::Monospace,
+					font: FontSource::Generic(GenericFontFamily::Monospace),
 					font_size: FontSize::Px(30.0),
 					..default()
 				},
@@ -379,7 +379,7 @@ fn create_counters(mut cmds: Commands) {
 			p.spawn((
 				Text::new("Dur(s): "),
 				TextFont {
-					font: FontSource::Monospace,
+					font: FontSource::Generic(GenericFontFamily::Monospace),
 					font_size: FontSize::Px(30.0),
 					..default()
 				},
@@ -388,7 +388,7 @@ fn create_counters(mut cmds: Commands) {
 			.with_child((
 				TextSpan::default(),
 				TextFont {
-					font: FontSource::Monospace,
+					font: FontSource::Generic(GenericFontFamily::Monospace),
 					font_size: FontSize::Px(30.0),
 					..default()
 				},
@@ -400,7 +400,7 @@ fn create_counters(mut cmds: Commands) {
 			p.spawn((
 				Text::new("Gen Flows: "),
 				TextFont {
-					font: FontSource::Monospace,
+					font: FontSource::Generic(GenericFontFamily::Monospace),
 					font_size: FontSize::Px(30.0),
 					..default()
 				},
@@ -409,7 +409,7 @@ fn create_counters(mut cmds: Commands) {
 			.with_child((
 				TextSpan::default(),
 				TextFont {
-					font: FontSource::Monospace,
+					font: FontSource::Generic(GenericFontFamily::Monospace),
 					font_size: FontSize::Px(30.0),
 					..default()
 				},

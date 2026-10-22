@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.15.0"
+version = "0.16.0"
 authors = ["BlondeBurrito"]
 edition = "2024"
 rust-version = "1.97"
@@ -16,7 +16,7 @@ exclude = [".github/", "crates/", "assets/", "docs/png/", "justfile"]
 
 # Centralised way of managing versions across all crates and packages
 [workspace.dependencies]
-bevy = { version = "0.19", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
+bevy = { version = "0.20", default-features = false, features = ["bevy_render", "wayland", "bevy_log"] }
 serde = { version = "1", features = ["derive", "rc"] }
 serde-big-array = { version = "0.5" }
 ron = { version = "0.12" }
@@ -51,8 +51,8 @@ publish = true
 criterion = { version = "0.8", features = ["async_futures"] }
 bevy = { workspace = true, default-features = true, features=["wayland", "system_font_discovery"]}
 rand = "0.10"
-avian2d = { version = "0.7", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
-avian3d = { version = "0.7", default-features = false, features = ["3d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
+avian2d = { git = "https://github.com/avianphysics/avian.git", rev = "1070759b2145dc078abedace91dc7fe78013a45c", default-features = false, features = ["2d", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
+avian3d = { git = "https://github.com/avianphysics/avian.git", rev = "1070759b2145dc078abedace91dc7fe78013a45c", default-features = false, features = ["3d", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
 # used in 2d examples for collision detection
 # avian2d = { git = "https://github.com/Jondolf/avian", branch = "main", default-features = false, features = ["2d", "f32", "parry-f32", "default-collider", "parallel", "debug-plugin"]}
 

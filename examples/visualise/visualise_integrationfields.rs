@@ -108,7 +108,7 @@ fn setup(mut cmds: Commands) {
 							p.spawn((
 								Text::new((value & INT_FILTER_BITS_COST).to_string()),
 								TextFont {
-									font: FontSource::Monospace,
+									font: FontSource::Generic(GenericFontFamily::Monospace),
 									font_size: FontSize::Px(10.0),
 									..default()
 								},
