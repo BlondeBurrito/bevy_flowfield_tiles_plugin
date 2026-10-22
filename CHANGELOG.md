@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - 2026-10-22
+
+### Features
+
+- Update to bevy 0.20 (#78)
+
+
+
+
+### Miscellaneous Tasks
+
+- Remove unused deps and bump dev deps
+
+
+
+
 ## [0.15.0] - 2026-08-29
 
 ### Features
